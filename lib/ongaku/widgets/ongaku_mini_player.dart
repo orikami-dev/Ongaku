@@ -44,10 +44,19 @@ class OngakuMiniPlayer extends StatelessWidget {
   }
 }
 
-class _MiniPlayerCapsule extends StatelessWidget {
+class _MiniPlayerCapsule extends StatefulWidget {
   const _MiniPlayerCapsule({required this.metadata});
 
   final MediaItem metadata;
+
+  @override
+  State<_MiniPlayerCapsule> createState() => _MiniPlayerCapsuleState();
+}
+
+class _MiniPlayerCapsuleState extends State<_MiniPlayerCapsule> {
+  bool _pressed = false;
+
+  MediaItem get metadata => widget.metadata;
 
   @override
   Widget build(BuildContext context) {
@@ -59,6 +68,9 @@ class _MiniPlayerCapsule extends StatelessWidget {
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () => openOngakuNowPlaying(context),
+        onTapDown: (_) => setState(() => _pressed = true),
+        onTapUp: (_) => setState(() => _pressed = false),
+        onTapCancel: () => setState(() => _pressed = false),
         onVerticalDragEnd: (details) {
           if ((details.primaryVelocity ?? 0) < -200) {
             openOngakuNowPlaying(context);
@@ -72,54 +84,59 @@ class _MiniPlayerCapsule extends StatelessWidget {
             audioHandler.skipToPrevious();
           }
         },
-        child: GlassSurface(
-          height: OngakuMiniPlayer.height,
-          borderRadius: 18,
-          child: Stack(
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(left: 9, right: 6),
-                child: Row(
-                  children: [
-                    SongArtworkWidget(
-                      metadata: metadata,
-                      size: 44,
-                      borderRadius: 8,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 250),
-                        layoutBuilder: (current, previous) => Stack(
-                          alignment: Alignment.centerLeft,
-                          children: [...previous, ?current],
-                        ),
-                        child: _TitleAndArtist(
-                          key: ValueKey(metadata.id),
-                          metadata: metadata,
+        child: AnimatedScale(
+          scale: _pressed ? 0.97 : 1,
+          duration: const Duration(milliseconds: 150),
+          curve: Curves.easeOut,
+          child: GlassSurface(
+            height: OngakuMiniPlayer.height,
+            borderRadius: 18,
+            child: Stack(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(left: 9, right: 6),
+                  child: Row(
+                    children: [
+                      SongArtworkWidget(
+                        metadata: metadata,
+                        size: 44,
+                        borderRadius: 8,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 250),
+                          layoutBuilder: (current, previous) => Stack(
+                            alignment: Alignment.centerLeft,
+                            children: [...previous, ?current],
+                          ),
+                          child: _TitleAndArtist(
+                            key: ValueKey(metadata.id),
+                            metadata: metadata,
+                          ),
                         ),
                       ),
-                    ),
-                    const _MiniPlayPauseButton(),
-                    IconButton(
-                      onPressed: audioHandler.skipToNext,
-                      tooltip: context.l10n?.skipToNext,
-                      icon: Icon(
-                        FluentIcons.next_24_filled,
-                        color: colorScheme.onSurface,
-                        size: 26,
+                      const _MiniPlayPauseButton(),
+                      IconButton(
+                        onPressed: audioHandler.skipToNext,
+                        tooltip: context.l10n?.skipToNext,
+                        icon: Icon(
+                          FluentIcons.next_24_filled,
+                          color: colorScheme.onSurface,
+                          size: 26,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              const Positioned(
-                left: 18,
-                right: 18,
-                bottom: 0,
-                child: _MiniProgressLine(),
-              ),
-            ],
+                const Positioned(
+                  left: 18,
+                  right: 18,
+                  bottom: 0,
+                  child: _MiniProgressLine(),
+                ),
+              ],
+            ),
           ),
         ),
       ),

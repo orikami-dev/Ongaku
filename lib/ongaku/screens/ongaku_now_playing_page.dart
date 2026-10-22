@@ -32,13 +32,13 @@ Future<void> openOngakuNowPlaying(BuildContext context) {
     PageRouteBuilder<void>(
       opaque: false,
       barrierColor: Colors.black54,
-      transitionDuration: const Duration(milliseconds: 380),
-      reverseTransitionDuration: const Duration(milliseconds: 280),
+      transitionDuration: const Duration(milliseconds: 460),
+      reverseTransitionDuration: const Duration(milliseconds: 340),
       pageBuilder: (context, animation, _) => const OngakuNowPlayingPage(),
       transitionsBuilder: (context, animation, _, child) {
         final curved = CurvedAnimation(
           parent: animation,
-          curve: Curves.easeOutCubic,
+          curve: Curves.easeOutQuart,
           reverseCurve: Curves.easeInCubic,
         );
         return SlideTransition(
@@ -580,7 +580,19 @@ class _PanelLayout extends StatelessWidget {
           child: const SizedBox.expand(),
         ),
         AnimatedSwitcher(
-          duration: const Duration(milliseconds: 280),
+          duration: const Duration(milliseconds: 360),
+          switchInCurve: Curves.easeOutCubic,
+          switchOutCurve: Curves.easeInCubic,
+          transitionBuilder: (child, animation) => FadeTransition(
+            opacity: animation,
+            child: SlideTransition(
+              position: Tween(
+                begin: const Offset(-0.06, 0),
+                end: Offset.zero,
+              ).animate(animation),
+              child: child,
+            ),
+          ),
           child: showLyrics
               ? SizedBox.expand(
                   key: const ValueKey('lyrics'),
@@ -738,7 +750,7 @@ class _PanelHeader extends StatelessWidget {
 
 /// Lyrics filling the whole left side, like Apple Music on iPad.
 class _LyricsPane extends StatefulWidget {
-  const _LyricsPane({super.key, required this.metadata});
+  const _LyricsPane({required this.metadata});
 
   final MediaItem metadata;
 

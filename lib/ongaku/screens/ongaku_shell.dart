@@ -124,14 +124,33 @@ class _OngakuShellState extends State<OngakuShell> {
           mainAxisSize: MainAxisSize.min,
           children: [
             AnimatedSize(
-              duration: const Duration(milliseconds: 250),
+              duration: const Duration(milliseconds: 350),
               curve: Curves.easeOutCubic,
-              child: hasMiniPlayer
-                  ? const Padding(
-                      padding: EdgeInsets.only(bottom: 8),
-                      child: OngakuMiniPlayer(),
-                    )
-                  : const SizedBox(width: double.infinity),
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 350),
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeInCubic,
+                transitionBuilder: (child, animation) => FadeTransition(
+                  opacity: animation,
+                  child: SlideTransition(
+                    position: Tween(
+                      begin: const Offset(0, 0.4),
+                      end: Offset.zero,
+                    ).animate(animation),
+                    child: child,
+                  ),
+                ),
+                child: hasMiniPlayer
+                    ? const Padding(
+                        key: ValueKey('mini'),
+                        padding: EdgeInsets.only(bottom: 8),
+                        child: OngakuMiniPlayer(),
+                      )
+                    : const SizedBox(
+                        key: ValueKey('none'),
+                        width: double.infinity,
+                      ),
+              ),
             ),
             Row(
               children: [
@@ -295,21 +314,51 @@ class _GlassTabBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final selected = tabs.indexWhere((t) => t.shellIndex == selectedShellIndex);
+    // The pill glides between tabs instead of fading in and out.
+    final alignX = tabs.length < 2
+        ? 0.0
+        : -1 + 2 * (selected < 0 ? 0 : selected) / (tabs.length - 1);
+
     return GlassSurface(
       height: height,
       borderRadius: height / 2,
       child: Padding(
         padding: const EdgeInsets.all(4),
-        child: Row(
+        child: Stack(
           children: [
-            for (final tab in tabs)
-              Expanded(
-                child: _TabButton(
-                  tab: tab,
-                  selected: tab.shellIndex == selectedShellIndex,
-                  onTap: () => onSelected(tab.shellIndex),
+            AnimatedAlign(
+              duration: const Duration(milliseconds: 380),
+              curve: Curves.easeOutBack,
+              alignment: Alignment(alignX, 0),
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 200),
+                opacity: selected < 0 ? 0 : 1,
+                child: FractionallySizedBox(
+                  widthFactor: 1 / tabs.length,
+                  heightFactor: 1,
+                  child: DecoratedBox(
+                    decoration: ShapeDecoration(
+                      color: colorScheme.onSurface.withValues(alpha: 0.08),
+                      shape: const StadiumBorder(),
+                    ),
+                  ),
                 ),
               ),
+            ),
+            Row(
+              children: [
+                for (final tab in tabs)
+                  Expanded(
+                    child: _TabButton(
+                      tab: tab,
+                      selected: tab.shellIndex == selectedShellIndex,
+                      onTap: () => onSelected(tab.shellIndex),
+                    ),
+                  ),
+              ],
+            ),
           ],
         ),
       ),
@@ -317,7 +366,7 @@ class _GlassTabBar extends StatelessWidget {
   }
 }
 
-class _TabButton extends StatelessWidget {
+class _TabButton extends StatefulWidget {
   const _TabButton({
     required this.tab,
     required this.selected,
@@ -329,8 +378,17 @@ class _TabButton extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
+  State<_TabButton> createState() => _TabButtonState();
+}
+
+class _TabButtonState extends State<_TabButton> {
+  bool _pressed = false;
+
+  @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final tab = widget.tab;
+    final selected = widget.selected;
     final color = selected ? colorScheme.primary : colorScheme.onSurface;
 
     return Semantics(
@@ -340,33 +398,41 @@ class _TabButton extends StatelessWidget {
       excludeSemantics: true,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOutCubic,
-          decoration: ShapeDecoration(
-            color: selected
-                ? colorScheme.onSurface.withValues(alpha: 0.08)
-                : Colors.transparent,
-            shape: const StadiumBorder(),
-          ),
+        onTap: widget.onTap,
+        onTapDown: (_) => setState(() => _pressed = true),
+        onTapUp: (_) => setState(() => _pressed = false),
+        onTapCancel: () => setState(() => _pressed = false),
+        child: AnimatedScale(
+          scale: _pressed ? 0.9 : 1,
+          duration: const Duration(milliseconds: 140),
+          curve: Curves.easeOut,
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                selected ? tab.selectedIcon : tab.icon,
-                color: color,
-                size: 24,
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 220),
+                switchInCurve: Curves.easeOutBack,
+                transitionBuilder: (child, animation) =>
+                    ScaleTransition(scale: animation, child: child),
+                child: Icon(
+                  selected ? tab.selectedIcon : tab.icon,
+                  key: ValueKey(selected),
+                  color: color,
+                  size: 24,
+                ),
               ),
               const SizedBox(height: 2),
-              Text(
-                tab.label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+              AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 220),
                 style: TextStyle(
                   color: color,
                   fontSize: 10.5,
                   fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                ),
+                child: Text(
+                  tab.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
