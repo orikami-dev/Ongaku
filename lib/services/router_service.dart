@@ -24,9 +24,11 @@ import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:musify/constants/version.dart';
+import 'package:musify/ongaku/brand.dart';
+import 'package:musify/ongaku/ongaku_routes.dart';
+import 'package:musify/ongaku/screens/ongaku_shell.dart';
 import 'package:musify/screens/about_page.dart';
 import 'package:musify/screens/artist_page.dart';
-import 'package:musify/screens/bottom_navigation_page.dart';
 import 'package:musify/screens/equalizer_page.dart';
 import 'package:musify/screens/home_page.dart';
 import 'package:musify/screens/import_spotify_playlist_page.dart';
@@ -58,7 +60,7 @@ class NavigationManager {
         branches: _getRouteBranches(),
         pageBuilder: (context, state, navigationShell) {
           return getPage(
-            child: BottomNavigationPage(child: navigationShell),
+            child: OngakuShell(child: navigationShell),
             state: state,
           );
         },
@@ -251,6 +253,7 @@ class NavigationManager {
                 pageBuilder: (context, state) =>
                     _pushPage(child: const RadioStationsPage(), state: state),
               ),
+              ongakuLocalFilesRoute(_pushPage),
             ],
           ),
         ],
@@ -269,7 +272,7 @@ class NavigationManager {
                 path: 'license',
                 pageBuilder: (context, state) => _pushPage(
                   child: const LicensePage(
-                    applicationName: 'Musify',
+                    applicationName: appName,
                     applicationVersion: appVersion,
                   ),
                   state: state,
@@ -393,29 +396,5 @@ class NavigationManager {
   static Page<void> _pushPage({
     required Widget child,
     required GoRouterState state,
-  }) {
-    return CustomTransitionPage<void>(
-      key: state.pageKey,
-      child: child,
-      transitionDuration: const Duration(milliseconds: 220),
-      reverseTransitionDuration: const Duration(milliseconds: 180),
-      transitionsBuilder: (context, animation, secondaryAnimation, child) {
-        final curvedAnimation = CurvedAnimation(
-          parent: animation,
-          curve: Curves.easeOutCubic,
-          reverseCurve: Curves.easeInCubic,
-        );
-        return FadeTransition(
-          opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
-          child: SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(0.06, 0),
-              end: Offset.zero,
-            ).animate(curvedAnimation),
-            child: child,
-          ),
-        );
-      },
-    );
-  }
+  }) => ongakuPushPage(child: child, state: state);
 }

@@ -939,6 +939,20 @@ class _ArtworkDisplay extends StatelessWidget {
     return ValueListenableBuilder<bool>(
       valueListenable: offlineStatus,
       builder: (_, isOffline, __) {
+        // Ongaku: songs imported from the device show their own artwork.
+        if (!isOffline && artworkPath != null && lowResImageUrl.isEmpty) {
+          return ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: Image.file(
+              File(artworkPath!),
+              width: size,
+              height: size,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) =>
+                  NullArtworkWidget(iconSize: 30, size: size),
+            ),
+          );
+        }
         if (isOffline && artworkPath != null) {
           return _OfflineArtwork(
             artworkPath: artworkPath!,

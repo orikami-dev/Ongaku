@@ -25,6 +25,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:musify/constants/app_constants.dart';
 import 'package:musify/extensions/l10n.dart';
 import 'package:musify/main.dart';
+import 'package:musify/ongaku/brand.dart';
 import 'package:musify/services/common_services.dart';
 import 'package:musify/services/listening_stats_service.dart';
 import 'package:musify/services/playlists_manager.dart';
@@ -77,7 +78,7 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final playlistHeight = MediaQuery.sizeOf(context).height * 0.25 / 1.1;
     return Scaffold(
-      appBar: AppBar(title: const Text('Musify.')),
+      appBar: AppBar(title: const Text(appName)),
       body: SingleChildScrollView(
         padding: commonSingleChildScrollViewPadding,
         child: Column(

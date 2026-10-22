@@ -32,6 +32,8 @@ import 'package:just_audio_media_kit/just_audio_media_kit.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:musify/extensions/l10n.dart';
 import 'package:musify/localization/app_localizations.dart';
+import 'package:musify/ongaku/brand.dart';
+import 'package:musify/ongaku/theme/ongaku_theme.dart';
 import 'package:musify/services/audio_service.dart';
 import 'package:musify/services/data_manager.dart';
 import 'package:musify/services/desktop_media_artwork.dart';
@@ -244,7 +246,7 @@ class _MusifyState extends State<Musify> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     return DynamicColorBuilder(
       builder: (lightColorScheme, darkColorScheme) {
-        final colorScheme = getAppColorScheme(
+        final colorScheme = getOngakuColorScheme(
           lightColorScheme,
           darkColorScheme,
         );
@@ -266,8 +268,9 @@ class _MusifyState extends State<Musify> with WidgetsBindingObserver {
           ),
           child: MaterialApp.router(
             themeMode: themeMode,
-            darkTheme: getAppTheme(colorScheme),
-            theme: getAppTheme(colorScheme),
+            darkTheme: getOngakuTheme(colorScheme),
+            theme: getOngakuTheme(colorScheme),
+            scrollBehavior: const OngakuScrollBehavior(),
             localizationsDelegates: [
               AppLocalizations.delegate,
               ...GlobalMaterialLocalizations.delegates,
@@ -305,7 +308,7 @@ Future<void> initialisation() async {
         builder: MusifyAudioHandler.new,
         config: const AudioServiceConfig(
           androidNotificationChannelId: 'com.gokadzev.musify',
-          androidNotificationChannelName: 'Musify',
+          androidNotificationChannelName: appName,
           androidNotificationIcon: 'drawable/ic_launcher_foreground',
           androidShowNotificationBadge: true,
           androidStopForegroundOnPause: false,
@@ -324,7 +327,7 @@ Future<void> initialisation() async {
       );
     } else {
       // Use the desktop audio backend without mobile service plugins.
-      JustAudioMediaKit.title = 'Musify';
+      JustAudioMediaKit.title = appName;
       JustAudioMediaKit.ensureInitialized();
       audioHandler = MusifyAudioHandler();
     }

@@ -26,6 +26,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:musify/constants/app_constants.dart';
 import 'package:musify/extensions/l10n.dart';
 import 'package:musify/main.dart' show logger;
+import 'package:musify/ongaku/widgets/local_files_bar.dart';
 import 'package:musify/services/common_services.dart';
 import 'package:musify/services/playlist_download_service.dart';
 import 'package:musify/services/playlists_manager.dart';
@@ -207,6 +208,18 @@ class _LibraryPageState extends State<LibraryPage> {
 
     final slivers = <Widget>[];
 
+    // Ongaku: local files stay reachable in offline mode.
+    if (isOffline) {
+      slivers.add(
+        SliverToBoxAdapter(
+          child: ongakuLocalFilesBar(
+            context,
+            borderRadius: commonCustomBarRadius,
+          ),
+        ),
+      );
+    }
+
     if (hasLibraryContent) {
       slivers.add(
         SliverToBoxAdapter(
@@ -263,6 +276,8 @@ class _LibraryPageState extends State<LibraryPage> {
                   cubeIcon: FluentIcons.cloud_off_24_regular,
                   showBuildActions: false,
                 ),
+                // Ongaku: songs imported from the device.
+                ongakuLocalFilesBar(context),
                 PlaylistBar(
                   context.l10n!.radioStations,
                   onPressed: () =>

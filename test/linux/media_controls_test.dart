@@ -5,6 +5,7 @@ import 'package:audio_service/audio_service.dart';
 import 'package:dbus/dbus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:musify/ongaku/brand.dart';
 import 'package:musify/services/linux_media_controls.dart';
 
 class _NavigationChanges extends ChangeNotifier {
@@ -144,7 +145,7 @@ void main() {
         );
         expect(
           (await remote.getProperty(root, 'Identity')).asString(),
-          'Musify',
+          appName,
         );
         expect((await property('PlaybackStatus')).asString(), 'Playing');
         final metadata = (await property('Metadata')).asStringVariantDict();

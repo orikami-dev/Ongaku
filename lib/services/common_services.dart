@@ -29,6 +29,7 @@ import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
 import 'package:musify/constants/clients.dart';
 import 'package:musify/main.dart' show logger;
+import 'package:musify/ongaku/local/local_ids.dart';
 import 'package:musify/services/data_manager.dart';
 import 'package:musify/services/io_service.dart';
 import 'package:musify/services/lyrics_manager.dart';
@@ -702,6 +703,8 @@ Future<void> invalidateSongStreamCache(String songId) async {
 
 /// Fetches the best available audio stream for a song.
 Future<AudioOnlyStreamInfo?> fetchBestAudioStream(String? songId) async {
+  // Ongaku: songs imported from the device never go through YouTube.
+  if (isLocalSongId(songId)) return null;
   try {
     if (songId == null || songId.isEmpty) {
       logger.log('fetchBestAudioStream: songId is null or empty');
@@ -743,6 +746,8 @@ Future<AudioOnlyStreamInfo?> fetchBestAudioStream(String? songId) async {
 
 /// Resolves a playable stream URL for a song (cached when possible).
 Future<String?> fetchSongStreamUrl(String songId, bool isLive) async {
+  // Ongaku: songs imported from the device never go through YouTube.
+  if (isLocalSongId(songId)) return null;
   try {
     if (songId.isEmpty) {
       logger.log('fetchSongStreamUrl: songId is empty');
@@ -826,6 +831,8 @@ Future<String?> getSongLyrics(String? artist, String title) async {
 }
 
 Future<bool> makeSongOffline(dynamic song) async {
+  // Ongaku: songs imported from the device never go through YouTube.
+  if (isLocalSongId(song['ytid'])) return false;
   try {
     final String? ytid = song['ytid'];
 

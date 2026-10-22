@@ -29,6 +29,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:musify/constants/version.dart';
 import 'package:musify/extensions/l10n.dart';
 import 'package:musify/main.dart';
+import 'package:musify/ongaku/brand.dart';
 import 'package:musify/services/data_manager.dart';
 import 'package:musify/services/router_service.dart';
 import 'package:musify/services/settings_manager.dart';
@@ -36,13 +37,13 @@ import 'package:musify/utilities/platform_utils.dart';
 import 'package:musify/utilities/url_launcher.dart';
 import 'package:musify/widgets/auto_format_text.dart';
 
-const String checkUrl =
-    'https://raw.githubusercontent.com/gokadzev/Musify/update/check.json';
-const String releasesUrl =
-    'https://api.github.com/repos/gokadzev/Musify/releases/latest';
+// Ongaku: updates come from Ongaku's own releases (see ongaku/brand.dart),
+// never from Musify's, so Musify APKs are never offered as updates.
+const String checkUrl = updateCheckUrl;
+const String releasesUrl = latestReleaseApiUrl;
 const String downloadUrlKey = 'url';
 const String downloadUrlArm64Key = 'arm64url';
-const String downloadFilename = 'Musify.apk';
+const String downloadFilename = apkDownloadFilename;
 
 Future<void> checkAppUpdates() async {
   // Update distribution targets Android APK builds only.

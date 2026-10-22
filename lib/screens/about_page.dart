@@ -24,6 +24,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:musify/constants/app_constants.dart';
 import 'package:musify/constants/version.dart';
 import 'package:musify/extensions/l10n.dart';
+import 'package:musify/ongaku/brand.dart';
 import 'package:musify/utilities/url_launcher.dart';
 import 'package:musify/widgets/mini_player_bottom_space.dart';
 
@@ -44,7 +45,7 @@ class AboutPage extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'Musify',
+                    appName,
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.primary,
                       fontSize: 36,

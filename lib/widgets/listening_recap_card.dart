@@ -21,6 +21,7 @@
 
 import 'package:material_ui/material_ui.dart';
 import 'package:musify/extensions/l10n.dart';
+import 'package:musify/ongaku/brand.dart';
 import 'package:musify/widgets/song_bar.dart';
 
 const _musifyIconAsset = 'assets/icons/musify_icon.png';
@@ -160,7 +161,7 @@ class _RecapBrandHeader extends StatelessWidget {
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      'Musify',
+                      appName,
                       maxLines: 1,
                       style: TextStyle(
                         color: colorScheme.onSecondaryContainer,

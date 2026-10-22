@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# Checks that Ongaku still works after a change or an upstream merge.
+set -euo pipefail
+
+flutter pub get
+flutter analyze
+flutter test
+
+# Every Ongaku hook in upstream files must still be there.
+missing=0
+check() { grep -q "$2" "$1" || { echo "MISSING HOOK in $1: $2"; missing=1; }; }
+check lib/main.dart "getOngakuTheme"
+check lib/main.dart "getOngakuColorScheme"
+check lib/services/router_service.dart "OngakuShell"
+check lib/services/router_service.dart "ongakuLocalFilesRoute"
+check lib/services/router_service.dart "ongakuPushPage"
+check lib/screens/library_page.dart "ongakuLocalFilesBar"
+check lib/services/common_services.dart "isLocalSongId"
+check lib/utilities/mediaitem.dart "isLocal"
+check lib/services/update_manager.dart "updateCheckUrl"
+check android/app/build.gradle.kts "com.orikami.ongaku"
+[ "$missing" = 0 ] || { echo "An upstream change removed an Ongaku hook: re-apply it (see ONGAKU.md)."; exit 1; }
+echo "OK"

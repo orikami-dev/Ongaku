@@ -37,6 +37,13 @@ Map mediaItemToMap(MediaItem mediaItem) {
     'lowResImage': extras?['lowResImage'],
     'isLive': extras?['isLive'] ?? false,
     if (mediaItem.duration case final duration?) 'duration': duration.inSeconds,
+    // Ongaku: keep local files playable when the song is liked or added to a
+    // playlist from the player.
+    if (extras?['isLocal'] == true) ...{
+      'isLocal': true,
+      'audioPath': extras?['audioPath'],
+      'artworkPath': extras?['localArtworkPath'],
+    },
   };
 }
 
@@ -47,8 +54,14 @@ MediaItem mapToMediaItem(Map song) {
       : <String, dynamic>{};
   final isOffline = offlineSong.isNotEmpty;
 
+  // Ongaku: songs imported from the device carry their own artwork file.
+  final isLocal = song['isLocal'] == true;
+  final localArtwork = isLocal ? song['artworkPath']?.toString() : null;
+
   final artUri = isOffline && offlineSong['artworkPath'] != null
       ? Uri.file(offlineSong['artworkPath'].toString())
+      : localArtwork != null
+      ? Uri.file(localArtwork)
       : Uri.parse(song['highResImage'].toString());
 
   return MediaItem(
@@ -65,9 +78,16 @@ MediaItem mapToMediaItem(Map song) {
       'isLive': song['isLive'],
       'highResImage': song['highResImage'],
       'artWorkPath':
-          (isOffline ? offlineSong['artworkPath'] : song['highResImage'])
+          (isOffline
+                  ? offlineSong['artworkPath']
+                  : localArtwork ?? song['highResImage'])
               ?.toString() ??
           '',
+      if (isLocal) ...{
+        'isLocal': true,
+        'audioPath': song['audioPath'],
+        'localArtworkPath': localArtwork,
+      },
     },
   );
 }

@@ -37,7 +37,7 @@ final playNextSongAutomatically = ValueNotifier<bool>(
 );
 
 final useSystemColor = ValueNotifier<bool>(
-  Hive.box('settings').get('useSystemColor', defaultValue: true),
+  Hive.box('settings').get('useSystemColor', defaultValue: false),
 );
 
 final usePureBlackColor = ValueNotifier<bool>(
@@ -103,7 +103,7 @@ String offlineSortSetting = Hive.box('settings')
     .get('offlineSortType', defaultValue: OfflineSortType.default_.name);
 
 Color primaryColorSetting = Color(
-  Hive.box('settings').get('accentColor', defaultValue: 0xff91cef4),
+  Hive.box('settings').get('accentColor', defaultValue: 0xFFFA2D48),
 );
 
 final shuffleNotifier = ValueNotifier<bool>(
@@ -134,7 +134,7 @@ void reloadSettingsFromStorage() {
     'playNextSongAutomatically',
     defaultValue: false,
   );
-  useSystemColor.value = settings.get('useSystemColor', defaultValue: true);
+  useSystemColor.value = settings.get('useSystemColor', defaultValue: false);
   usePureBlackColor.value = settings.get(
     'usePureBlackColor',
     defaultValue: false,
@@ -190,7 +190,7 @@ void reloadSettingsFromStorage() {
 
   final restoredAccentColor = settings.get(
     'accentColor',
-    defaultValue: 0xff91cef4,
+    defaultValue: 0xFFFA2D48,
   );
   if (restoredAccentColor is int) {
     primaryColorSetting = Color(restoredAccentColor);
