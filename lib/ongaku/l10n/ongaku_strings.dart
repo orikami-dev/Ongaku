@@ -46,6 +46,22 @@ class OngakuStrings {
   String get autoQueue => _t('autoQueue');
   String get autoLiked => _t('autoLiked');
   String get autoDownloaded => _t('autoDownloaded');
+  String get lyricsApproximate => _t('lyricsApproximate');
+  String get tabNew => _t('tabNew');
+  String get tabRadio => _t('tabRadio');
+  String get forYou => _t('forYou');
+  String get upNext => _t('upNext');
+  String get autoplay => _t('autoplay');
+  String get favorite => _t('favorite');
+  String get moreOptions => _t('moreOptions');
+  String get featuredPlaylists => _t('featuredPlaylists');
+  String get newAlbums => _t('newAlbums');
+  String get moreToExplore => _t('moreToExplore');
+  String get listenAgain => _t('listenAgain');
+  String get madeForYou => _t('madeForYou');
+  String get nowPlaying => _t('nowPlaying');
+  String get notPlaying => _t('notPlaying');
+  String get stats => _t('stats');
   String songsAdded(int n) => _t('songsAdded').replaceAll('{n}', '$n');
   String songCount(int n) =>
       _t(n == 1 ? 'songCountOne' : 'songCountMany').replaceAll('{n}', '$n');
@@ -76,6 +92,22 @@ class OngakuStrings {
       'autoQueue': 'Up Next',
       'autoLiked': 'Liked Songs',
       'autoDownloaded': 'Downloaded',
+      'lyricsApproximate': 'Lyrics are timed approximately for this song.',
+      'tabNew': 'New',
+      'tabRadio': 'Radio',
+      'forYou': 'For You',
+      'upNext': 'Up Next',
+      'autoplay': 'Autoplay',
+      'favorite': 'Favourite',
+      'moreOptions': 'More',
+      'featuredPlaylists': 'Featured Playlists',
+      'newAlbums': 'Albums to Discover',
+      'moreToExplore': 'More to Explore',
+      'listenAgain': 'Listen Again',
+      'madeForYou': 'Made for You',
+      'nowPlaying': 'Now Playing',
+      'notPlaying': 'Not Playing',
+      'stats': 'Listening Stats',
     },
     'fr': {
       'localFiles': 'Fichiers locaux',
@@ -104,6 +136,23 @@ class OngakuStrings {
       'autoQueue': 'À suivre',
       'autoLiked': 'Titres aimés',
       'autoDownloaded': 'Téléchargés',
+      'lyricsApproximate':
+          'Paroles synchronisées approximativement pour ce morceau.',
+      'tabNew': 'Nouveautés',
+      'tabRadio': 'Radio',
+      'forYou': 'Pour vous',
+      'upNext': 'À suivre',
+      'autoplay': 'Lecture automatique',
+      'favorite': 'Favori',
+      'moreOptions': 'Plus',
+      'featuredPlaylists': 'Playlists à la une',
+      'newAlbums': 'Albums à découvrir',
+      'moreToExplore': 'Plus à explorer',
+      'listenAgain': 'Écouter à nouveau',
+      'madeForYou': 'Vos mix sur mesure',
+      'nowPlaying': 'À l\'écoute',
+      'notPlaying': 'Aucune lecture',
+      'stats': 'Statistiques d\'écoute',
     },
   };
 }

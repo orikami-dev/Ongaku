@@ -33,6 +33,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:musify/extensions/l10n.dart';
 import 'package:musify/localization/app_localizations.dart';
 import 'package:musify/ongaku/brand.dart';
+import 'package:musify/ongaku/services/ongaku_notification.dart';
 import 'package:musify/ongaku/theme/ongaku_theme.dart';
 import 'package:musify/services/audio_service.dart';
 import 'package:musify/services/data_manager.dart';
@@ -325,6 +326,7 @@ Future<void> initialisation() async {
           },
         ),
       );
+      ongakuWatchNotificationState();
     } else {
       // Use the desktop audio backend without mobile service plugins.
       JustAudioMediaKit.title = appName;

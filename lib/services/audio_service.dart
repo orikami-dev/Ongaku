@@ -29,6 +29,7 @@ import 'package:just_audio/just_audio.dart';
 import 'package:musify/constants/clients.dart';
 import 'package:musify/main.dart';
 import 'package:musify/models/position_data.dart';
+import 'package:musify/ongaku/services/ongaku_notification.dart';
 import 'package:musify/services/audio_service_android_auto.dart';
 import 'package:musify/services/common_services.dart';
 import 'package:musify/services/data_manager.dart';
@@ -203,22 +204,10 @@ class MusifyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
               repeatNotifier.value == AudioServiceRepeatMode.none &&
               _currentLoadingIndex == -1));
 
-  List<MediaControl> _controls(bool playing) {
-    final hasMultipleTracks = _queueList.length > 1;
-
-    return [
-      if (hasMultipleTracks)
-        MediaControl.skipToPrevious
-      else
-        MediaControl.rewind,
-      if (playing) MediaControl.pause else MediaControl.play,
-      MediaControl.stop,
-      if (hasMultipleTracks)
-        MediaControl.skipToNext
-      else
-        MediaControl.fastForward,
-    ];
-  }
+  List<MediaControl> _controls(bool playing) => ongakuControls(
+    playing: playing,
+    hasMultipleTracks: _queueList.length > 1,
+  );
 
   final _processingStateMap = {
     ProcessingState.idle: AudioProcessingState.idle,
@@ -758,7 +747,7 @@ class MusifyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
               MediaAction.seekForward,
               MediaAction.seekBackward,
             },
-            androidCompactActionIndices: const [0, 1, 3],
+            androidCompactActionIndices: ongakuCompactActionIndices,
             processingState: newProcessingState,
             playing: isPlaying,
             updatePosition: currentPosition,
@@ -1346,18 +1335,13 @@ class MusifyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
 
       playbackState.add(
         PlaybackState(
-          controls: [
-            MediaControl.skipToPrevious,
-            MediaControl.pause,
-            MediaControl.stop,
-            MediaControl.skipToNext,
-          ],
+          controls: _controls(true),
           systemActions: const {
             MediaAction.seek,
             MediaAction.seekForward,
             MediaAction.seekBackward,
           },
-          androidCompactActionIndices: const [0, 1, 3],
+          androidCompactActionIndices: ongakuCompactActionIndices,
           processingState: AudioProcessingState.loading,
           speed: audioPlayer.speed,
           queueIndex:
@@ -1663,7 +1647,7 @@ class MusifyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
           MediaAction.seekForward,
           MediaAction.seekBackward,
         },
-        androidCompactActionIndices: const [0, 1, 3],
+        androidCompactActionIndices: ongakuCompactActionIndices,
         processingState: AudioProcessingState.ready,
         queueIndex: 0,
         updateTime: DateTime.now(),
@@ -2775,7 +2759,9 @@ class MusifyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
           }
           break;
         default:
-          await super.customAction(name, extras);
+          if (!await ongakuCustomAction(name)) {
+            await super.customAction(name, extras);
+          }
       }
     } catch (e, stackTrace) {
       logger.log(

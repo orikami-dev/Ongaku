@@ -9,26 +9,22 @@
  */
 
 import 'package:audio_service/audio_service.dart';
-import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:musify/extensions/l10n.dart';
 import 'package:musify/main.dart';
-import 'package:musify/models/position_data.dart';
 import 'package:musify/ongaku/screens/ongaku_now_playing_page.dart';
-import 'package:musify/ongaku/widgets/glass.dart';
 import 'package:musify/widgets/marquee.dart';
 import 'package:musify/widgets/song_artwork.dart';
 
-/// Floating "glass" capsule shown above the tab bar, like Apple Music.
+/// Apple Music mini player: artwork, title, then play/pause and next, in
+/// that order, docked above the tabs on phones and beside them when the
+/// screen is open.
 ///
-/// Tap or swipe up to open the player, swipe left/right to change track.
+/// Tap or swipe up to open the player, swipe sideways to change song.
 class OngakuMiniPlayer extends StatelessWidget {
   const OngakuMiniPlayer({super.key});
 
-  static const double height = 62;
-
-  /// Space the mini player takes, including its outer margin.
-  static const double totalHeight = height + 8;
+  static const double height = 64;
 
   @override
   Widget build(BuildContext context) {
@@ -38,29 +34,32 @@ class OngakuMiniPlayer extends StatelessWidget {
       builder: (context, snapshot) {
         final metadata = snapshot.data;
         if (metadata == null) return const SizedBox.shrink();
-        return _MiniPlayerCapsule(metadata: metadata);
+        return _MiniPlayerBar(metadata: metadata);
       },
     );
   }
 }
 
-class _MiniPlayerCapsule extends StatefulWidget {
-  const _MiniPlayerCapsule({required this.metadata});
+class _MiniPlayerBar extends StatefulWidget {
+  const _MiniPlayerBar({required this.metadata});
 
   final MediaItem metadata;
 
   @override
-  State<_MiniPlayerCapsule> createState() => _MiniPlayerCapsuleState();
+  State<_MiniPlayerBar> createState() => _MiniPlayerBarState();
 }
 
-class _MiniPlayerCapsuleState extends State<_MiniPlayerCapsule> {
+class _MiniPlayerBarState extends State<_MiniPlayerBar> {
   bool _pressed = false;
 
-  MediaItem get metadata => widget.metadata;
+  void _setPressed(bool value) {
+    if (_pressed != value) setState(() => _pressed = value);
+  }
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final metadata = widget.metadata;
 
     return Semantics(
       button: true,
@@ -68,9 +67,9 @@ class _MiniPlayerCapsuleState extends State<_MiniPlayerCapsule> {
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () => openOngakuNowPlaying(context),
-        onTapDown: (_) => setState(() => _pressed = true),
-        onTapUp: (_) => setState(() => _pressed = false),
-        onTapCancel: () => setState(() => _pressed = false),
+        onTapDown: (_) => _setPressed(true),
+        onTapUp: (_) => _setPressed(false),
+        onTapCancel: () => _setPressed(false),
         onVerticalDragEnd: (details) {
           if ((details.primaryVelocity ?? 0) < -200) {
             openOngakuNowPlaying(context);
@@ -84,59 +83,74 @@ class _MiniPlayerCapsuleState extends State<_MiniPlayerCapsule> {
             audioHandler.skipToPrevious();
           }
         },
-        child: AnimatedScale(
-          scale: _pressed ? 0.97 : 1,
-          duration: const Duration(milliseconds: 150),
-          curve: Curves.easeOut,
-          child: GlassSurface(
-            height: OngakuMiniPlayer.height,
-            borderRadius: 18,
-            child: Stack(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(left: 9, right: 6),
-                  child: Row(
-                    children: [
-                      SongArtworkWidget(
-                        metadata: metadata,
-                        size: 44,
-                        borderRadius: 8,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 250),
-                          layoutBuilder: (current, previous) => Stack(
-                            alignment: Alignment.centerLeft,
-                            children: [...previous, ?current],
-                          ),
-                          child: _TitleAndArtist(
-                            key: ValueKey(metadata.id),
-                            metadata: metadata,
-                          ),
-                        ),
-                      ),
-                      const _MiniPlayPauseButton(),
-                      IconButton(
-                        onPressed: audioHandler.skipToNext,
-                        tooltip: context.l10n?.skipToNext,
-                        icon: Icon(
-                          FluentIcons.next_24_filled,
-                          color: colorScheme.onSurface,
-                          size: 26,
-                        ),
-                      ),
-                    ],
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          height: OngakuMiniPlayer.height,
+          color: _pressed
+              ? colorScheme.onSurface.withValues(alpha: 0.06)
+              : Colors.transparent,
+          padding: const EdgeInsets.only(left: 16, right: 8),
+          child: Row(
+            children: [
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: colorScheme.onSurface.withValues(alpha: 0.1),
+                    width: 0.5,
                   ),
                 ),
-                const Positioned(
-                  left: 18,
-                  right: 18,
-                  bottom: 0,
-                  child: _MiniProgressLine(),
+                child: SongArtworkWidget(
+                  metadata: metadata,
+                  size: 46,
+                  borderRadius: 6,
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 280),
+                  layoutBuilder: (current, previous) => Stack(
+                    alignment: Alignment.centerLeft,
+                    children: [...previous, ?current],
+                  ),
+                  transitionBuilder: (child, animation) => FadeTransition(
+                    opacity: animation,
+                    child: SlideTransition(
+                      position: Tween(
+                        begin: const Offset(0.06, 0),
+                        end: Offset.zero,
+                      ).animate(animation),
+                      child: child,
+                    ),
+                  ),
+                  child: MarqueeWidget(
+                    key: ValueKey(metadata.id),
+                    manualScrollEnabled: false,
+                    animationDuration: const Duration(seconds: 8),
+                    backDuration: const Duration(seconds: 2),
+                    pauseDuration: const Duration(seconds: 2),
+                    child: Text(
+                      metadata.title,
+                      maxLines: 1,
+                      style: TextStyle(
+                        color: colorScheme.onSurface,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+              const MiniPlayPauseButton(),
+              _MiniIconButton(
+                icon: Icons.fast_forward_rounded,
+                tooltip: context.l10n?.skipToNext,
+                onPressed: audioHandler.skipToNext,
+              ),
+            ],
           ),
         ),
       ),
@@ -144,127 +158,93 @@ class _MiniPlayerCapsuleState extends State<_MiniPlayerCapsule> {
   }
 }
 
-class _TitleAndArtist extends StatelessWidget {
-  const _TitleAndArtist({super.key, required this.metadata});
+class _MiniIconButton extends StatelessWidget {
+  const _MiniIconButton({
+    required this.icon,
+    required this.onPressed,
+    this.tooltip,
+  });
 
-  final MediaItem metadata;
+  final IconData icon;
+  final VoidCallback? onPressed;
+  final String? tooltip;
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final artist = metadata.artist;
-
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        MarqueeWidget(
-          manualScrollEnabled: false,
-          animationDuration: const Duration(seconds: 8),
-          backDuration: const Duration(seconds: 2),
-          pauseDuration: const Duration(seconds: 2),
-          child: Text(
-            metadata.title,
-            maxLines: 1,
-            style: TextStyle(
-              color: colorScheme.onSurface,
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              letterSpacing: -0.2,
-            ),
-          ),
-        ),
-        if (artist != null && artist.isNotEmpty)
-          Text(
-            artist,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 13),
-          ),
-      ],
+    return IconButton(
+      onPressed: onPressed,
+      tooltip: tooltip,
+      constraints: const BoxConstraints.tightFor(width: 48, height: 48),
+      padding: EdgeInsets.zero,
+      icon: Icon(
+        icon,
+        size: 34,
+        color: Theme.of(context).colorScheme.onSurface,
+      ),
     );
   }
 }
 
-class _MiniPlayPauseButton extends StatelessWidget {
-  const _MiniPlayPauseButton();
+/// Play / pause / replay with a spinner while loading, same size as the
+/// other mini player buttons so they line up.
+class MiniPlayPauseButton extends StatelessWidget {
+  const MiniPlayPauseButton({super.key, this.size = 34, this.color});
+
+  final double size;
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final color = this.color ?? Theme.of(context).colorScheme.onSurface;
 
     return StreamBuilder<PlaybackState>(
       stream: audioHandler.playbackState.distinct(
         (a, b) =>
             a.playing == b.playing && a.processingState == b.processingState,
       ),
+      initialData: audioHandler.playbackState.valueOrNull,
       builder: (context, snapshot) {
         final state = snapshot.data;
         final processing = state?.processingState;
         final playing = state?.playing ?? false;
+        final loading =
+            processing == AudioProcessingState.loading ||
+            processing == AudioProcessingState.buffering;
+        final completed = processing == AudioProcessingState.completed;
 
-        if (processing == AudioProcessingState.loading ||
-            processing == AudioProcessingState.buffering) {
-          return SizedBox(
-            width: 48,
-            height: 48,
-            child: Center(
-              child: SizedBox.square(
-                dimension: 22,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.4,
-                  color: colorScheme.onSurface,
-                ),
-              ),
-            ),
+        final Widget child;
+        if (loading) {
+          child = SizedBox.square(
+            key: const ValueKey('loading'),
+            dimension: size * 0.62,
+            child: CircularProgressIndicator(strokeWidth: 2.4, color: color),
           );
+        } else {
+          final icon = completed
+              ? Icons.replay_rounded
+              : (playing ? Icons.pause_rounded : Icons.play_arrow_rounded);
+          child = Icon(icon, key: ValueKey(icon), size: size, color: color);
         }
 
-        final completed = processing == AudioProcessingState.completed;
         return IconButton(
           tooltip: playing ? context.l10n?.pause : context.l10n?.play,
-          onPressed: completed
+          constraints: BoxConstraints.tightFor(
+            width: size + 14,
+            height: size + 14,
+          ),
+          padding: EdgeInsets.zero,
+          onPressed: loading
+              ? null
+              : completed
               ? audioHandler.playAgain
               : (playing ? audioHandler.pause : audioHandler.play),
-          icon: Icon(
-            completed
-                ? FluentIcons.arrow_counterclockwise_24_filled
-                : (playing
-                      ? FluentIcons.pause_24_filled
-                      : FluentIcons.play_24_filled),
-            color: colorScheme.onSurface,
-            size: 28,
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _MiniProgressLine extends StatelessWidget {
-  const _MiniProgressLine();
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return StreamBuilder<PositionData>(
-      stream: audioHandler.positionDataStream,
-      initialData: audioHandler.currentPositionData,
-      builder: (context, snapshot) {
-        final data = snapshot.data;
-        final total = data?.duration.inMilliseconds ?? 0;
-        final progress = total <= 0
-            ? 0.0
-            : (data!.position.inMilliseconds / total).clamp(0.0, 1.0);
-
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(2),
-          child: LinearProgressIndicator(
-            value: progress,
-            minHeight: 2,
-            backgroundColor: Colors.transparent,
-            color: colorScheme.onSurface.withValues(alpha: 0.55),
+          icon: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 180),
+            transitionBuilder: (child, animation) => ScaleTransition(
+              scale: Tween<double>(begin: 0.6, end: 1).animate(animation),
+              child: FadeTransition(opacity: animation, child: child),
+            ),
+            child: child,
           ),
         );
       },

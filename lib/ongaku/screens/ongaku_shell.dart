@@ -8,34 +8,39 @@
  *     (at your option) any later version. See <https://www.gnu.org/licenses/>.
  */
 
-import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:musify/extensions/l10n.dart';
 import 'package:musify/main.dart';
-import 'package:musify/ongaku/brand.dart';
-import 'package:musify/ongaku/layout/adaptive.dart';
-import 'package:musify/ongaku/widgets/glass.dart';
+import 'package:musify/ongaku/l10n/ongaku_strings.dart';
+import 'package:musify/ongaku/ongaku_routes.dart';
 import 'package:musify/ongaku/widgets/ongaku_mini_player.dart';
 import 'package:musify/services/settings_manager.dart';
 import 'package:musify/utilities/flutter_bottom_sheet.dart'
     show closeCurrentBottomSheet;
 
-/// App shell replacing upstream's BottomNavigationPage.
+/// App shell replacing upstream's BottomNavigationPage, laid out like Apple
+/// Music on Android:
 ///
-/// * Phones: floating glass tab bar + separate search button (iOS 26 style),
-///   with the mini player floating above it.
-/// * Unfolded foldables / small tablets: compact side rail.
-/// * Tablets / desktops: Apple Music style sidebar.
+/// * Phone / folded cover screen: the mini player is docked above a full
+///   width bar of five tabs. The app stays in portrait there.
+/// * Open foldable / tablet: one bar, the tabs on the left and the mini
+///   player docked on the right.
 ///
-/// Branch indexes are the ones declared by upstream's router:
-/// 0 home, 1 search, 2 library, 3 settings.
+/// Branches 0 to 3 are upstream's (home, search, library, settings);
+/// 4 and 5 are Ongaku's (new, radio). Settings open from the ⋮ menu.
 class OngakuShell extends StatefulWidget {
   const OngakuShell({required this.child, super.key});
 
   final StatefulNavigationShell child;
+
+  /// Bar colour shared with the player panel edges.
+  static Color barColor(ColorScheme colorScheme) =>
+      colorScheme.brightness == Brightness.dark
+      ? const Color(0xFF1F1F1F)
+      : const Color(0xFFF7F7F7);
 
   @override
   State<OngakuShell> createState() => _OngakuShellState();
@@ -48,11 +53,26 @@ class _OngakuShellState extends State<OngakuShell> {
 
   bool? _previousOfflineMode;
   int? _previousShellIndex;
+  bool? _portraitOnly;
 
   static const _homeIndex = 0;
   static const _searchIndex = 1;
   static const _libraryIndex = 2;
-  static const _settingsIndex = 3;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // The folded cover screen is too small for landscape; open, anything goes.
+    final portraitOnly = MediaQuery.sizeOf(context).shortestSide < 600;
+    if (portraitOnly != _portraitOnly) {
+      _portraitOnly = portraitOnly;
+      SystemChrome.setPreferredOrientations(
+        portraitOnly
+            ? const [DeviceOrientation.portraitUp]
+            : const <DeviceOrientation>[],
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -82,17 +102,24 @@ class _OngakuShellState extends State<OngakuShell> {
             initialData: audioHandler.mediaItem.valueOrNull != null,
             builder: (context, snapshot) {
               final hasMiniPlayer = snapshot.data ?? false;
-              final size = windowSizeOf(context);
-              return size == WindowSize.compact
-                  ? _buildPhoneLayout(context, isOfflineMode, hasMiniPlayer)
-                  : _buildSidebarLayout(
-                      context,
-                      isOfflineMode,
-                      hasMiniPlayer,
-                      extended:
-                          size == WindowSize.expanded ||
-                          size == WindowSize.large,
-                    );
+              final wide = MediaQuery.sizeOf(context).width >= 600;
+              final tabs = _tabs(context, isOfflineMode);
+              return Scaffold(
+                body: widget.child,
+                bottomNavigationBar: wide
+                    ? _WideBar(
+                        tabs: tabs,
+                        selected: widget.child.currentIndex,
+                        onSelected: _goToBranch,
+                        hasMiniPlayer: hasMiniPlayer,
+                      )
+                    : _PhoneBar(
+                        tabs: tabs,
+                        selected: widget.child.currentIndex,
+                        onSelected: _goToBranch,
+                        hasMiniPlayer: hasMiniPlayer,
+                      ),
+              );
             },
           );
         },
@@ -100,173 +127,48 @@ class _OngakuShellState extends State<OngakuShell> {
     );
   }
 
-  // ---------------------------------------------------------------- phone
-
-  Widget _buildPhoneLayout(
-    BuildContext context,
-    bool isOfflineMode,
-    bool hasMiniPlayer,
-  ) {
-    final tabs = _tabs(context, includeSearch: false);
-    final bottomInset = MediaQuery.paddingOf(context).bottom;
-
-    return Scaffold(
-      extendBody: true,
-      body: SafeArea(bottom: false, child: widget.child),
-      bottomNavigationBar: Padding(
-        padding: EdgeInsets.fromLTRB(
-          12,
-          0,
-          12,
-          bottomInset > 0 ? bottomInset : 10,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AnimatedSize(
-              duration: const Duration(milliseconds: 350),
-              curve: Curves.easeOutCubic,
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 350),
-                switchInCurve: Curves.easeOutCubic,
-                switchOutCurve: Curves.easeInCubic,
-                transitionBuilder: (child, animation) => FadeTransition(
-                  opacity: animation,
-                  child: SlideTransition(
-                    position: Tween(
-                      begin: const Offset(0, 0.4),
-                      end: Offset.zero,
-                    ).animate(animation),
-                    child: child,
-                  ),
-                ),
-                child: hasMiniPlayer
-                    ? const Padding(
-                        key: ValueKey('mini'),
-                        padding: EdgeInsets.only(bottom: 8),
-                        child: OngakuMiniPlayer(),
-                      )
-                    : const SizedBox(
-                        key: ValueKey('none'),
-                        width: double.infinity,
-                      ),
-              ),
-            ),
-            Row(
-              children: [
-                Expanded(
-                  child: _GlassTabBar(
-                    tabs: tabs,
-                    selectedShellIndex: widget.child.currentIndex,
-                    onSelected: _goToBranch,
-                  ),
-                ),
-                if (!isOfflineMode) ...[
-                  const SizedBox(width: 10),
-                  _GlassSearchButton(
-                    selected: widget.child.currentIndex == _searchIndex,
-                    onPressed: () => _goToBranch(_searchIndex),
-                  ),
-                ],
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ------------------------------------------------- foldables / tablets
-
-  Widget _buildSidebarLayout(
-    BuildContext context,
-    bool isOfflineMode,
-    bool hasMiniPlayer, {
-    required bool extended,
-  }) {
-    final tabs = _tabs(context, includeSearch: !isOfflineMode);
-    final mediaQuery = MediaQuery.of(context);
-    final miniPlayerSpace = hasMiniPlayer
-        ? OngakuMiniPlayer.totalHeight + 12
-        : 0.0;
-
-    final content = Stack(
-      children: [
-        MediaQuery(
-          data: mediaQuery.copyWith(
-            padding: mediaQuery.padding.copyWith(
-              bottom: mediaQuery.padding.bottom + miniPlayerSpace,
-            ),
-          ),
-          child: widget.child,
-        ),
-        if (hasMiniPlayer)
-          Positioned(
-            left: 16,
-            right: 16,
-            bottom: mediaQuery.padding.bottom + 12,
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 720),
-                child: const OngakuMiniPlayer(),
-              ),
-            ),
-          ),
-      ],
-    );
-
-    return Scaffold(
-      body: Row(
-        children: [
-          _Sidebar(
-            tabs: tabs,
-            extended: extended,
-            selectedShellIndex: widget.child.currentIndex,
-            onSelected: _goToBranch,
-          ),
-          Expanded(child: SafeArea(left: false, bottom: false, child: content)),
-        ],
-      ),
-    );
-  }
-
-  // ---------------------------------------------------------------- logic
-
-  List<_Tab> _tabs(BuildContext context, {required bool includeSearch}) {
+  List<_Tab> _tabs(BuildContext context, bool isOfflineMode) {
     final l10n = context.l10n;
+    final strings = OngakuStrings.of(context);
     return [
       _Tab(
-        icon: FluentIcons.home_24_regular,
-        selectedIcon: FluentIcons.home_24_filled,
+        icon: Icons.home_rounded,
         label: l10n?.home ?? 'Home',
         shellIndex: _homeIndex,
       ),
-      if (includeSearch)
+      if (!isOfflineMode) ...[
         _Tab(
-          icon: FluentIcons.search_24_regular,
-          selectedIcon: FluentIcons.search_24_filled,
-          label: l10n?.search ?? 'Search',
-          shellIndex: _searchIndex,
+          icon: Icons.grid_view_rounded,
+          label: strings.tabNew,
+          shellIndex: ongakuBrowseBranchIndex,
         ),
+        _Tab(
+          icon: Icons.sensors_rounded,
+          label: strings.tabRadio,
+          shellIndex: ongakuRadioBranchIndex,
+        ),
+      ],
       _Tab(
-        icon: FluentIcons.music_note_2_24_regular,
-        selectedIcon: FluentIcons.music_note_2_24_filled,
+        icon: Icons.library_music_rounded,
         label: l10n?.library ?? 'Library',
         shellIndex: _libraryIndex,
       ),
-      _Tab(
-        icon: FluentIcons.settings_24_regular,
-        selectedIcon: FluentIcons.settings_24_filled,
-        label: l10n?.settings ?? 'Settings',
-        shellIndex: _settingsIndex,
-      ),
+      if (!isOfflineMode)
+        _Tab(
+          icon: Icons.search_rounded,
+          label: l10n?.search ?? 'Search',
+          shellIndex: _searchIndex,
+        ),
     ];
   }
 
   void _handleOfflineModeChange(bool isOfflineMode) {
     if (!mounted) return;
     final currentRoute = GoRouterState.of(context).matchedLocation;
-    if (isOfflineMode && currentRoute.startsWith('/search')) {
+    if (isOfflineMode &&
+        (currentRoute.startsWith('/search') ||
+            currentRoute.startsWith(ongakuBrowsePath) ||
+            currentRoute.startsWith(ongakuRadioPath))) {
       widget.child.goBranch(_homeIndex);
     }
   }
@@ -279,7 +181,7 @@ class _OngakuShellState extends State<OngakuShell> {
     closeCurrentBottomSheet();
     HapticFeedback.selectionClick();
 
-    // Tapping the current tab again resets it, like on iOS.
+    // Tapping the current tab again goes back to its first page.
     widget.child.goBranch(shellIndex, initialLocation: isReselect);
     _previousShellIndex = shellIndex;
   }
@@ -288,80 +190,181 @@ class _OngakuShellState extends State<OngakuShell> {
 class _Tab {
   const _Tab({
     required this.icon,
-    required this.selectedIcon,
     required this.label,
     required this.shellIndex,
   });
 
   final IconData icon;
-  final IconData selectedIcon;
   final String label;
   final int shellIndex;
 }
 
-class _GlassTabBar extends StatelessWidget {
-  const _GlassTabBar({
-    required this.tabs,
-    required this.selectedShellIndex,
-    required this.onSelected,
-  });
+class _BarSurface extends StatelessWidget {
+  const _BarSurface({required this.child});
 
-  final List<_Tab> tabs;
-  final int selectedShellIndex;
-  final ValueChanged<int> onSelected;
-
-  static const double height = 62;
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final selected = tabs.indexWhere((t) => t.shellIndex == selectedShellIndex);
-    // The pill glides between tabs instead of fading in and out.
-    final alignX = tabs.length < 2
-        ? 0.0
-        : -1 + 2 * (selected < 0 ? 0 : selected) / (tabs.length - 1);
-
-    return GlassSurface(
-      height: height,
-      borderRadius: height / 2,
-      child: Padding(
-        padding: const EdgeInsets.all(4),
-        child: Stack(
-          children: [
-            AnimatedAlign(
-              duration: const Duration(milliseconds: 380),
-              curve: Curves.easeOutBack,
-              alignment: Alignment(alignX, 0),
-              child: AnimatedOpacity(
-                duration: const Duration(milliseconds: 200),
-                opacity: selected < 0 ? 0 : 1,
-                child: FractionallySizedBox(
-                  widthFactor: 1 / tabs.length,
-                  heightFactor: 1,
-                  child: DecoratedBox(
-                    decoration: ShapeDecoration(
-                      color: colorScheme.onSurface.withValues(alpha: 0.08),
-                      shape: const StadiumBorder(),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            Row(
-              children: [
-                for (final tab in tabs)
-                  Expanded(
-                    child: _TabButton(
-                      tab: tab,
-                      selected: tab.shellIndex == selectedShellIndex,
-                      onTap: () => onSelected(tab.shellIndex),
-                    ),
-                  ),
-              ],
-            ),
-          ],
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: OngakuShell.barColor(colorScheme),
+        border: Border(
+          top: BorderSide(
+            color: colorScheme.onSurface.withValues(alpha: 0.1),
+            width: 0.5,
+          ),
         ),
       ),
+      child: child,
+    );
+  }
+}
+
+/// Phone: mini player docked on top of a five-tab bar.
+class _PhoneBar extends StatelessWidget {
+  const _PhoneBar({
+    required this.tabs,
+    required this.selected,
+    required this.onSelected,
+    required this.hasMiniPlayer,
+  });
+
+  final List<_Tab> tabs;
+  final int selected;
+  final ValueChanged<int> onSelected;
+  final bool hasMiniPlayer;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
+
+    return _BarSurface(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AnimatedSize(
+            duration: const Duration(milliseconds: 320),
+            curve: Curves.easeOutCubic,
+            alignment: Alignment.bottomCenter,
+            child: hasMiniPlayer
+                ? Column(
+                    children: [
+                      const OngakuMiniPlayer(),
+                      Divider(
+                        height: 0.5,
+                        thickness: 0.5,
+                        color: colorScheme.onSurface.withValues(alpha: 0.1),
+                      ),
+                    ],
+                  )
+                : const SizedBox(width: double.infinity),
+          ),
+          SizedBox(
+            height: 58,
+            child: _TabRow(
+              tabs: tabs,
+              selected: selected,
+              onSelected: onSelected,
+            ),
+          ),
+          SizedBox(height: bottomInset),
+        ],
+      ),
+    );
+  }
+}
+
+/// Open foldable / tablet: tabs on the left, mini player on the right.
+class _WideBar extends StatelessWidget {
+  const _WideBar({
+    required this.tabs,
+    required this.selected,
+    required this.onSelected,
+    required this.hasMiniPlayer,
+  });
+
+  final List<_Tab> tabs;
+  final int selected;
+  final ValueChanged<int> onSelected;
+  final bool hasMiniPlayer;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final padding = MediaQuery.paddingOf(context);
+
+    return _BarSurface(
+      child: Padding(
+        padding: EdgeInsets.only(
+          bottom: padding.bottom,
+          left: padding.left,
+          right: padding.right,
+        ),
+        child: SizedBox(
+          height: 66,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              // About 60 % for the tabs, like Apple Music on a tablet.
+              final tabsWidth = hasMiniPlayer
+                  ? constraints.maxWidth * 0.6
+                  : constraints.maxWidth;
+              return Row(
+                children: [
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 320),
+                    curve: Curves.easeOutCubic,
+                    width: tabsWidth,
+                    child: _TabRow(
+                      tabs: tabs,
+                      selected: selected,
+                      onSelected: onSelected,
+                    ),
+                  ),
+                  if (hasMiniPlayer) ...[
+                    VerticalDivider(
+                      width: 0.5,
+                      thickness: 0.5,
+                      color: colorScheme.onSurface.withValues(alpha: 0.12),
+                    ),
+                    const Expanded(child: OngakuMiniPlayer()),
+                  ],
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TabRow extends StatelessWidget {
+  const _TabRow({
+    required this.tabs,
+    required this.selected,
+    required this.onSelected,
+  });
+
+  final List<_Tab> tabs;
+  final int selected;
+  final ValueChanged<int> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        for (final tab in tabs)
+          Expanded(
+            child: _TabButton(
+              tab: tab,
+              selected: tab.shellIndex == selected,
+              onTap: () => onSelected(tab.shellIndex),
+            ),
+          ),
+      ],
     );
   }
 }
@@ -381,15 +384,39 @@ class _TabButton extends StatefulWidget {
   State<_TabButton> createState() => _TabButtonState();
 }
 
-class _TabButtonState extends State<_TabButton> {
+class _TabButtonState extends State<_TabButton>
+    with SingleTickerProviderStateMixin {
+  late final _bounce = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 420),
+    value: 1,
+  );
   bool _pressed = false;
+
+  @override
+  void didUpdateWidget(_TabButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.selected && !oldWidget.selected) _bounce.forward(from: 0);
+  }
+
+  @override
+  void dispose() {
+    _bounce.dispose();
+    super.dispose();
+  }
+
+  void _setPressed(bool value) {
+    if (_pressed != value) setState(() => _pressed = value);
+  }
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final tab = widget.tab;
     final selected = widget.selected;
-    final color = selected ? colorScheme.primary : colorScheme.onSurface;
+    final color = selected
+        ? colorScheme.primary
+        : colorScheme.onSurface.withValues(alpha: 0.5);
 
     return Semantics(
       selected: selected,
@@ -399,35 +426,45 @@ class _TabButtonState extends State<_TabButton> {
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: widget.onTap,
-        onTapDown: (_) => setState(() => _pressed = true),
-        onTapUp: (_) => setState(() => _pressed = false),
-        onTapCancel: () => setState(() => _pressed = false),
-        child: AnimatedScale(
-          scale: _pressed ? 0.9 : 1,
-          duration: const Duration(milliseconds: 140),
-          curve: Curves.easeOut,
+        onTapDown: (_) => _setPressed(true),
+        onTapUp: (_) => _setPressed(false),
+        onTapCancel: () => _setPressed(false),
+        child: AnimatedOpacity(
+          opacity: _pressed ? 0.55 : 1,
+          duration: const Duration(milliseconds: 120),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 220),
-                switchInCurve: Curves.easeOutBack,
-                transitionBuilder: (child, animation) =>
-                    ScaleTransition(scale: animation, child: child),
-                child: Icon(
-                  selected ? tab.selectedIcon : tab.icon,
-                  key: ValueKey(selected),
-                  color: color,
-                  size: 24,
+              ScaleTransition(
+                scale: TweenSequence<double>([
+                  TweenSequenceItem(
+                    tween: Tween<double>(begin: 1, end: 0.82),
+                    weight: 30,
+                  ),
+                  TweenSequenceItem(
+                    tween: Tween<double>(
+                      begin: 0.82,
+                      end: 1,
+                    ).chain(CurveTween(curve: Curves.elasticOut)),
+                    weight: 70,
+                  ),
+                ]).animate(_bounce),
+                child: TweenAnimationBuilder<Color?>(
+                  tween: ColorTween(end: color),
+                  duration: const Duration(milliseconds: 200),
+                  builder: (context, value, _) =>
+                      Icon(tab.icon, color: value, size: 27),
                 ),
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 3),
               AnimatedDefaultTextStyle(
-                duration: const Duration(milliseconds: 220),
+                duration: const Duration(milliseconds: 200),
                 style: TextStyle(
+                  fontFamily: 'Inter',
                   color: color,
                   fontSize: 10.5,
-                  fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: -0.1,
                 ),
                 child: Text(
                   tab.label,
@@ -436,197 +473,6 @@ class _TabButtonState extends State<_TabButton> {
                 ),
               ),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _GlassSearchButton extends StatelessWidget {
-  const _GlassSearchButton({required this.selected, required this.onPressed});
-
-  final bool selected;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final label = context.l10n?.search ?? 'Search';
-
-    return Semantics(
-      button: true,
-      selected: selected,
-      label: label,
-      excludeSemantics: true,
-      child: GestureDetector(
-        onTap: onPressed,
-        child: SizedBox.square(
-          dimension: _GlassTabBar.height,
-          child: GlassSurface(
-            borderRadius: _GlassTabBar.height / 2,
-            child: Icon(
-              selected
-                  ? FluentIcons.search_24_filled
-                  : FluentIcons.search_24_regular,
-              color: selected ? colorScheme.primary : colorScheme.onSurface,
-              size: 26,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Side navigation for wide screens. [extended] shows labels and the app
-/// name (iPad / Mac Apple Music sidebar), otherwise a compact icon rail.
-class _Sidebar extends StatelessWidget {
-  const _Sidebar({
-    required this.tabs,
-    required this.extended,
-    required this.selectedShellIndex,
-    required this.onSelected,
-  });
-
-  final List<_Tab> tabs;
-  final bool extended;
-  final int selectedShellIndex;
-  final ValueChanged<int> onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final padding = MediaQuery.paddingOf(context);
-    final width = extended ? 250.0 : 88.0;
-
-    return Container(
-      width: width + padding.left,
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerLow,
-        border: Border(
-          right: BorderSide(color: colorScheme.outlineVariant, width: 0.5),
-        ),
-      ),
-      padding: EdgeInsets.only(
-        left: padding.left + (extended ? 12 : 8),
-        right: extended ? 12 : 8,
-        top: padding.top + 12,
-        bottom: padding.bottom + 12,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (extended)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(10, 8, 10, 18),
-              child: Text(
-                appName,
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.8,
-                  color: colorScheme.onSurface,
-                ),
-              ),
-            )
-          else
-            const SizedBox(height: 8),
-          for (final tab in tabs)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: _SidebarItem(
-                tab: tab,
-                extended: extended,
-                selected: tab.shellIndex == selectedShellIndex,
-                onTap: () => onSelected(tab.shellIndex),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SidebarItem extends StatelessWidget {
-  const _SidebarItem({
-    required this.tab,
-    required this.extended,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final _Tab tab;
-  final bool extended;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final icon = Icon(
-      selected ? tab.selectedIcon : tab.icon,
-      color: colorScheme.primary,
-      size: 24,
-    );
-
-    return Semantics(
-      button: true,
-      selected: selected,
-      label: tab.label,
-      excludeSemantics: true,
-      child: Material(
-        color: selected ? colorScheme.surfaceContainerHigh : Colors.transparent,
-        shape: RoundedSuperellipseBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: 10,
-              vertical: extended ? 10 : 8,
-            ),
-            child: extended
-                ? Row(
-                    children: [
-                      icon,
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          tab.label,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: selected
-                                ? FontWeight.w600
-                                : FontWeight.w400,
-                            color: colorScheme.onSurface,
-                          ),
-                        ),
-                      ),
-                    ],
-                  )
-                : Column(
-                    children: [
-                      icon,
-                      const SizedBox(height: 4),
-                      Text(
-                        tab.label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: selected
-                              ? FontWeight.w600
-                              : FontWeight.w500,
-                          color: colorScheme.onSurface,
-                        ),
-                      ),
-                    ],
-                  ),
           ),
         ),
       ),

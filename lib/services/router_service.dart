@@ -26,11 +26,11 @@ import 'package:material_ui/material_ui.dart';
 import 'package:musify/constants/version.dart';
 import 'package:musify/ongaku/brand.dart';
 import 'package:musify/ongaku/ongaku_routes.dart';
+import 'package:musify/ongaku/screens/ongaku_home_page.dart';
 import 'package:musify/ongaku/screens/ongaku_shell.dart';
 import 'package:musify/screens/about_page.dart';
 import 'package:musify/screens/artist_page.dart';
 import 'package:musify/screens/equalizer_page.dart';
-import 'package:musify/screens/home_page.dart';
 import 'package:musify/screens/import_spotify_playlist_page.dart';
 import 'package:musify/screens/library_page.dart';
 import 'package:musify/screens/playlist_folder_page.dart';
@@ -162,7 +162,7 @@ class NavigationManager {
                   builder: (context, isOffline, _) {
                     return isOffline
                         ? const UserSongsPage(page: 'offline')
-                        : const HomePage();
+                        : const OngakuHomePage();
                   },
                 ),
                 state: state,
@@ -298,6 +298,12 @@ class NavigationManager {
             ],
           ),
         ],
+      ),
+      // Ongaku: New and Radio tabs.
+      ...ongakuExtraBranches(
+        rootPage: getPage,
+        pushPage: _pushPage,
+        sharedRoutes: [_artistRoute(), _albumRoute()],
       ),
     ];
   }
