@@ -207,6 +207,7 @@ class MusifyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
   List<MediaControl> _controls(bool playing) => ongakuControls(
     playing: playing,
     hasMultipleTracks: _queueList.length > 1,
+    currentSong: currentSong,
   );
 
   final _processingStateMap = {

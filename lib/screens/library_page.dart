@@ -27,6 +27,7 @@ import 'package:musify/constants/app_constants.dart';
 import 'package:musify/extensions/l10n.dart';
 import 'package:musify/main.dart' show logger;
 import 'package:musify/ongaku/widgets/local_files_bar.dart';
+import 'package:musify/ongaku/widgets/ongaku_page_parts.dart';
 import 'package:musify/services/common_services.dart';
 import 'package:musify/services/playlist_download_service.dart';
 import 'package:musify/services/playlists_manager.dart';
@@ -115,7 +116,6 @@ class _LibraryPageState extends State<LibraryPage> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text(context.l10n!.library)),
       body: AnimatedBuilder(
         animation: Listenable.merge([
           pinnedPlaylistIds,
@@ -133,6 +133,13 @@ class _LibraryPageState extends State<LibraryPage> {
             padding: commonSingleChildScrollViewPadding,
             child: CustomScrollView(
               slivers: [
+                // Ongaku: large title like the Home tab.
+                SliverToBoxAdapter(
+                  child: OngakuLargeTitle(
+                    title: context.l10n!.library,
+                    parentInset: commonSingleChildScrollViewPadding.left,
+                  ),
+                ),
                 ..._buildPinnedSlivers(),
                 ..._buildUserPlaylistsSlivers(),
                 if (!offlineMode.value) ..._buildLikedPlaylistsSlivers(),

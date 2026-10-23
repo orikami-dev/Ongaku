@@ -68,11 +68,13 @@ class _CurrentPaletteNotifier extends ValueNotifier<ArtworkPalette> {
 
   Future<void> _onMediaItem(MediaItem? item) async {
     final uri = item?.artUri;
-    final key = uri?.toString();
-    if (key == null || key == _currentKey) return;
+    final key = uri?.toString() ?? '';
+    if (key == _currentKey) return;
     _currentKey = key;
-    final palette = await paletteForArtwork(uri!);
-    if (_currentKey == key && palette != null) value = palette;
+    // No artwork, or one that cannot be read: back to the default colours
+    // instead of keeping the previous song's.
+    final palette = key.isEmpty ? null : await paletteForArtwork(uri!);
+    if (_currentKey == key) value = palette ?? ArtworkPalette.fallback;
   }
 }
 

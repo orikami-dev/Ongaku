@@ -230,7 +230,8 @@ class _LyricsLinesState extends State<_LyricsLines> {
           controller: _scroll,
           padding: widget.padding.copyWith(
             top: widget.padding.top + 120,
-            bottom: widget.padding.bottom + 260,
+            // Room to bring the last line above the offset pill.
+            bottom: widget.padding.bottom + 300,
           ),
           physics: const BouncingScrollPhysics(),
           child: Column(

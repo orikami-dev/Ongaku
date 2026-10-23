@@ -38,8 +38,23 @@ class SectionHeader extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Expanded(child: OngakuSectionTitle(title: title)),
-        if (actionButton != null) actionButton!,
+        Expanded(
+          child: OngakuSectionTitle(
+            title: title,
+            shrinkToFit: actionButton != null,
+          ),
+        ),
+        if (actionButton != null)
+          IconButtonTheme(
+            data: IconButtonThemeData(
+              style: IconButton.styleFrom(
+                padding: const EdgeInsets.all(6),
+                minimumSize: const Size(36, 36),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+            ),
+            child: actionButton!,
+          ),
       ],
     );
   }

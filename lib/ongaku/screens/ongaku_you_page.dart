@@ -35,29 +35,13 @@ class OngakuYouPage extends StatelessWidget {
     final margin = ongakuPageMargin(context);
 
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        scrolledUnderElevation: 0,
-      ),
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(
           parent: AlwaysScrollableScrollPhysics(),
         ),
         slivers: [
           SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(margin, 0, margin, 0),
-              child: Text(
-                strings.you,
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  color: Theme.of(context).colorScheme.onSurface,
-                  fontSize: 34,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -1.1,
-                ),
-              ),
-            ),
+            child: OngakuLargeTitle(title: strings.you, showBack: true),
           ),
           SliverToBoxAdapter(child: _Stats(strings: strings)),
           SliverToBoxAdapter(
@@ -85,19 +69,29 @@ class OngakuYouPage extends StatelessWidget {
                 'title': context.l10n!.recentlyPlayed,
                 'list': history,
               };
+              // Same rounded card as the settings groups.
               return SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                sliver: SliverList.builder(
-                  itemCount: history.length,
-                  itemBuilder: (context, index) => SongBar(
-                    history[index],
-                    true,
-                    key: ValueKey('you_${history[index]['ytid']}_$index'),
-                    onPlay: () => audioHandler.playPlaylistSong(
-                      playlist: playlist,
-                      songIndex: index,
+                padding: EdgeInsets.symmetric(horizontal: margin),
+                sliver: SliverToBoxAdapter(
+                  child: ClipRSuperellipse(
+                    borderRadius: BorderRadius.circular(14),
+                    child: Column(
+                      children: [
+                        for (var index = 0; index < history.length; index++)
+                          SongBar(
+                            history[index],
+                            true,
+                            key: ValueKey(
+                              'you_${history[index]['ytid']}_$index',
+                            ),
+                            onPlay: () => audioHandler.playPlaylistSong(
+                              playlist: playlist,
+                              songIndex: index,
+                            ),
+                            isRecentSong: true,
+                          ),
+                      ],
                     ),
-                    isRecentSong: true,
                   ),
                 ),
               );

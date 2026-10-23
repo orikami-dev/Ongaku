@@ -14,7 +14,9 @@ small hooks marked `Ongaku:` or importing `package:musify/ongaku/...`:
 | --- | --- |
 | `lib/main.dart` | `getOngakuTheme` / `getOngakuColorScheme` / `OngakuScrollBehavior`, name constants |
 | `lib/services/router_service.dart` | `OngakuShell` instead of `BottomNavigationPage`, iOS page transitions, Local Files route |
-| `lib/screens/library_page.dart` | "Local Files" row |
+| `lib/screens/library_page.dart` | "Local Files" row, large title |
+| `lib/screens/search_page.dart` | large title |
+| `lib/widgets/section_header.dart` | Ongaku section title, compact action buttons |
 | `lib/services/common_services.dart` | 3 guards: local songs never call YouTube |
 | `lib/utilities/mediaitem.dart` | carries local artwork/path through `MediaItem` |
 | `lib/widgets/song_bar.dart` | shows local artwork |
@@ -71,3 +73,22 @@ the Android label, and the Linux/Windows titles.
 * Settings are grouped by category (`settings_page.dart` `_buildCategories`); `CustomBar` and `SectionHeader` delegate to `widgets/ongaku_settings_ui.dart` and `ongaku_page_parts.dart`, so every list in the app shares the iOS look.
 * Player: the old ⋯ menu is gone; its actions sit in the bottom row. The heart icon became a star everywhere (`FluentIcons.star_*`).
 * Lyrics: wider LRCLIB search and a per-session timing nudge (± 0.5 s).
+
+## v6
+
+* Fixes: the notification buttons no longer read the global handler while it
+  is being built (a `LateInitializationError` was logged at every start and
+  broke upstream's desktop tests); the progress bar showed "LIVE" until a
+  song's length was known; the player kept the previous song's colours when a
+  song had no artwork; the times under the progress bar used the system font.
+* Library and Search get the same large title as Home and Settings; long
+  section titles shrink instead of being cut; the You page has a back chevron
+  and a rounded history card; the accent colour swatch shows on every
+  platform; local songs can be added to playlists from the player.
+* `test/ongaku_screenshots_test.dart` renders every screen to PNG without a
+  device (phone, open foldable, light and dark). Skipped by default:
+
+  ```
+  flutter test test/ongaku_screenshots_test.dart \
+    --dart-define=ONGAKU_SHOTS=true --dart-define=ONGAKU_SHOTS_DIR=/tmp/shots
+  ```

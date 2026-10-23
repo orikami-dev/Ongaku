@@ -22,8 +22,7 @@ const ongakuCompactActionIndices = [1, 2, 3];
 const _starAction = 'ongakuStar';
 const _shuffleAction = 'ongakuShuffle';
 
-bool _currentIsLiked() {
-  final song = audioHandler.currentSong;
+bool _isLiked(Map? song) {
   final id = song?['ytid']?.toString();
   if (id == null) return false;
   return song?['isLive'] == true
@@ -32,12 +31,15 @@ bool _currentIsLiked() {
 }
 
 /// Replaces upstream's button list. [hasMultipleTracks] keeps upstream's
-/// rewind / fast-forward fallback for single songs.
+/// rewind / fast-forward fallback for single songs. [currentSong] comes
+/// from the handler itself: the global `audioHandler` is not assigned yet
+/// while the handler is being constructed.
 List<MediaControl> ongakuControls({
   required bool playing,
   required bool hasMultipleTracks,
+  Map? currentSong,
 }) {
-  final liked = _currentIsLiked();
+  final liked = _isLiked(currentSong);
   final shuffled = shuffleNotifier.value;
   return [
     MediaControl.custom(
@@ -104,6 +106,7 @@ void ongakuWatchNotificationState() {
         controls: ongakuControls(
           playing: state.playing,
           hasMultipleTracks: (audioHandler.queue.valueOrNull?.length ?? 0) > 1,
+          currentSong: audioHandler.currentSong,
         ),
       ),
     );

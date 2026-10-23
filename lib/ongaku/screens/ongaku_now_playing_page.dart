@@ -350,7 +350,11 @@ class _OngakuNowPlayingPageState extends State<OngakuNowPlayingPage>
                         ),
                         child: _panelLyrics
                             ? SyncedLyricsView(
-                                fontSize: (w - panelWidth) > 700 ? 38 : 32,
+                                fontSize: switch (w - panelWidth) {
+                                  > 700 => 38,
+                                  > 460 => 32,
+                                  _ => 27,
+                                },
                                 padding: EdgeInsets.fromLTRB(
                                   48,
                                   padding.top + 12,
@@ -986,17 +990,22 @@ class _ProgressBarState extends State<_ProgressBar> {
       builder: (context, snapshot) {
         final data = snapshot.data;
         final total = data?.duration ?? Duration.zero;
-        final live = total <= Duration.zero;
-        final played = live
-            ? 0.0
-            : (data!.position.inMilliseconds / total.inMilliseconds).clamp(
+        // Radio stations have no end. A song whose length is not known yet
+        // (the first moments of playback) is not "live": it just shows 0:00
+        // until the duration arrives.
+        final live =
+            audioHandler.mediaItem.valueOrNull?.extras?['isLive'] == true;
+        final seekable = !live && total > Duration.zero;
+        final played = seekable
+            ? (data!.position.inMilliseconds / total.inMilliseconds).clamp(
                 0.0,
                 1.0,
-              );
+              )
+            : 0.0;
         final value = _dragValue ?? played;
-        final shown = live
-            ? Duration.zero
-            : Duration(milliseconds: (total.inMilliseconds * value).round());
+        final shown = seekable
+            ? Duration(milliseconds: (total.inMilliseconds * value).round())
+            : Duration.zero;
 
         return LayoutBuilder(
           builder: (context, c) {
@@ -1007,23 +1016,25 @@ class _ProgressBarState extends State<_ProgressBar> {
 
             return GestureDetector(
               behavior: HitTestBehavior.opaque,
-              onHorizontalDragStart: live
+              onHorizontalDragStart: !seekable
                   ? null
                   : (d) => setState(
                       () => _dragValue = toValue(d.localPosition.dx),
                     ),
-              onHorizontalDragUpdate: live
+              onHorizontalDragUpdate: !seekable
                   ? null
                   : (d) => setState(
                       () => _dragValue = toValue(d.localPosition.dx),
                     ),
-              onHorizontalDragEnd: live
+              onHorizontalDragEnd: !seekable
                   ? null
                   : (_) {
                       seekTo(_dragValue ?? value);
                       setState(() => _dragValue = null);
                     },
-              onTapUp: live ? null : (d) => seekTo(toValue(d.localPosition.dx)),
+              onTapUp: !seekable
+                  ? null
+                  : (d) => seekTo(toValue(d.localPosition.dx)),
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 child: Column(
@@ -1047,7 +1058,10 @@ class _ProgressBarState extends State<_ProgressBar> {
                     ),
                     const SizedBox(height: 8),
                     DefaultTextStyle(
+                      // Explicit family: a bare DefaultTextStyle would fall
+                      // back to the system font for the times.
                       style: TextStyle(
+                        fontFamily: 'Inter',
                         color: _whiteA(0.55),
                         fontSize: 12.5,
                         fontWeight: FontWeight.w600,
@@ -1057,7 +1071,10 @@ class _ProgressBarState extends State<_ProgressBar> {
                         children: [
                           Text(live ? 'LIVE' : _format(shown)),
                           const Spacer(),
-                          if (!live) Text('-${_format(total - shown)}'),
+                          if (!live)
+                            Text(
+                              seekable ? '-${_format(total - shown)}' : '-:--',
+                            ),
                         ],
                       ),
                     ),
@@ -1245,7 +1262,7 @@ class _BottomButtons extends StatelessWidget {
           icon: Icons.playlist_add_rounded,
           on: false,
           tooltip: l10n?.addToPlaylist,
-          onTap: isRadio || isLocal || offlineMode.value
+          onTap: isRadio || offlineMode.value
               ? null
               : () => showAddToPlaylistDialog(
                   context,

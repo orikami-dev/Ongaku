@@ -20,22 +20,49 @@ double ongakuPageMargin(BuildContext context) =>
 /// Large page title with a hairline under it and an optional round button
 /// on its right, like the Apple Music Android tabs.
 class OngakuLargeTitle extends StatelessWidget {
-  const OngakuLargeTitle({super.key, required this.title, this.trailing});
+  const OngakuLargeTitle({
+    super.key,
+    required this.title,
+    this.trailing,
+    this.showBack = false,
+    this.includeStatusBar = true,
+    this.parentInset = 0,
+  });
 
   final String title;
   final Widget? trailing;
 
+  /// Pushed pages: a back chevron above the title.
+  final bool showBack;
+
+  /// False when a parent (an AppBar) already leaves room for the status bar.
+  final bool includeStatusBar;
+
+  /// Horizontal padding a parent already applies, subtracted from the page
+  /// margin so every title lines up.
+  final double parentInset;
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final margin = ongakuPageMargin(context);
-    final top = MediaQuery.paddingOf(context).top;
+    final margin = (ongakuPageMargin(context) - parentInset).clamp(0.0, 64.0);
+    final top = includeStatusBar ? MediaQuery.paddingOf(context).top : 0.0;
 
     return Padding(
-      padding: EdgeInsets.fromLTRB(margin, top + 28, margin, 0),
+      padding: EdgeInsets.fromLTRB(
+        margin,
+        top + (showBack ? 8 : 28),
+        margin,
+        0,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (showBack)
+            const Padding(
+              padding: EdgeInsets.only(bottom: 6),
+              child: OngakuBackButton(),
+            ),
           Row(
             children: [
               Expanded(
@@ -70,6 +97,30 @@ class OngakuLargeTitle extends StatelessWidget {
   }
 }
 
+/// Back chevron in the accent colour, left aligned with the page margin.
+class OngakuBackButton extends StatelessWidget {
+  const OngakuBackButton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: OngakuPressable(
+        onTap: () => Navigator.of(context).maybePop(),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(0, 8, 16, 8),
+          child: Icon(
+            Icons.arrow_back_ios_new_rounded,
+            size: 22,
+            color: colorScheme.primary,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// Round "You" button: a simple person, one tap opens the listening stats.
 class OngakuYouButton extends StatelessWidget {
   const OngakuYouButton({super.key});
@@ -98,10 +149,19 @@ class OngakuYouButton extends StatelessWidget {
 
 /// Bold section title, with a chevron when it opens a full list.
 class OngakuSectionTitle extends StatelessWidget {
-  const OngakuSectionTitle({super.key, required this.title, this.onTap});
+  const OngakuSectionTitle({
+    super.key,
+    required this.title,
+    this.onTap,
+    this.shrinkToFit = false,
+  });
 
   final String title;
   final VoidCallback? onTap;
+
+  /// Long titles next to action buttons shrink a little instead of being
+  /// cut ("Playlists personnali…").
+  final bool shrinkToFit;
 
   @override
   Widget build(BuildContext context) {
@@ -124,12 +184,18 @@ class OngakuSectionTitle extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Flexible(
-              child: Text(
-                title,
-                style: style,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
+              child: shrinkToFit
+                  ? FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(title, style: style, maxLines: 1),
+                    )
+                  : Text(
+                      title,
+                      style: style,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
             ),
             if (onTap != null)
               Icon(

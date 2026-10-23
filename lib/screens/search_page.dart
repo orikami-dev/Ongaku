@@ -30,6 +30,7 @@ import 'package:musify/database/radio_stations.db.dart';
 import 'package:musify/extensions/l10n.dart';
 import 'package:musify/main.dart';
 import 'package:musify/models/radio_model.dart';
+import 'package:musify/ongaku/widgets/ongaku_page_parts.dart';
 import 'package:musify/services/common_services.dart';
 import 'package:musify/services/data_manager.dart';
 import 'package:musify/services/playlists_manager.dart';
@@ -264,11 +265,19 @@ class _SearchPageState extends State<SearchPage> {
   Widget build(BuildContext context) {
     final primaryColor = Theme.of(context).colorScheme.primary;
     return Scaffold(
-      appBar: AppBar(title: Text(context.l10n!.search)),
       body: SingleChildScrollView(
         padding: commonSingleChildScrollViewPadding,
         child: Column(
           children: <Widget>[
+            // Ongaku: large title like the Home tab.
+            SizedBox(
+              width: double.infinity,
+              child: OngakuLargeTitle(
+                title: context.l10n!.search,
+                parentInset: commonSingleChildScrollViewPadding.left,
+              ),
+            ),
+            const SizedBox(height: 16),
             LayoutBuilder(
               builder: (context, constraints) {
                 final isWide = constraints.maxWidth > 600;

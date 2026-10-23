@@ -71,18 +71,19 @@ class OngakuSettingsGroup extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              child: Text(
-                title.toUpperCase(),
-                style: TextStyle(
-                  color: colorScheme.onSurface.withValues(alpha: 0.5),
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.4,
+            if (title.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: Text(
+                  title.toUpperCase(),
+                  style: TextStyle(
+                    color: colorScheme.onSurface.withValues(alpha: 0.5),
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.4,
+                  ),
                 ),
               ),
-            ),
             ClipRSuperellipse(
               borderRadius: BorderRadius.circular(14),
               child: ColoredBox(

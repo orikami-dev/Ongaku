@@ -102,19 +102,18 @@ class SettingsPage extends StatelessWidget {
             context.l10n!.accentColor,
             FluentIcons.color_24_regular,
             borderRadius: commonCustomBarRadiusFirst,
-            trailing: isDesktopPlatform
-                ? Container(
-                    width: 26,
-                    height: 26,
-                    decoration: BoxDecoration(
-                      color: primaryColorSetting,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Theme.of(context).colorScheme.outlineVariant,
-                      ),
-                    ),
-                  )
-                : null,
+            // Ongaku: the current colour shows on every platform.
+            trailing: Container(
+              width: 26,
+              height: 26,
+              decoration: BoxDecoration(
+                color: primaryColorSetting,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.outlineVariant,
+                ),
+              ),
+            ),
             onTap: () => _showAccentColorPicker(context),
           ),
           CustomBar(
