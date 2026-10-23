@@ -55,3 +55,12 @@ Android Auto and the video mode. The Android Auto tabs (Recents, Library, Playli
 
 Edit `lib/ongaku/brand.dart`, `android/app/build.gradle.kts` (`applicationId`),
 the Android label, and the Linux/Windows titles.
+
+## Layout, lyrics and lock screen (v3)
+
+* `screens/ongaku_shell.dart`: 5 tabs (Home, New, Radio, Library, Search). Phone: mini player docked above the bar. Open foldable or tablet: tabs left, mini player right. `ongaku_routes.dart` adds branches 4 (New) and 5 (Radio) after upstream's four, so upstream indexes never move.
+* `screens/ongaku_now_playing_page.dart`: full screen player on phones, right-hand panel on wide screens with lyrics filling the left side.
+* `lyrics/synced_lyrics.dart`: .lrc next to a local file, then LRCLIB, then Musify's plain lyrics spread over the song.
+* `theme/artwork_palette.dart` + `widgets/artwork_background.dart`: backgrounds take the colours of the current artwork.
+* `services/ongaku_notification.dart`: lock screen buttons (favourite, previous, play, next, shuffle). Hooks in `audio_service.dart`: `_controls`, the three `androidCompactActionIndices` and `customAction`; one line in `main.dart`.
+* Icon: `scripts/make_ongaku_icon.py <res dir> <out dir>`.
