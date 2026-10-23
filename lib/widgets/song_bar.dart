@@ -341,8 +341,8 @@ class SongBar extends StatefulWidget {
 
 class _SongBarState extends State<SongBar> {
   static const likeStatusToIconMapper = {
-    true: FluentIcons.heart_off_24_regular,
-    false: FluentIcons.heart_24_regular,
+    true: FluentIcons.star_off_24_regular,
+    false: FluentIcons.star_24_regular,
   };
 
   late final ValueNotifier<bool> _songLikeStatus;
@@ -873,7 +873,7 @@ class _OnlineArtwork extends StatelessWidget {
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
-                          FluentIcons.heart_24_filled,
+                          FluentIcons.star_24_filled,
                           size: 11,
                           color: colorScheme.onPrimaryContainer,
                         ),

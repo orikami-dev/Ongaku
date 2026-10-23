@@ -64,3 +64,10 @@ the Android label, and the Linux/Windows titles.
 * `theme/artwork_palette.dart` + `widgets/artwork_background.dart`: backgrounds take the colours of the current artwork.
 * `services/ongaku_notification.dart`: lock screen buttons (favourite, previous, play, next, shuffle). Hooks in `audio_service.dart`: `_controls`, the three `androidCompactActionIndices` and `customAction`; one line in `main.dart`.
 * Icon: `scripts/make_ongaku_icon.py <res dir> <out dir>`.
+
+## v4
+
+* Bar: Home, Library, Search, Settings. "You" is the round button on the Home title (route /home/you: stats + listening history). Recently played opens /home/recents as a pushed page.
+* Settings are grouped by category (`settings_page.dart` `_buildCategories`); `CustomBar` and `SectionHeader` delegate to `widgets/ongaku_settings_ui.dart` and `ongaku_page_parts.dart`, so every list in the app shares the iOS look.
+* Player: the old ⋯ menu is gone; its actions sit in the bottom row. The heart icon became a star everywhere (`FluentIcons.star_*`).
+* Lyrics: wider LRCLIB search and a per-session timing nudge (± 0.5 s).

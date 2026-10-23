@@ -26,6 +26,9 @@ import 'package:material_ui/material_ui.dart';
 import 'package:musify/constants/app_constants.dart';
 import 'package:musify/extensions/l10n.dart';
 import 'package:musify/main.dart';
+import 'package:musify/ongaku/l10n/ongaku_strings.dart';
+import 'package:musify/ongaku/widgets/ongaku_page_parts.dart';
+import 'package:musify/ongaku/widgets/ongaku_settings_ui.dart';
 import 'package:musify/screens/search_page.dart';
 import 'package:musify/services/common_services.dart';
 import 'package:musify/services/data_manager.dart';
@@ -54,416 +57,445 @@ class SettingsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final primaryColor = Theme.of(context).colorScheme.primary;
-    final activatedColor = Theme.of(context).colorScheme.secondaryContainer;
-    final inactivatedColor = Theme.of(context).colorScheme.surfaceContainerHigh;
-
     final content = Column(
       children: <Widget>[
-        _buildPreferencesSection(
-          context,
-          primaryColor,
-          activatedColor,
-          inactivatedColor,
-        ),
-        if (!offlineMode.value) _buildOnlineFeaturesSection(context),
-        _buildOthersSection(context),
+        _buildCategories(context),
         const SizedBox(height: 20),
         const MiniPlayerBottomSpace(),
       ],
     );
 
     return Scaffold(
-      appBar: AppBar(title: Text(context.l10n!.settings)),
-      body: SingleChildScrollView(
-        padding: commonSingleChildScrollViewPadding,
-        child: isDesktopPlatform
-            ? Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 880),
-                  child: content,
-                ),
-              )
-            : content,
+      body: Column(
+        children: [
+          OngakuLargeTitle(title: context.l10n!.settings),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.symmetric(
+                horizontal: ongakuPageMargin(context),
+                vertical: 20,
+              ),
+              child: isDesktopPlatform
+                  ? Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 880),
+                        child: content,
+                      ),
+                    )
+                  : content,
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildPreferencesSection(
-    BuildContext context,
-    Color primaryColor,
-    Color activatedColor,
-    Color inactivatedColor,
-  ) {
+  Widget _buildCategories(BuildContext context) {
+    final strings = OngakuStrings.of(context);
+    final online = !offlineMode.value;
     final isOffline = offlineMode.value;
 
     return Column(
       children: [
-        SectionHeader(
-          title: context.l10n!.preferences,
-          icon: FluentIcons.options_24_filled,
-        ),
-        CustomBar(
-          context.l10n!.accentColor,
-          FluentIcons.color_24_regular,
-          borderRadius: commonCustomBarRadiusFirst,
-          trailing: isDesktopPlatform
-              ? Container(
-                  width: 26,
-                  height: 26,
-                  decoration: BoxDecoration(
-                    color: primaryColorSetting,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Theme.of(context).colorScheme.outlineVariant,
+        _group(strings.catAppearance, const Color(0xFFAF52DE), [
+          CustomBar(
+            context.l10n!.accentColor,
+            FluentIcons.color_24_regular,
+            borderRadius: commonCustomBarRadiusFirst,
+            trailing: isDesktopPlatform
+                ? Container(
+                    width: 26,
+                    height: 26,
+                    decoration: BoxDecoration(
+                      color: primaryColorSetting,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Theme.of(context).colorScheme.outlineVariant,
+                      ),
                     ),
-                  ),
-                )
-              : null,
-          onTap: () => _showAccentColorPicker(context),
-        ),
-        CustomBar(
-          context.l10n!.themeMode,
-          FluentIcons.weather_sunny_28_regular,
-          onTap: () => _showThemeModePicker(context),
-        ),
-        CustomBar(
-          context.l10n!.language,
-          FluentIcons.translate_24_regular,
-          onTap: () => _showLanguagePicker(context),
-        ),
-        CustomBar(
-          context.l10n!.audioQuality,
-          FluentIcons.music_note_1_24_regular,
-          onTap: () => _showAudioQualityPicker(context),
-        ),
-        if (isAndroidPlatform)
-          CustomBar(
-            context.l10n!.equalizer,
-            FluentIcons.data_histogram_24_regular,
-            onTap: () => context.push('/settings/equalizer'),
+                  )
+                : null,
+            onTap: () => _showAccentColorPicker(context),
           ),
-        if (themeMode == ThemeMode.dark)
           CustomBar(
-            context.l10n!.pureBlackTheme,
-            FluentIcons.color_background_24_regular,
-            description: context.l10n!.pureBlackThemeDescription,
-            trailing: Switch(
-              value: usePureBlackColor.value,
-              onChanged: (value) => _togglePureBlack(context, value),
+            context.l10n!.themeMode,
+            FluentIcons.weather_sunny_28_regular,
+            onTap: () => _showThemeModePicker(context),
+          ),
+          if (themeMode == ThemeMode.dark)
+            CustomBar(
+              context.l10n!.pureBlackTheme,
+              FluentIcons.color_background_24_regular,
+              description: context.l10n!.pureBlackThemeDescription,
+              trailing: Switch(
+                value: usePureBlackColor.value,
+                onChanged: (value) => _togglePureBlack(context, value),
+              ),
             ),
-          ),
-        if (isAndroidPlatform)
-          CustomBar(
-            context.l10n!.dynamicColor,
-            FluentIcons.toggle_left_24_regular,
-            description: context.l10n!.dynamicColorDescription,
-            trailing: Switch(
-              value: useSystemColor.value,
-              onChanged: (value) => _toggleSystemColor(context, value),
+          if (isAndroidPlatform)
+            CustomBar(
+              context.l10n!.dynamicColor,
+              FluentIcons.toggle_left_24_regular,
+              description: context.l10n!.dynamicColorDescription,
+              trailing: Switch(
+                value: useSystemColor.value,
+                onChanged: (value) => _toggleSystemColor(context, value),
+              ),
             ),
+          CustomBar(
+            context.l10n!.language,
+            FluentIcons.translate_24_regular,
+            onTap: () => _showLanguagePicker(context),
           ),
-
-        ValueListenableBuilder<bool>(
-          valueListenable: showAudioQualityBadge,
-          builder: (_, value, __) {
-            return CustomBar(
-              context.l10n!.audioQualityBadge,
-              FluentIcons.badge_24_regular,
-              description: context.l10n!.audioQualityBadgeDescription,
-              trailing: Switch(
-                value: value,
-                onChanged: (value) => _toggleAudioQualityBadge(context, value),
-              ),
-            );
-          },
-        ),
-        ValueListenableBuilder<bool>(
-          valueListenable: useProxy,
-          builder: (_, value, __) {
-            return CustomBar(
-              context.l10n!.useProxy,
-              FluentIcons.shield_24_regular,
-              description: context.l10n!.useProxyDescription,
-              trailing: Switch(
-                value: value,
-                onChanged: (value) {
-                  useProxy.value = value;
-                  addOrUpdateData<bool>('settings', 'useProxy', value);
-                  showToast(context, context.l10n!.settingChangedMsg);
-                },
-              ),
-            );
-          },
-        ),
-        ValueListenableBuilder<bool>(
-          valueListenable: wrappedEnabled,
-          builder: (_, value, __) {
-            return CustomBar(
-              context.l10n!.listeningStats,
-              FluentIcons.clock_24_regular,
-              description: context.l10n!.listeningStatsDescription,
-              trailing: Switch(
-                value: value,
-                onChanged: (value) => _toggleWrapped(context, value),
-              ),
-            );
-          },
-        ),
-        ValueListenableBuilder<bool>(
-          valueListenable: offlineMode,
-          builder: (_, value, __) {
-            return CustomBar(
-              context.l10n!.offlineMode,
-              FluentIcons.cloud_off_24_regular,
-              description: context.l10n!.offlineModeDescription,
-              borderRadius: isOffline && isFdroidBuild
-                  ? commonCustomBarRadiusLast
-                  : BorderRadius.zero,
-              trailing: Switch(
-                value: value,
-                onChanged: (value) => _toggleOfflineMode(context, value),
-              ),
-            );
-          },
-        ),
-        if (!isFdroidBuild && isMobilePlatform)
-          ValueListenableBuilder<bool?>(
-            valueListenable: shouldWeCheckUpdates,
+        ]),
+        _group(strings.catPlayback, const Color(0xFFFF2D55), [
+          CustomBar(
+            context.l10n!.audioQuality,
+            FluentIcons.music_note_1_24_regular,
+            onTap: () => _showAudioQualityPicker(context),
+          ),
+          ValueListenableBuilder<bool>(
+            valueListenable: showAudioQualityBadge,
             builder: (_, value, __) {
               return CustomBar(
-                context.l10n!.automaticUpdateChecks,
-                FluentIcons.arrow_sync_24_regular,
-                description: context.l10n!.automaticUpdateChecksDescription,
-                borderRadius: offlineMode.value
-                    ? commonCustomBarRadiusLast
-                    : BorderRadius.zero,
+                context.l10n!.audioQualityBadge,
+                FluentIcons.badge_24_regular,
+                description: context.l10n!.audioQualityBadgeDescription,
                 trailing: Switch(
-                  value: value ?? false,
+                  value: value,
                   onChanged: (value) =>
-                      _toggleAutomaticUpdateChecks(context, value),
+                      _toggleAudioQualityBadge(context, value),
                 ),
               );
             },
           ),
-      ],
-    );
-  }
-
-  Widget _buildOnlineFeaturesSection(BuildContext context) {
-    return Column(
-      children: [
-        ValueListenableBuilder<bool>(
-          valueListenable: sponsorBlockSupport,
-          builder: (_, value, __) {
-            return CustomBar(
-              'SponsorBlock',
-              FluentIcons.cut_24_regular,
-              description: context.l10n!.sponsorBlockDescription,
-              trailing: Switch(
-                value: value,
-                onChanged: (value) => _toggleSponsorBlock(context, value),
-              ),
-            );
-          },
-        ),
-        ValueListenableBuilder<bool>(
-          valueListenable: playNextSongAutomatically,
-          builder: (_, value, __) {
-            return CustomBar(
-              context.l10n!.automaticSongPicker,
-              FluentIcons.music_note_2_play_20_regular,
-              description: context.l10n!.automaticSongPickerDescription,
-              trailing: Switch(
-                value: value,
-                onChanged: (value) {
-                  _toggleAutoPlayNext(context, value);
-                  showToast(context, context.l10n!.settingChangedMsg);
+          if (isAndroidPlatform)
+            CustomBar(
+              context.l10n!.equalizer,
+              FluentIcons.data_histogram_24_regular,
+              onTap: () => context.push('/settings/equalizer'),
+            ),
+          if (online)
+            ValueListenableBuilder<bool>(
+              valueListenable: playNextSongAutomatically,
+              builder: (_, value, __) {
+                return CustomBar(
+                  context.l10n!.automaticSongPicker,
+                  FluentIcons.music_note_2_play_20_regular,
+                  description: context.l10n!.automaticSongPickerDescription,
+                  trailing: Switch(
+                    value: value,
+                    onChanged: (value) {
+                      _toggleAutoPlayNext(context, value);
+                      showToast(context, context.l10n!.settingChangedMsg);
+                    },
+                  ),
+                );
+              },
+            ),
+          if (online)
+            ValueListenableBuilder<bool>(
+              valueListenable: sponsorBlockSupport,
+              builder: (_, value, __) {
+                return CustomBar(
+                  'SponsorBlock',
+                  FluentIcons.cut_24_regular,
+                  description: context.l10n!.sponsorBlockDescription,
+                  trailing: Switch(
+                    value: value,
+                    onChanged: (value) => _toggleSponsorBlock(context, value),
+                  ),
+                );
+              },
+            ),
+        ]),
+        _group(strings.catLibrary, const Color(0xFF007AFF), [
+          ValueListenableBuilder<bool>(
+            valueListenable: wrappedEnabled,
+            builder: (_, value, __) {
+              return CustomBar(
+                context.l10n!.listeningStats,
+                FluentIcons.clock_24_regular,
+                description: context.l10n!.listeningStatsDescription,
+                trailing: Switch(
+                  value: value,
+                  onChanged: (value) => _toggleWrapped(context, value),
+                ),
+              );
+            },
+          ),
+          if (online)
+            CustomBar(
+              context.l10n!.clearRecentlyPlayed,
+              FluentIcons.receipt_play_24_regular,
+              onTap: () => _showConfirmationDialog(
+                context: context,
+                confirmationMessage: context.l10n!.clearRecentlyPlayedQuestion,
+                onSubmit: () {
+                  userRecentlyPlayed.value = [];
+                  deleteData('user', 'recentlyPlayedSongs');
+                  showToast(context, '${context.l10n!.recentlyPlayedMsg}!');
                 },
               ),
-            );
-          },
-        ),
-        ValueListenableBuilder<bool>(
-          valueListenable: externalRecommendations,
-          builder: (_, value, __) {
-            return CustomBar(
-              context.l10n!.externalRecommendations,
-              FluentIcons.channel_share_24_regular,
-              description: context.l10n!.externalRecommendationsDescription,
-              borderRadius: commonCustomBarRadiusLast,
-              trailing: Switch(
-                value: value,
-                onChanged: (value) =>
-                    _toggleExternalRecommendations(context, value),
+            ),
+          if (online)
+            CustomBar(
+              context.l10n!.clearSearchHistory,
+              FluentIcons.history_24_regular,
+              onTap: () => _showConfirmationDialog(
+                context: context,
+                confirmationMessage: context.l10n!.clearSearchHistoryQuestion,
+                onSubmit: () {
+                  searchHistoryNotifier.value = [];
+                  deleteData('user', 'searchHistory');
+                  showToast(context, '${context.l10n!.searchHistoryMsg}!');
+                },
               ),
-            );
-          },
-        ),
-
-        _buildToolsSection(context),
-        _buildSponsorSection(context),
-      ],
-    );
-  }
-
-  Widget _buildToolsSection(BuildContext context) {
-    return Column(
-      children: [
-        SectionHeader(
-          title: context.l10n!.tools,
-          icon: FluentIcons.toolbox_24_filled,
-        ),
-        CustomBar(
-          context.l10n!.clearCache,
-          FluentIcons.broom_24_regular,
-          borderRadius: commonCustomBarRadiusFirst,
-          onTap: () async {
-            final cleared = await clearCache();
-            showToast(
-              context,
-              cleared ? '${context.l10n!.cacheMsg}!' : context.l10n!.error,
-            );
-          },
-        ),
-        CustomBar(
-          context.l10n!.clearSearchHistory,
-          FluentIcons.history_24_regular,
-          onTap: () => _showConfirmationDialog(
-            context: context,
-            confirmationMessage: context.l10n!.clearSearchHistoryQuestion,
-            onSubmit: () {
-              searchHistoryNotifier.value = [];
-              deleteData('user', 'searchHistory');
-              showToast(context, '${context.l10n!.searchHistoryMsg}!');
-            },
-          ),
-        ),
-        CustomBar(
-          context.l10n!.clearRecentlyPlayed,
-          FluentIcons.receipt_play_24_regular,
-          onTap: () => _showConfirmationDialog(
-            context: context,
-            confirmationMessage: context.l10n!.clearRecentlyPlayedQuestion,
-            onSubmit: () {
-              userRecentlyPlayed.value = [];
-              deleteData('user', 'recentlyPlayedSongs');
-              showToast(context, '${context.l10n!.recentlyPlayedMsg}!');
-            },
-          ),
-        ),
-        CustomBar(
-          context.l10n!.clearListeningStats,
-          FluentIcons.clock_24_regular,
-          onTap: () => _showConfirmationDialog(
-            context: context,
-            confirmationMessage: context.l10n!.clearListeningStatsQuestion,
-            submitMessage: context.l10n!.delete,
-            isDangerous: true,
-            onSubmit: () async {
-              audioHandler.resetListeningStatsSession(flushStats: false);
-              await listeningStatsService.clearStats();
-              audioHandler.startListeningStatsSessionIfNeeded();
-              if (context.mounted) {
-                showToast(context, '${context.l10n!.listeningStatsCleared}!');
-              }
-            },
-          ),
-        ),
-        CustomBar(
-          context.l10n!.deleteDownloads,
-          FluentIcons.delete_24_regular,
-          onTap: () => _showConfirmationDialog(
-            context: context,
-            confirmationMessage: context.l10n!.deleteDownloadsQuestion,
-            submitMessage: context.l10n!.delete,
-            isDangerous: true,
-            onSubmit: () async {
-              try {
-                await offlinePlaylistService.deleteAllDownloads();
-                if (context.mounted) {
-                  showToast(context, context.l10n!.downloadsDeleted);
+            ),
+          if (online)
+            CustomBar(
+              context.l10n!.clearListeningStats,
+              FluentIcons.clock_24_regular,
+              onTap: () => _showConfirmationDialog(
+                context: context,
+                confirmationMessage: context.l10n!.clearListeningStatsQuestion,
+                submitMessage: context.l10n!.delete,
+                isDangerous: true,
+                onSubmit: () async {
+                  audioHandler.resetListeningStatsSession(flushStats: false);
+                  await listeningStatsService.clearStats();
+                  audioHandler.startListeningStatsSessionIfNeeded();
+                  if (context.mounted) {
+                    showToast(
+                      context,
+                      '${context.l10n!.listeningStatsCleared}!',
+                    );
+                  }
+                },
+              ),
+            ),
+          if (online)
+            CustomBar(
+              context.l10n!.importSpotifyPlaylist,
+              FluentIcons.arrow_upload_24_regular,
+              onTap: () => context.push('/settings/import-spotify-playlist'),
+            ),
+          if (online)
+            CustomBar(
+              context.l10n!.backupUserData,
+              FluentIcons.cloud_sync_24_regular,
+              onTap: () => _backupUserData(context),
+            ),
+          if (online)
+            CustomBar(
+              context.l10n!.restoreUserData,
+              FluentIcons.cloud_add_24_regular,
+              onTap: () async {
+                try {
+                  final result = await restoreData(context);
+                  if (result.success) {
+                    reloadSettingsFromStorage();
+                    reloadSongLibraryStateFromStorage();
+                    reloadPlaylistLibraryStateFromStorage();
+                    reloadSearchHistoryFromStorage();
+                    listeningStatsService.reload();
+                    await audioHandler.setShuffleMode(
+                      shuffleNotifier.value
+                          ? AudioServiceShuffleMode.all
+                          : AudioServiceShuffleMode.none,
+                    );
+                    await audioHandler.setRepeatMode(repeatNotifier.value);
+                    themeMode = getThemeMode(themeModeSetting);
+                    brightness = getBrightnessFromThemeMode(themeMode);
+                    if (context.mounted) {
+                      await Musify.updateAppState(
+                        context,
+                        newThemeMode: themeMode,
+                        newLocale: languageSetting,
+                        newAccentColor: primaryColorSetting,
+                        useSystemColor: useSystemColor.value,
+                      );
+                      NavigationManager.refreshRouter();
+                    }
+                  }
+                  if (context.mounted) {
+                    showToast(
+                      context,
+                      result.message,
+                      icon: result.success
+                          ? null
+                          : FluentIcons.error_circle_24_regular,
+                    );
+                  }
+                } catch (e, str) {
+                  logger.log('Error restoring data', error: e, stackTrace: str);
+                  if (context.mounted) {
+                    showToast(
+                      context,
+                      context.l10n!.error,
+                      icon: FluentIcons.error_circle_24_regular,
+                    );
+                  }
                 }
-              } catch (e) {
-                if (context.mounted) {
-                  showToast(context, context.l10n!.error);
-                }
-              }
-            },
-          ),
-        ),
-        CustomBar(
-          context.l10n!.importSpotifyPlaylist,
-          FluentIcons.arrow_upload_24_regular,
-          onTap: () => context.push('/settings/import-spotify-playlist'),
-        ),
-        CustomBar(
-          context.l10n!.backupUserData,
-          FluentIcons.cloud_sync_24_regular,
-          onTap: () => _backupUserData(context),
-        ),
-        CustomBar(
-          context.l10n!.restoreUserData,
-          FluentIcons.cloud_add_24_regular,
-          onTap: () async {
-            try {
-              final result = await restoreData(context);
-              if (result.success) {
-                reloadSettingsFromStorage();
-                reloadSongLibraryStateFromStorage();
-                reloadPlaylistLibraryStateFromStorage();
-                reloadSearchHistoryFromStorage();
-                listeningStatsService.reload();
-                await audioHandler.setShuffleMode(
-                  shuffleNotifier.value
-                      ? AudioServiceShuffleMode.all
-                      : AudioServiceShuffleMode.none,
-                );
-                await audioHandler.setRepeatMode(repeatNotifier.value);
-                themeMode = getThemeMode(themeModeSetting);
-                brightness = getBrightnessFromThemeMode(themeMode);
-                if (context.mounted) {
-                  await Musify.updateAppState(
-                    context,
-                    newThemeMode: themeMode,
-                    newLocale: languageSetting,
-                    newAccentColor: primaryColorSetting,
-                    useSystemColor: useSystemColor.value,
-                  );
-                  NavigationManager.refreshRouter();
-                }
-              }
-              if (context.mounted) {
+              },
+            ),
+        ]),
+        _group(strings.catStorage, const Color(0xFFFF9500), [
+          if (online)
+            CustomBar(
+              context.l10n!.clearCache,
+              FluentIcons.broom_24_regular,
+              borderRadius: commonCustomBarRadiusFirst,
+              onTap: () async {
+                final cleared = await clearCache();
                 showToast(
                   context,
-                  result.message,
-                  icon: result.success
-                      ? null
-                      : FluentIcons.error_circle_24_regular,
+                  cleared ? '${context.l10n!.cacheMsg}!' : context.l10n!.error,
                 );
-              }
-            } catch (e, str) {
-              logger.log('Error restoring data', error: e, stackTrace: str);
-              if (context.mounted) {
-                showToast(
-                  context,
-                  context.l10n!.error,
-                  icon: FluentIcons.error_circle_24_regular,
+              },
+            ),
+          if (online)
+            CustomBar(
+              context.l10n!.deleteDownloads,
+              FluentIcons.delete_24_regular,
+              onTap: () => _showConfirmationDialog(
+                context: context,
+                confirmationMessage: context.l10n!.deleteDownloadsQuestion,
+                submitMessage: context.l10n!.delete,
+                isDangerous: true,
+                onSubmit: () async {
+                  try {
+                    await offlinePlaylistService.deleteAllDownloads();
+                    if (context.mounted) {
+                      showToast(context, context.l10n!.downloadsDeleted);
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      showToast(context, context.l10n!.error);
+                    }
+                  }
+                },
+              ),
+            ),
+        ]),
+        _group(strings.catNetwork, const Color(0xFF34C759), [
+          ValueListenableBuilder<bool>(
+            valueListenable: offlineMode,
+            builder: (_, value, __) {
+              return CustomBar(
+                context.l10n!.offlineMode,
+                FluentIcons.cloud_off_24_regular,
+                description: context.l10n!.offlineModeDescription,
+                borderRadius: isOffline && isFdroidBuild
+                    ? commonCustomBarRadiusLast
+                    : BorderRadius.zero,
+                trailing: Switch(
+                  value: value,
+                  onChanged: (value) => _toggleOfflineMode(context, value),
+                ),
+              );
+            },
+          ),
+          ValueListenableBuilder<bool>(
+            valueListenable: useProxy,
+            builder: (_, value, __) {
+              return CustomBar(
+                context.l10n!.useProxy,
+                FluentIcons.shield_24_regular,
+                description: context.l10n!.useProxyDescription,
+                trailing: Switch(
+                  value: value,
+                  onChanged: (value) {
+                    useProxy.value = value;
+                    addOrUpdateData<bool>('settings', 'useProxy', value);
+                    showToast(context, context.l10n!.settingChangedMsg);
+                  },
+                ),
+              );
+            },
+          ),
+          if (online)
+            ValueListenableBuilder<bool>(
+              valueListenable: externalRecommendations,
+              builder: (_, value, __) {
+                return CustomBar(
+                  context.l10n!.externalRecommendations,
+                  FluentIcons.channel_share_24_regular,
+                  description: context.l10n!.externalRecommendationsDescription,
+                  borderRadius: commonCustomBarRadiusLast,
+                  trailing: Switch(
+                    value: value,
+                    onChanged: (value) =>
+                        _toggleExternalRecommendations(context, value),
+                  ),
                 );
-              }
-            }
-          },
-        ),
-        if (!isFdroidBuild && isMobilePlatform)
+              },
+            ),
+          if (!isFdroidBuild && isMobilePlatform)
+            ValueListenableBuilder<bool?>(
+              valueListenable: shouldWeCheckUpdates,
+              builder: (_, value, __) {
+                return CustomBar(
+                  context.l10n!.automaticUpdateChecks,
+                  FluentIcons.arrow_sync_24_regular,
+                  description: context.l10n!.automaticUpdateChecksDescription,
+                  borderRadius: offlineMode.value
+                      ? commonCustomBarRadiusLast
+                      : BorderRadius.zero,
+                  trailing: Switch(
+                    value: value ?? false,
+                    onChanged: (value) =>
+                        _toggleAutomaticUpdateChecks(context, value),
+                  ),
+                );
+              },
+            ),
+          if (online && !isFdroidBuild && isMobilePlatform)
+            CustomBar(
+              context.l10n!.downloadAppUpdate,
+              FluentIcons.arrow_download_24_regular,
+              borderRadius: commonCustomBarRadiusLast,
+              onTap: checkAppUpdates,
+            ),
+        ]),
+        _group(strings.catAbout, const Color(0xFF8E8E93), [
           CustomBar(
-            context.l10n!.downloadAppUpdate,
-            FluentIcons.arrow_download_24_regular,
-            borderRadius: commonCustomBarRadiusLast,
-            onTap: checkAppUpdates,
+            context.l10n!.licenses,
+            FluentIcons.document_24_regular,
+            borderRadius: commonCustomBarRadiusFirst,
+            onTap: () => NavigationManager.router.go('/settings/license'),
           ),
+          CustomBar(
+            context.l10n!.translate,
+            FluentIcons.translate_24_regular,
+            description: context.l10n!.translateDescription,
+            onTap: () =>
+                launchURL(Uri.parse('https://crowdin.com/project/musify')),
+          ),
+          ValueListenableBuilder<int>(
+            valueListenable: logger.logCount,
+            builder: (context, logCount, _) => CustomBar(
+              '${context.l10n!.copyLogs} ($logCount)',
+              FluentIcons.error_circle_24_regular,
+              onTap: () async =>
+                  showToast(context, await logger.copyLogs(context)),
+            ),
+          ),
+          CustomBar(
+            context.l10n!.about,
+            FluentIcons.book_information_24_regular,
+            borderRadius: commonCustomBarRadiusLast,
+            onTap: () => NavigationManager.router.go('/settings/about'),
+          ),
+        ]),
+        if (online) _buildSponsorSection(context),
       ],
     );
   }
+
+  Widget _group(String title, Color tint, List<Widget> rows) => rows.isEmpty
+      ? const SizedBox.shrink()
+      : OngakuSettingsGroup(title: title, tint: tint, children: rows);
 
   Widget _buildSponsorSection(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -472,7 +504,7 @@ class SettingsPage extends StatelessWidget {
       children: [
         SectionHeader(
           title: context.l10n!.becomeSponsor,
-          icon: FluentIcons.heart_24_filled,
+          icon: FluentIcons.star_24_filled,
         ),
         Card(
           margin: const EdgeInsets.only(bottom: 8),
@@ -493,7 +525,7 @@ class SettingsPage extends StatelessWidget {
                       alpha: 0.14,
                     ),
                     child: Icon(
-                      FluentIcons.heart_24_filled,
+                      FluentIcons.drink_coffee_24_filled,
                       color: colorScheme.onPrimaryContainer,
                       size: 24,
                     ),
@@ -513,45 +545,6 @@ class SettingsPage extends StatelessWidget {
               ),
             ),
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildOthersSection(BuildContext context) {
-    return Column(
-      children: [
-        SectionHeader(
-          title: context.l10n!.others,
-          icon: FluentIcons.more_circle_24_filled,
-        ),
-        CustomBar(
-          context.l10n!.licenses,
-          FluentIcons.document_24_regular,
-          borderRadius: commonCustomBarRadiusFirst,
-          onTap: () => NavigationManager.router.go('/settings/license'),
-        ),
-        CustomBar(
-          context.l10n!.translate,
-          FluentIcons.translate_24_regular,
-          description: context.l10n!.translateDescription,
-          onTap: () =>
-              launchURL(Uri.parse('https://crowdin.com/project/musify')),
-        ),
-        ValueListenableBuilder<int>(
-          valueListenable: logger.logCount,
-          builder: (context, logCount, _) => CustomBar(
-            '${context.l10n!.copyLogs} ($logCount)',
-            FluentIcons.error_circle_24_regular,
-            onTap: () async =>
-                showToast(context, await logger.copyLogs(context)),
-          ),
-        ),
-        CustomBar(
-          context.l10n!.about,
-          FluentIcons.book_information_24_regular,
-          borderRadius: commonCustomBarRadiusLast,
-          onTap: () => NavigationManager.router.go('/settings/about'),
         ),
       ],
     );

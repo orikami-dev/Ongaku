@@ -12,9 +12,8 @@ import 'package:cupertino_ui/cupertino_ui.dart' show CupertinoPage;
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:musify/ongaku/screens/local_files_page.dart';
-import 'package:musify/ongaku/screens/ongaku_browse_page.dart';
-import 'package:musify/screens/playlist_page.dart';
-import 'package:musify/screens/radio_stations_page.dart';
+import 'package:musify/ongaku/screens/ongaku_you_page.dart';
+import 'package:musify/screens/user_songs_page.dart';
 
 /// Path of the local files screen, under the Library tab.
 const localFilesPath = '/library/localFiles';
@@ -37,53 +36,18 @@ GoRoute ongakuLocalFilesRoute(PushPageBuilder pushPage) => GoRoute(
       pushPage(child: const LocalFilesPage(), state: state),
 );
 
-/// Ongaku's own tabs, appended after upstream's four branches so upstream's
-/// branch indexes never move.
-const ongakuBrowseBranchIndex = 4;
-const ongakuRadioBranchIndex = 5;
-const ongakuBrowsePath = '/browse';
-const ongakuRadioPath = '/radio';
+/// Home > You: listening history and statistics.
+GoRoute ongakuYouRoute(PushPageBuilder pushPage) => GoRoute(
+  path: 'you',
+  pageBuilder: (context, state) =>
+      pushPage(child: const OngakuYouPage(), state: state),
+);
 
-final _browseNavigatorKey = GlobalKey<NavigatorState>();
-final _radioNavigatorKey = GlobalKey<NavigatorState>();
-
-/// "Nouveautés" and "Radio" tabs. [rootPage] builds a tab's first page,
-/// [sharedRoutes] are upstream's artist and album routes.
-List<StatefulShellBranch> ongakuExtraBranches({
-  required PushPageBuilder rootPage,
-  required PushPageBuilder pushPage,
-  required List<RouteBase> sharedRoutes,
-}) => [
-  StatefulShellBranch(
-    navigatorKey: _browseNavigatorKey,
-    routes: [
-      GoRoute(
-        path: ongakuBrowsePath,
-        pageBuilder: (context, state) =>
-            rootPage(child: const OngakuBrowsePage(), state: state),
-        routes: [
-          GoRoute(
-            path: 'playlist/:playlistId',
-            pageBuilder: (context, state) => pushPage(
-              child: PlaylistPage(
-                playlistId: state.pathParameters['playlistId'],
-              ),
-              state: state,
-            ),
-          ),
-          ...sharedRoutes,
-        ],
-      ),
-    ],
+/// Home > Recently played (a page of its own, so back always works).
+GoRoute ongakuRecentsRoute(PushPageBuilder pushPage) => GoRoute(
+  path: 'recents',
+  pageBuilder: (context, state) => pushPage(
+    child: const UserSongsPage(page: 'recents'),
+    state: state,
   ),
-  StatefulShellBranch(
-    navigatorKey: _radioNavigatorKey,
-    routes: [
-      GoRoute(
-        path: ongakuRadioPath,
-        pageBuilder: (context, state) =>
-            rootPage(child: const RadioStationsPage(), state: state),
-      ),
-    ],
-  ),
-];
+);

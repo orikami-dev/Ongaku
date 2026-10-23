@@ -71,7 +71,12 @@ class _OngakuHomePageState extends State<OngakuHomePage> {
           parent: AlwaysScrollableScrollPhysics(),
         ),
         slivers: [
-          SliverToBoxAdapter(child: OngakuLargeTitle(title: l10n.home)),
+          SliverToBoxAdapter(
+            child: OngakuLargeTitle(
+              title: l10n.home,
+              trailing: const OngakuYouButton(),
+            ),
+          ),
           SliverToBoxAdapter(child: _announcement(context)),
           SliverToBoxAdapter(child: OngakuSectionTitle(title: strings.forYou)),
           SliverToBoxAdapter(child: _forYouShelf(context)),
@@ -100,7 +105,7 @@ class _OngakuHomePageState extends State<OngakuHomePage> {
                 : context.l10n!.newAnnouncement,
             url: url,
             icon: sponsorship
-                ? FluentIcons.heart_24_filled
+                ? FluentIcons.star_24_filled
                 : FluentIcons.megaphone_24_filled,
             onDismiss: () async => announcementURL.value = null,
           ),
@@ -180,7 +185,7 @@ class _OngakuHomePageState extends State<OngakuHomePage> {
           children: [
             OngakuSectionTitle(
               title: l10n.recentlyPlayed,
-              onTap: () => context.go('/library/userSongs/recents'),
+              onTap: () => context.push('/home/recents'),
             ),
             OngakuShelf(
               height: width + 48,
@@ -229,7 +234,7 @@ class _OngakuHomePageState extends State<OngakuHomePage> {
           children: [
             OngakuSectionTitle(
               title: context.l10n!.timeMachine,
-              onTap: () => context.push('/home/timeMachine'),
+              onTap: () => context.push('/home/you'),
             ),
             Padding(
               padding: EdgeInsets.symmetric(horizontal: margin - 8),

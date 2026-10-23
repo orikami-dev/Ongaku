@@ -130,6 +130,7 @@ class _LyricsLinesState extends State<_LyricsLines> {
   );
   StreamSubscription<PositionData>? _position;
   int _current = -1;
+  Duration _offset = Duration.zero;
   DateTime _userScrolledAt = DateTime.fromMillisecondsSinceEpoch(0);
 
   @override
@@ -146,7 +147,7 @@ class _LyricsLinesState extends State<_LyricsLines> {
   void _onPosition(Duration position) {
     // A small lead makes the highlight land with the voice, not after it.
     final index = widget.lyrics.indexAt(
-      position + const Duration(milliseconds: 250),
+      position + const Duration(milliseconds: 250) + _offset,
     );
     if (index == _current || !mounted) return;
     setState(() => _current = index);
@@ -167,6 +168,12 @@ class _LyricsLinesState extends State<_LyricsLines> {
     );
   }
 
+  void _nudge(Duration by) {
+    setState(() => _offset = by == Duration.zero ? by : _offset + by);
+    _onPosition(audioHandler.currentPositionData.position);
+    _follow(_current, force: true);
+  }
+
   @override
   void dispose() {
     _position?.cancel();
@@ -176,6 +183,27 @@ class _LyricsLinesState extends State<_LyricsLines> {
 
   @override
   Widget build(BuildContext context) {
+    final lyrics = widget.lyrics;
+    final strings = OngakuStrings.of(context);
+
+    return Stack(
+      children: [
+        Positioned.fill(child: _buildLines(context)),
+        if (lyrics.synced)
+          Positioned(
+            right: 12,
+            bottom: 8,
+            child: _OffsetPill(
+              offset: _offset,
+              label: strings.lyricsOffset,
+              onNudge: _nudge,
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildLines(BuildContext context) {
     final lyrics = widget.lyrics;
     final strings = OngakuStrings.of(context);
 
@@ -288,6 +316,62 @@ class _LyricLineTile extends StatelessWidget {
             ),
             child: Text(isPause ? '• • •' : text),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Small -0.5 s / +0.5 s control to recalibrate a song that runs early or
+/// late against its lyrics. Tap the value to reset.
+class _OffsetPill extends StatelessWidget {
+  const _OffsetPill({
+    required this.offset,
+    required this.label,
+    required this.onNudge,
+  });
+
+  final Duration offset;
+  final String label;
+  final ValueChanged<Duration> onNudge;
+
+  @override
+  Widget build(BuildContext context) {
+    final seconds = offset.inMilliseconds / 1000;
+    final text = '${seconds > 0 ? '+' : ''}${seconds.toStringAsFixed(1)} s';
+
+    Widget button(IconData icon, Duration by) => GestureDetector(
+      onTap: () => onNudge(by),
+      child: Padding(
+        padding: const EdgeInsets.all(8),
+        child: Icon(icon, size: 20, color: Colors.white),
+      ),
+    );
+
+    return Semantics(
+      label: label,
+      child: DecoratedBox(
+        decoration: ShapeDecoration(
+          shape: const StadiumBorder(),
+          color: Colors.white.withValues(alpha: 0.16),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            button(Icons.remove_rounded, const Duration(milliseconds: -500)),
+            GestureDetector(
+              onTap: () => onNudge(Duration.zero),
+              child: Text(
+                text,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            button(Icons.add_rounded, const Duration(milliseconds: 500)),
+          ],
         ),
       ),
     );

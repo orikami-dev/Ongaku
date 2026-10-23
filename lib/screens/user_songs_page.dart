@@ -156,10 +156,10 @@ class _UserSongsPageState extends State<UserSongsPage> {
 
   IconData getIcon(String page) {
     return switch (page) {
-      'liked' => FluentIcons.heart_24_regular,
+      'liked' => FluentIcons.star_24_regular,
       'offline' => FluentIcons.cloud_off_24_regular,
       'recents' => FluentIcons.history_24_regular,
-      _ => FluentIcons.heart_24_regular,
+      _ => FluentIcons.star_24_regular,
     };
   }
 
@@ -340,7 +340,7 @@ class _UserSongsPageState extends State<UserSongsPage> {
 
         if (displayList.isEmpty) {
           final emptyIcon = isLikedSongs
-              ? FluentIcons.heart_24_regular
+              ? FluentIcons.star_24_regular
               : FluentIcons.text_bullet_list_24_filled;
           return EmptyPlaylistState(
             icon: emptyIcon,

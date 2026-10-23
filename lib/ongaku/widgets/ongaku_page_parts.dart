@@ -10,9 +10,6 @@
 
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:musify/extensions/l10n.dart';
-import 'package:musify/ongaku/l10n/ongaku_strings.dart';
-import 'package:musify/ongaku/ongaku_routes.dart';
 import 'package:musify/ongaku/theme/artwork_palette.dart';
 import 'package:musify/utilities/artwork_provider.dart';
 
@@ -20,12 +17,13 @@ import 'package:musify/utilities/artwork_provider.dart';
 double ongakuPageMargin(BuildContext context) =>
     MediaQuery.sizeOf(context).width >= 600 ? 32 : 20;
 
-/// Large page title with a hairline under it and the red ⋮ menu above on
-/// the right, like the Apple Music Android tabs.
+/// Large page title with a hairline under it and an optional round button
+/// on its right, like the Apple Music Android tabs.
 class OngakuLargeTitle extends StatelessWidget {
-  const OngakuLargeTitle({super.key, required this.title});
+  const OngakuLargeTitle({super.key, required this.title, this.trailing});
 
   final String title;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -34,32 +32,32 @@ class OngakuLargeTitle extends StatelessWidget {
     final top = MediaQuery.paddingOf(context).top;
 
     return Padding(
-      padding: EdgeInsets.fromLTRB(margin, top, margin - 12, 0),
+      padding: EdgeInsets.fromLTRB(margin, top + 28, margin, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Align(
-            alignment: Alignment.centerRight,
-            child: OngakuMenuButton(),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: Text(
-              title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontFamily: 'Inter',
-                color: colorScheme.onSurface,
-                fontSize: 34,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -1.1,
-                height: 1.1,
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    color: colorScheme.onSurface,
+                    fontSize: 34,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -1.1,
+                    height: 1.1,
+                  ),
+                ),
               ),
-            ),
+              ?trailing,
+            ],
           ),
           Padding(
-            padding: const EdgeInsets.only(top: 10, right: 12),
+            padding: const EdgeInsets.only(top: 10),
             child: Divider(
               height: 1,
               thickness: 0.5,
@@ -72,52 +70,28 @@ class OngakuLargeTitle extends StatelessWidget {
   }
 }
 
-/// Red ⋮ button: settings, listening stats and local files.
-class OngakuMenuButton extends StatelessWidget {
-  const OngakuMenuButton({super.key});
+/// Round "You" button: a simple person, one tap opens the listening stats.
+class OngakuYouButton extends StatelessWidget {
+  const OngakuYouButton({super.key});
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final l10n = context.l10n;
-    final strings = OngakuStrings.of(context);
-
-    return PopupMenuButton<String>(
-      icon: Icon(Icons.more_vert_rounded, color: colorScheme.primary, size: 26),
-      position: PopupMenuPosition.under,
-      onSelected: (path) => context.go(path),
-      itemBuilder: (context) => [
-        PopupMenuItem(
-          value: '/settings',
-          child: _MenuRow(Icons.settings_rounded, l10n?.settings ?? 'Settings'),
+    return OngakuPressable(
+      onTap: () => context.push('/home/you'),
+      child: Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: colorScheme.onSurface.withValues(alpha: 0.12),
         ),
-        PopupMenuItem(
-          value: '/home/timeMachine',
-          child: _MenuRow(Icons.insights_rounded, strings.stats),
+        child: Icon(
+          Icons.person_rounded,
+          size: 26,
+          color: colorScheme.onSurface.withValues(alpha: 0.8),
         ),
-        PopupMenuItem(
-          value: localFilesPath,
-          child: _MenuRow(Icons.folder_rounded, strings.localFiles),
-        ),
-      ],
-    );
-  }
-}
-
-class _MenuRow extends StatelessWidget {
-  const _MenuRow(this.icon, this.label);
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(child: Text(label)),
-        const SizedBox(width: 24),
-        Icon(icon, size: 20),
-      ],
+      ),
     );
   }
 }

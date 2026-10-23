@@ -47,21 +47,35 @@ class OngakuStrings {
   String get autoLiked => _t('autoLiked');
   String get autoDownloaded => _t('autoDownloaded');
   String get lyricsApproximate => _t('lyricsApproximate');
-  String get tabNew => _t('tabNew');
-  String get tabRadio => _t('tabRadio');
   String get forYou => _t('forYou');
   String get upNext => _t('upNext');
   String get autoplay => _t('autoplay');
   String get favorite => _t('favorite');
   String get moreOptions => _t('moreOptions');
-  String get featuredPlaylists => _t('featuredPlaylists');
-  String get newAlbums => _t('newAlbums');
-  String get moreToExplore => _t('moreToExplore');
   String get listenAgain => _t('listenAgain');
   String get madeForYou => _t('madeForYou');
   String get nowPlaying => _t('nowPlaying');
   String get notPlaying => _t('notPlaying');
   String get stats => _t('stats');
+  String get catAppearance => _t('catAppearance');
+  String get catPlayback => _t('catPlayback');
+  String get catLibrary => _t('catLibrary');
+  String get catStorage => _t('catStorage');
+  String get catNetwork => _t('catNetwork');
+  String get catAbout => _t('catAbout');
+  String get you => _t('you');
+  String get listeningHistory => _t('listeningHistory');
+  String get thisMonth => _t('thisMonth');
+  String get allStats => _t('allStats');
+  String get minutes => _t('minutes');
+  String get download => _t('download');
+  String get removeDownload => _t('removeDownload');
+  String get lyricsOffset => _t('lyricsOffset');
+  String get sleepTimer => _t('sleepTimer');
+  String get endOfSong => _t('endOfSong');
+  String get cancelTimer => _t('cancelTimer');
+  String get resetOffset => _t('resetOffset');
+  String minShort(int n) => _t('minShort').replaceAll('{n}', '$n');
   String songsAdded(int n) => _t('songsAdded').replaceAll('{n}', '$n');
   String songCount(int n) =>
       _t(n == 1 ? 'songCountOne' : 'songCountMany').replaceAll('{n}', '$n');
@@ -92,17 +106,31 @@ class OngakuStrings {
       'autoQueue': 'Up Next',
       'autoLiked': 'Liked Songs',
       'autoDownloaded': 'Downloaded',
+      'catAppearance': 'Appearance',
+      'catPlayback': 'Playback',
+      'catLibrary': 'Library & History',
+      'catStorage': 'Storage',
+      'catNetwork': 'Network & Updates',
+      'catAbout': 'About',
+      'you': 'You',
+      'listeningHistory': 'Listening History',
+      'thisMonth': 'This month',
+      'allStats': 'All listening statistics',
+      'minutes': 'minutes',
+      'download': 'Download',
+      'removeDownload': 'Remove download',
+      'lyricsOffset': 'Lyrics timing',
+      'sleepTimer': 'Sleep Timer',
+      'endOfSong': 'End of song',
+      'cancelTimer': 'Cancel timer',
+      'minShort': '{n} min',
+      'resetOffset': 'Reset',
       'lyricsApproximate': 'Lyrics are timed approximately for this song.',
-      'tabNew': 'New',
-      'tabRadio': 'Radio',
       'forYou': 'For You',
       'upNext': 'Up Next',
       'autoplay': 'Autoplay',
       'favorite': 'Favourite',
       'moreOptions': 'More',
-      'featuredPlaylists': 'Featured Playlists',
-      'newAlbums': 'Albums to Discover',
-      'moreToExplore': 'More to Explore',
       'listenAgain': 'Listen Again',
       'madeForYou': 'Made for You',
       'nowPlaying': 'Now Playing',
@@ -136,18 +164,32 @@ class OngakuStrings {
       'autoQueue': 'À suivre',
       'autoLiked': 'Titres aimés',
       'autoDownloaded': 'Téléchargés',
+      'catAppearance': 'Apparence',
+      'catPlayback': 'Lecture',
+      'catLibrary': 'Bibliothèque et historique',
+      'catStorage': 'Stockage',
+      'catNetwork': 'Réseau et mises à jour',
+      'catAbout': 'À propos',
+      'you': 'Vous',
+      'listeningHistory': 'Historique d\'écoute',
+      'thisMonth': 'Ce mois-ci',
+      'allStats': 'Toutes les statistiques d\'écoute',
+      'minutes': 'minutes',
+      'download': 'Télécharger',
+      'removeDownload': 'Retirer le téléchargement',
+      'lyricsOffset': 'Décalage des paroles',
+      'sleepTimer': 'Minuteur de veille',
+      'endOfSong': 'Fin du morceau',
+      'cancelTimer': 'Annuler le minuteur',
+      'minShort': '{n} min',
+      'resetOffset': 'Réinitialiser',
       'lyricsApproximate':
           'Paroles synchronisées approximativement pour ce morceau.',
-      'tabNew': 'Nouveautés',
-      'tabRadio': 'Radio',
       'forYou': 'Pour vous',
       'upNext': 'À suivre',
       'autoplay': 'Lecture automatique',
       'favorite': 'Favori',
       'moreOptions': 'Plus',
-      'featuredPlaylists': 'Playlists à la une',
-      'newAlbums': 'Albums à découvrir',
-      'moreToExplore': 'Plus à explorer',
       'listenAgain': 'Écouter à nouveau',
       'madeForYou': 'Vos mix sur mesure',
       'nowPlaying': 'À l\'écoute',

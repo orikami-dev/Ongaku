@@ -188,8 +188,8 @@ class _BottomActionsRowState extends State<BottomActionsRow> {
               ),
             _buildActionButton(
               context: context,
-              icon: FluentIcons.heart_24_regular,
-              activeIcon: FluentIcons.heart_24_filled,
+              icon: FluentIcons.star_24_regular,
+              activeIcon: FluentIcons.star_24_filled,
               colorScheme: colorScheme,
               size: responsiveIconSize,
               statusNotifier: _songLikeStatus,

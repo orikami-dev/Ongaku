@@ -94,7 +94,7 @@ class _HomePageState extends State<HomePage> {
                     ? context.l10n!.sponsorProject
                     : context.l10n!.newAnnouncement;
                 final _icon = isSponsorshipAnnouncement
-                    ? FluentIcons.heart_24_filled
+                    ? FluentIcons.star_24_filled
                     : FluentIcons.megaphone_24_filled;
 
                 return AnnouncementBox(
@@ -161,7 +161,7 @@ class _HomePageState extends State<HomePage> {
         SectionHeader(
           title: sectionTitle,
           icon: showOnlyLiked
-              ? FluentIcons.heart_24_filled
+              ? FluentIcons.star_24_filled
               : FluentIcons.list_24_filled,
         ),
         ConstrainedBox(

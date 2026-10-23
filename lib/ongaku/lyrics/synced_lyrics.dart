@@ -111,40 +111,42 @@ Future<String?> _fromLrclib(MediaItem item) async {
   final artist = _cleanArtist(item.artist ?? '');
   final title = _cleanTitle(item.title, artist);
   if (title.isEmpty) return null;
+  final seconds = item.duration?.inSeconds;
 
   try {
-    final params = {
+    // 1. Exact match on title, artist and length.
+    final exact = await _lrclibGet('/api/get', {
       'track_name': title,
       if (artist.isNotEmpty) 'artist_name': artist,
-      if (item.duration != null)
-        'duration': item.duration!.inSeconds.toString(),
-    };
-    final exact = await _lrclibGet('/api/get', params);
+      if (seconds != null) 'duration': seconds.toString(),
+    });
     if (exact is Map && exact['syncedLyrics'] is String) {
       return exact['syncedLyrics'] as String;
     }
 
-    final search = await _lrclibGet('/api/search', {
-      'track_name': title,
-      if (artist.isNotEmpty) 'artist_name': artist,
-    });
-    if (search is List) {
-      final seconds = item.duration?.inSeconds;
-      final candidates = search
+    // 2. Looser searches, YouTube titles rarely match to the letter.
+    final queries = <Map<String, String>>[
+      {'track_name': title, if (artist.isNotEmpty) 'artist_name': artist},
+      {'q': '$title $artist'.trim()},
+      {'track_name': title},
+    ];
+    for (final query in queries) {
+      final found = await _lrclibGet('/api/search', query);
+      if (found is! List) continue;
+      final candidates = found
           .whereType<Map>()
           .where((r) => r['syncedLyrics'] is String)
           .toList();
+      if (candidates.isEmpty) continue;
       if (seconds != null) {
-        // Prefer the version whose length matches the one playing.
-        candidates.sort(
-          (a, b) => ((a['duration'] as num? ?? 0) - seconds).abs().compareTo(
-            ((b['duration'] as num? ?? 0) - seconds).abs(),
-          ),
-        );
+        // Closest length first: a version that runs 3 minutes against a
+        // 4 minute video would drift.
+        int gap(Map r) =>
+            ((r['duration'] as num? ?? 0) - seconds).abs().round();
+        candidates.sort((a, b) => gap(a).compareTo(gap(b)));
+        if (gap(candidates.first) > 25) continue;
       }
-      if (candidates.isNotEmpty) {
-        return candidates.first['syncedLyrics'] as String;
-      }
+      return candidates.first['syncedLyrics'] as String;
     }
   } catch (_) {}
   return null;
@@ -169,7 +171,9 @@ final _noise = RegExp(
 );
 
 String _cleanTitle(String title, String artist) {
-  var t = title.replaceAll(_noise, '');
+  var t = title
+      .replaceAll(RegExp(r'[【\[][^】\]]*[】\]]'), '')
+      .replaceAll(_noise, '');
   // YouTube titles are often "Artist - Title".
   final dash = t.indexOf(' - ');
   if (dash > 0) {

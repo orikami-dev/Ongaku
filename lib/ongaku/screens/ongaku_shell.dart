@@ -14,8 +14,6 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:musify/extensions/l10n.dart';
 import 'package:musify/main.dart';
-import 'package:musify/ongaku/l10n/ongaku_strings.dart';
-import 'package:musify/ongaku/ongaku_routes.dart';
 import 'package:musify/ongaku/widgets/ongaku_mini_player.dart';
 import 'package:musify/services/settings_manager.dart';
 import 'package:musify/utilities/flutter_bottom_sheet.dart'
@@ -25,12 +23,12 @@ import 'package:musify/utilities/flutter_bottom_sheet.dart'
 /// Music on Android:
 ///
 /// * Phone / folded cover screen: the mini player is docked above a full
-///   width bar of five tabs. The app stays in portrait there.
+///   width bar of four tabs. The app stays in portrait there.
 /// * Open foldable / tablet: one bar, the tabs on the left and the mini
 ///   player docked on the right.
 ///
-/// Branches 0 to 3 are upstream's (home, search, library, settings);
-/// 4 and 5 are Ongaku's (new, radio). Settings open from the ⋮ menu.
+/// Branch indexes are upstream's: 0 home, 1 search, 2 library, 3 settings.
+/// The bar shows them as Home, Library, Search, Settings.
 class OngakuShell extends StatefulWidget {
   const OngakuShell({required this.child, super.key});
 
@@ -58,6 +56,7 @@ class _OngakuShellState extends State<OngakuShell> {
   static const _homeIndex = 0;
   static const _searchIndex = 1;
   static const _libraryIndex = 2;
+  static const _settingsIndex = 3;
 
   @override
   void didChangeDependencies() {
@@ -129,25 +128,12 @@ class _OngakuShellState extends State<OngakuShell> {
 
   List<_Tab> _tabs(BuildContext context, bool isOfflineMode) {
     final l10n = context.l10n;
-    final strings = OngakuStrings.of(context);
     return [
       _Tab(
         icon: Icons.home_rounded,
         label: l10n?.home ?? 'Home',
         shellIndex: _homeIndex,
       ),
-      if (!isOfflineMode) ...[
-        _Tab(
-          icon: Icons.grid_view_rounded,
-          label: strings.tabNew,
-          shellIndex: ongakuBrowseBranchIndex,
-        ),
-        _Tab(
-          icon: Icons.sensors_rounded,
-          label: strings.tabRadio,
-          shellIndex: ongakuRadioBranchIndex,
-        ),
-      ],
       _Tab(
         icon: Icons.library_music_rounded,
         label: l10n?.library ?? 'Library',
@@ -159,16 +145,18 @@ class _OngakuShellState extends State<OngakuShell> {
           label: l10n?.search ?? 'Search',
           shellIndex: _searchIndex,
         ),
+      _Tab(
+        icon: Icons.settings_rounded,
+        label: l10n?.settings ?? 'Settings',
+        shellIndex: _settingsIndex,
+      ),
     ];
   }
 
   void _handleOfflineModeChange(bool isOfflineMode) {
     if (!mounted) return;
     final currentRoute = GoRouterState.of(context).matchedLocation;
-    if (isOfflineMode &&
-        (currentRoute.startsWith('/search') ||
-            currentRoute.startsWith(ongakuBrowsePath) ||
-            currentRoute.startsWith(ongakuRadioPath))) {
+    if (isOfflineMode && currentRoute.startsWith('/search')) {
       widget.child.goBranch(_homeIndex);
     }
   }

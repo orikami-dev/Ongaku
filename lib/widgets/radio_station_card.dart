@@ -155,8 +155,8 @@ class _RadioStationCardState extends State<RadioStationCard> {
                     onPressed: _handleFavoriteTap,
                     icon: Icon(
                       isFavorited
-                          ? FluentIcons.heart_24_filled
-                          : FluentIcons.heart_24_regular,
+                          ? FluentIcons.star_24_filled
+                          : FluentIcons.star_24_regular,
                       size: 18,
                     ),
                     style: IconButton.styleFrom(

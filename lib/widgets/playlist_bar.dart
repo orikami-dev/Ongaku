@@ -72,8 +72,8 @@ class PlaylistBar extends StatelessWidget {
   static const double iconSize = 27;
 
   static const likeStatusToIconMapper = {
-    true: FluentIcons.heart_off_24_regular,
-    false: FluentIcons.heart_24_regular,
+    true: FluentIcons.star_off_24_regular,
+    false: FluentIcons.star_24_regular,
   };
 
   // Helper to determine if this is a folder

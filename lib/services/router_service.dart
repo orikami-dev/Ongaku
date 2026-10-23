@@ -190,6 +190,8 @@ class NavigationManager {
               ),
               _artistRoute(),
               _albumRoute(),
+              ongakuYouRoute(_pushPage),
+              ongakuRecentsRoute(_pushPage),
               GoRoute(
                 path: 'folder/:folderId/:folderName',
                 pageBuilder: (context, state) => _pushPage(
@@ -298,12 +300,6 @@ class NavigationManager {
             ],
           ),
         ],
-      ),
-      // Ongaku: New and Radio tabs.
-      ...ongakuExtraBranches(
-        rootPage: getPage,
-        pushPage: _pushPage,
-        sharedRoutes: [_artistRoute(), _albumRoute()],
       ),
     ];
   }

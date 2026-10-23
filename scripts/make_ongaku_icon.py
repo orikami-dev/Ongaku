@@ -66,13 +66,13 @@ def tile(size_px, radius=0.225):
     ImageDraw.Draw(glow).ellipse((-S * 0.3, -S * 0.3, S * 0.8, S * 0.8), fill=(250, 45, 72, 46))
     bg.alpha_composite(glow.filter(ImageFilter.GaussianBlur(S * 0.12)))
     img.paste(bg, (0, 0), m)
-    draw_note(img, (S * 0.19, S * 0.19, S * 0.62))
+    draw_note(img, (S * 0.26, S * 0.26, S * 0.48))
     return img.resize((size_px, size_px), Image.LANCZOS)
 
 def foreground(size_px, mono=False):
     # adaptive canvas 108dp, safe zone 66dp: the note lives in the inner ~60dp
     img = Image.new('RGBA', (S, S), (0, 0, 0, 0))
-    inner = S * 58 / 108
+    inner = S * 49 / 108
     draw_note(img, ((S - inner) / 2, (S - inner) / 2, inner), mono=mono, shadow=not mono)
     return img.resize((size_px, size_px), Image.LANCZOS)
 

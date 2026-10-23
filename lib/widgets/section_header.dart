@@ -20,7 +20,7 @@
  */
 
 import 'package:material_ui/material_ui.dart';
-import 'package:musify/widgets/section_title.dart';
+import 'package:musify/ongaku/widgets/ongaku_page_parts.dart';
 
 class SectionHeader extends StatelessWidget {
   const SectionHeader({
@@ -38,13 +38,7 @@ class SectionHeader extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Expanded(
-          child: SectionTitle(
-            title,
-            Theme.of(context).colorScheme.primary,
-            icon: icon,
-          ),
-        ),
+        Expanded(child: OngakuSectionTitle(title: title)),
         if (actionButton != null) actionButton!,
       ],
     );

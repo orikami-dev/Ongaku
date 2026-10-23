@@ -94,7 +94,7 @@ class _PlaylistLikeButtonState extends State<PlaylistLikeButton> {
       valueListenable: _isLiked,
       builder: (context, isLiked, __) {
         final icon = Icon(
-          isLiked ? FluentIcons.heart_24_filled : FluentIcons.heart_24_regular,
+          isLiked ? FluentIcons.star_24_filled : FluentIcons.star_24_regular,
         );
 
         return isLiked

@@ -23,11 +23,12 @@ import 'package:musify/ongaku/widgets/ongaku_mini_player.dart'
 import 'package:musify/ongaku/widgets/synced_lyrics_view.dart';
 import 'package:musify/services/common_services.dart';
 import 'package:musify/services/data_manager.dart';
+import 'package:musify/services/playlist_download_service.dart';
 import 'package:musify/services/settings_manager.dart';
+import 'package:musify/utilities/flutter_toast.dart';
 import 'package:musify/utilities/mediaitem.dart';
 import 'package:musify/utilities/playlist_dialogs.dart';
 import 'package:musify/widgets/marquee.dart';
-import 'package:musify/widgets/now_playing/bottom_actions_row.dart';
 import 'package:musify/widgets/song_artwork.dart';
 
 /// Opens the player: full screen on phones, a panel on the right of open
@@ -482,8 +483,6 @@ class _PhoneArtworkView extends StatelessWidget {
               Expanded(child: _TitleArtist(metadata: metadata, large: true)),
               const SizedBox(width: 8),
               _StarButton(metadata: metadata),
-              const SizedBox(width: 10),
-              _MoreButton(metadata: metadata),
             ],
           ),
           const SizedBox(height: 14),
@@ -587,8 +586,6 @@ class _PanelHeader extends StatelessWidget {
         Expanded(child: _TitleArtist(metadata: metadata)),
         const SizedBox(width: 8),
         _StarButton(metadata: metadata),
-        const SizedBox(width: 10),
-        _MoreButton(metadata: metadata),
       ],
     );
   }
@@ -638,58 +635,6 @@ class _StarButton extends StatelessWidget {
       },
     );
   }
-}
-
-/// ⋮: Musify's full set of song actions (download, sleep timer, playlist…).
-class _MoreButton extends StatelessWidget {
-  const _MoreButton({required this.metadata});
-
-  final MediaItem metadata;
-
-  @override
-  Widget build(BuildContext context) {
-    return _CircleButton(
-      tooltip: OngakuStrings.of(context).moreOptions,
-      icon: Icons.more_horiz_rounded,
-      onPressed: () => showModalBottomSheet<void>(
-        context: context,
-        useRootNavigator: true,
-        backgroundColor: const Color(0xFF1F1F1F),
-        showDragHandle: true,
-        builder: (sheetContext) => Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: Theme.of(context).colorScheme.copyWith(
-              brightness: Brightness.dark,
-              surfaceContainerHigh: const Color(0xFF2A2A2A),
-              onSurface: _white,
-              onSurfaceVariant: _whiteA(0.7),
-            ),
-          ),
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              child: BottomActionsRow(
-                metadata: metadata,
-                iconSize: 26,
-                isLargeScreen: true,
-                lyricsController: _CloseSheet(sheetContext),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Upstream's lyrics button flips a card; here it just closes the sheet,
-/// lyrics have their own button.
-class _CloseSheet {
-  _CloseSheet(this.context);
-
-  final BuildContext context;
-
-  void flipcard() => Navigator.of(context).pop();
 }
 
 class _CircleButton extends StatelessWidget {
@@ -1265,7 +1210,8 @@ class _VolumeBar extends StatelessWidget {
   }
 }
 
-/// Lyrics, add to playlist, and queue, as in the reference layout.
+/// Everything that used to live in the ⋯ menu, once each: lyrics, add to a
+/// playlist, download, sleep timer and queue.
 class _BottomButtons extends StatelessWidget {
   const _BottomButtons({
     required this.metadata,
@@ -1285,6 +1231,7 @@ class _BottomButtons extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final isRadio = metadata.extras?['isLive'] == true;
+    final isLocal = metadata.extras?['isLocal'] == true;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -1298,13 +1245,15 @@ class _BottomButtons extends StatelessWidget {
           icon: Icons.playlist_add_rounded,
           on: false,
           tooltip: l10n?.addToPlaylist,
-          onTap: isRadio || offlineMode.value
+          onTap: isRadio || isLocal || offlineMode.value
               ? null
               : () => showAddToPlaylistDialog(
                   context,
                   song: mediaItemToMap(metadata),
                 ),
         ),
+        _DownloadSquare(metadata: metadata, enabled: !isRadio && !isLocal),
+        const _SleepSquare(),
         _ToggleSquare(
           icon: Icons.format_list_bulleted_rounded,
           on: queueOn,
@@ -1312,6 +1261,174 @@ class _BottomButtons extends StatelessWidget {
           onTap: isRadio ? null : onQueue,
         ),
       ],
+    );
+  }
+}
+
+/// Download for offline listening, filled when the song is saved.
+class _DownloadSquare extends StatefulWidget {
+  const _DownloadSquare({required this.metadata, required this.enabled});
+
+  final MediaItem metadata;
+  final bool enabled;
+
+  @override
+  State<_DownloadSquare> createState() => _DownloadSquareState();
+}
+
+class _DownloadSquareState extends State<_DownloadSquare> {
+  bool _busy = false;
+
+  Future<void> _toggle(String id, bool saved) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      if (saved) {
+        await OfflinePlaylistService().removeSongFromOfflineAndResync(id);
+      } else {
+        await makeSongOffline(mediaItemToMap(widget.metadata));
+      }
+    } catch (e) {
+      logger.log('Error toggling offline status', error: e);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final id = widget.metadata.extras?['ytid']?.toString();
+    final strings = OngakuStrings.of(context);
+    return ListenableBuilder(
+      listenable: userOfflineSongs,
+      builder: (context, _) {
+        final saved = id != null && isSongAlreadyOffline(id);
+        return _ToggleSquare(
+          icon: _busy
+              ? Icons.hourglass_top_rounded
+              : (saved
+                    ? Icons.download_done_rounded
+                    : Icons.arrow_circle_down_rounded),
+          on: saved,
+          tooltip: saved ? strings.removeDownload : strings.download,
+          onTap: widget.enabled && id != null ? () => _toggle(id, saved) : null,
+        );
+      },
+    );
+  }
+}
+
+/// Sleep timer: lit while a timer runs, tap again to cancel.
+class _SleepSquare extends StatelessWidget {
+  const _SleepSquare();
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n!;
+    return ValueListenableBuilder<Duration?>(
+      valueListenable: sleepTimerNotifier,
+      builder: (context, remaining, _) {
+        final active = remaining != null;
+        return _ToggleSquare(
+          icon: Icons.bedtime_rounded,
+          on: active,
+          tooltip: l10n.sleepTimer,
+          onTap: () {
+            if (active) {
+              audioHandler.cancelSleepTimer();
+              sleepTimerNotifier.value = null;
+              showToast(context, l10n.sleepTimerCancelled);
+            } else {
+              _showSleepSheet(context);
+            }
+          },
+        );
+      },
+    );
+  }
+}
+
+void _showSleepSheet(BuildContext context) {
+  final l10n = context.l10n!;
+  final strings = OngakuStrings.of(context);
+  const minutes = [5, 10, 15, 30, 45, 60, 90];
+
+  showModalBottomSheet<void>(
+    context: context,
+    useRootNavigator: true,
+    backgroundColor: const Color(0xFF1F1F1F),
+    showDragHandle: true,
+    builder: (sheet) => SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              l10n.sleepTimer,
+              style: const TextStyle(
+                color: _white,
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                for (final m in minutes)
+                  _SleepChip(
+                    label: strings.minShort(m),
+                    onTap: () {
+                      audioHandler.setSleepTimer(Duration(minutes: m));
+                      Navigator.pop(sheet);
+                      showToast(context, l10n.sleepTimerSet);
+                    },
+                  ),
+                _SleepChip(
+                  label: strings.endOfSong,
+                  onTap: () {
+                    audioHandler.setSleepTimerEndOfSong();
+                    Navigator.pop(sheet);
+                    showToast(context, l10n.sleepTimerSet);
+                  },
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+class _SleepChip extends StatelessWidget {
+  const _SleepChip({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
+        decoration: ShapeDecoration(
+          shape: const StadiumBorder(),
+          color: _whiteA(0.14),
+        ),
+        child: Text(
+          label,
+          style: const TextStyle(
+            color: _white,
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
     );
   }
 }

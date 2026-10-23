@@ -266,7 +266,7 @@ class _LibraryPageState extends State<LibraryPage> {
                   context.l10n!.likedSongs,
                   onPressed: () =>
                       NavigationManager.router.go('/library/userSongs/liked'),
-                  cubeIcon: FluentIcons.heart_24_regular,
+                  cubeIcon: FluentIcons.star_24_regular,
                   showBuildActions: false,
                 ),
                 PlaylistBar(
@@ -368,7 +368,7 @@ class _LibraryPageState extends State<LibraryPage> {
       SliverToBoxAdapter(
         child: SectionHeader(
           title: context.l10n!.likedPlaylists,
-          icon: FluentIcons.heart_24_filled,
+          icon: FluentIcons.star_24_filled,
         ),
       ),
       _buildSliverPlaylistList(likedPlaylists),
