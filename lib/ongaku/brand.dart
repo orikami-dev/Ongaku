@@ -8,6 +8,10 @@
  *     (at your option) any later version. See <https://www.gnu.org/licenses/>.
  */
 
+import 'dart:ui' show PlatformDispatcher;
+
+import 'package:musify/localization/app_localizations.dart';
+
 /// Everything that names the app lives here, so upstream Musify files only
 /// need a one-line reference instead of a hard-coded name.
 const appName = 'Ongaku';
@@ -29,3 +33,12 @@ const apkDownloadFilename = '$appName.apk';
 /// Upstream project this app is based on (credited in the About page).
 const upstreamName = 'Musify';
 const upstreamUrl = 'https://github.com/gokadzev/Musify';
+
+/// Language used until the user picks one: the phone's, when the app has
+/// it, otherwise English (Musify always starts in English).
+String ongakuDefaultLanguageCode() {
+  final code = PlatformDispatcher.instance.locale.languageCode;
+  return AppLocalizations.supportedLocales.any((l) => l.languageCode == code)
+      ? code
+      : 'en';
+}

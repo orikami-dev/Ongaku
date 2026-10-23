@@ -22,6 +22,7 @@
 import 'package:audio_service/audio_service.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:musify/ongaku/brand.dart';
 import 'package:musify/screens/playlist_page.dart';
 import 'package:musify/screens/user_songs_page.dart';
 import 'package:musify/utilities/language_utils.dart';
@@ -90,7 +91,9 @@ final equalizerEnabled = ValueNotifier<bool>(
 final equalizerBandGains = ValueNotifier<List<double>>(_readEqualizerGains());
 
 Locale languageSetting = getLocaleFromLanguageCode(
-  Hive.box('settings').get('languageCode', defaultValue: 'en') as String,
+  Hive.box('settings')
+          .get('languageCode', defaultValue: ongakuDefaultLanguageCode())
+      as String,
 );
 
 int themeModeSetting =
@@ -167,7 +170,10 @@ void reloadSettingsFromStorage() {
   final restoredThemeIndex = settings.get('themeIndex', defaultValue: 0);
   if (restoredThemeIndex is int) themeModeSetting = restoredThemeIndex;
 
-  final restoredLanguageCode = settings.get('languageCode', defaultValue: 'en');
+  final restoredLanguageCode = settings.get(
+    'languageCode',
+    defaultValue: ongakuDefaultLanguageCode(),
+  );
   if (restoredLanguageCode is String) {
     languageSetting = getLocaleFromLanguageCode(restoredLanguageCode);
   }
