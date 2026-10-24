@@ -34,12 +34,12 @@ import 'package:musify/services/listening_stats_service.dart';
 import 'package:musify/services/playlists_manager.dart';
 import 'package:musify/services/router_service.dart';
 import 'package:musify/services/settings_manager.dart';
-import 'package:ongaku_sound/ongaku_sound.dart';
 import 'package:musify/theme/app_themes.dart' as themes;
 import 'package:musify/utilities/mediaitem.dart';
 import 'package:musify/widgets/bottom_sheet_bar.dart';
 import 'package:musify/widgets/confirmation_dialog.dart';
 import 'package:musify/widgets/custom_bar.dart';
+import 'package:ongaku_sound/ongaku_sound.dart';
 
 const _enabled = bool.fromEnvironment('ONGAKU_SHOTS');
 const _outDir = String.fromEnvironment(
