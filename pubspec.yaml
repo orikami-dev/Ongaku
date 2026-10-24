@@ -39,6 +39,8 @@ dependencies:
   material_ui: ^1.7.0
   media_kit_libs_linux: ^1.2.1
   media_kit_libs_windows_audio: ^1.0.9
+  ongaku_sound: # Ongaku: calibrated sound (local plugin)
+    path: ./packages/ongaku_sound
   path_provider: ^2.1.6
   permission_handler: ^13.0.2 # Ongaku: local folders
   receive_sharing_intent:

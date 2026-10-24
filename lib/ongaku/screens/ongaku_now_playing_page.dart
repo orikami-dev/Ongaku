@@ -17,6 +17,9 @@ import 'package:musify/extensions/l10n.dart';
 import 'package:musify/main.dart';
 import 'package:musify/models/position_data.dart';
 import 'package:musify/ongaku/l10n/ongaku_strings.dart';
+import 'package:musify/ongaku/screens/ongaku_sound_page.dart'
+    show CrossfadeControls;
+import 'package:musify/ongaku/sound/sound_settings.dart';
 import 'package:musify/ongaku/widgets/artwork_background.dart';
 import 'package:musify/ongaku/widgets/ongaku_mini_player.dart'
     show MiniPlayPauseButton;
@@ -754,6 +757,18 @@ class _ModeChips extends StatelessWidget {
             ),
           ),
         ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: ValueListenableBuilder<CrossfadeMode>(
+            valueListenable: crossfadeMode,
+            builder: (context, mode, _) => _Chip(
+              icon: Icons.waves_rounded,
+              on: mode != CrossfadeMode.off,
+              tooltip: OngakuStrings.of(context).crossfade,
+              onTap: () => _showCrossfadeSheet(context),
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -1363,6 +1378,47 @@ class _SleepSquare extends StatelessWidget {
       },
     );
   }
+}
+
+/// Mode doux: off, Auto or a chosen length.
+void _showCrossfadeSheet(BuildContext context) {
+  final strings = OngakuStrings.of(context);
+  final theme = Theme.of(context);
+  showModalBottomSheet<void>(
+    context: context,
+    useRootNavigator: true,
+    backgroundColor: const Color(0xFF1F1F1F),
+    showDragHandle: true,
+    builder: (sheet) => Theme(
+      data: theme.copyWith(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: theme.colorScheme.primary,
+          brightness: Brightness.dark,
+        ),
+      ),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                strings.crossfade,
+                style: const TextStyle(
+                  color: _white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 14),
+              const CrossfadeControls(dark: true),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
 void _showSleepSheet(BuildContext context) {

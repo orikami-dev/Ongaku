@@ -34,7 +34,10 @@ small hooks marked `Ongaku:` or importing `package:musify/ongaku/...`:
 | `lib/screens/{home,about}_page.dart`, `listening_recap_card.dart`, `linux_media_controls.dart` | app name |
 | `android/`, `linux/`, `windows/` | app id `com.orikami.ongaku`, labels |
 | `lib/localization/app_*.arb` | "Ongaku" instead of "Musify" in texts, rewritten by `scripts/brand_strings.py` after each merge |
-| `pubspec.yaml` | 3 dependencies (`# Ongaku`), Inter font, About page artwork |
+| `pubspec.yaml` | 4 dependencies (`# Ongaku`, including the local `packages/ongaku_sound` plugin), Inter font, About page artwork |
+| `lib/main.dart` (start) | `ongakuStartSound(audioHandler)`: calibrated sound and Mode doux |
+| `lib/services/router_service.dart` (settings) | `ongakuSoundRoutes` |
+| `lib/screens/settings_page.dart` (Lecture) | "Son calibré" row under Égaliseur (Android) |
 
 Everything else (playback, YouTube extraction, library, playlists, stats, proxy,
 equalizer, downloads...) is untouched Musify code, so upstream bug fixes and API
@@ -82,6 +85,33 @@ the Android label, and the Linux/Windows titles.
 * Settings are grouped by category (`settings_page.dart` `_buildCategories`); `CustomBar` and `SectionHeader` delegate to `widgets/ongaku_settings_ui.dart` and `ongaku_page_parts.dart`, so every list in the app shares the iOS look.
 * Player: the old ⋯ menu is gone; its actions sit in the bottom row. The heart icon became a star everywhere (`FluentIcons.star_*`).
 * Lyrics: wider LRCLIB search and a per-session timing nudge (± 0.5 s).
+
+## v10: calibrated sound and Mode doux
+
+* Settings > Lecture > Son calibré (Android 9+). One profile per output:
+  phone speaker, each model of earbuds or headphones (Bluetooth or wired),
+  car (Android Auto, detected through car mode). Applied with
+  `DynamicsProcessing` (10 bands, 31 Hz to 16 kHz, limiter) on the
+  player's audio session, switched automatically when the output changes.
+* Phone speaker and car: acoustic test with the microphone (noise check,
+  6 s exponential sweep, Farina deconvolution, octave levels, gentle
+  correction that cuts more than it boosts).
+* Earbuds and headphones: hearing test (beeps getting louder, 9 bands,
+  staircase, half-gain rule); a microphone cannot measure inside the ear.
+* Layers on top of the profile: Rock, Pop, Hip-hop, Électro, Classique,
+  Jazz, Voix, and Auto, which listens to the music (Visualizer, needs the
+  microphone permission) and blends to the matching layer over 2 s.
+  Stereo widening (`Virtualizer`) on headphones. No head tracking.
+* Mode doux (player chip and settings): off, Auto or a fixed 1 to 12 s.
+  A second player finishes the ending song while Musify moves to the next
+  one (fetched in advance by Musify), equal-power crossfade. Auto: 6 s
+  (3 s for short songs), none between two songs of the same album, and an
+  earlier start when the song already fades out. Never with repeat one,
+  the end-of-song sleep timer, live streams or SponsorBlock-cut songs.
+* Code: `packages/ongaku_sound` (Kotlin plugin), `lib/ongaku/sound/`
+  (maths, settings, engine, crossfade), pages in `lib/ongaku/screens/`.
+  The maths is tested on simulated signals (`test/ongaku_sound_test.dart`).
+  Musify's own equalizer stays and stacks with this one.
 
 ## v9
 

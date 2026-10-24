@@ -299,6 +299,8 @@ class NavigationManager {
                 ),
               ),
               ...ongakuImportRoutes(_pushPage),
+              // Ongaku: calibrated sound and its tests.
+              ...ongakuSoundRoutes(_pushPage),
             ],
           ),
         ],

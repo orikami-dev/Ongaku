@@ -12,7 +12,10 @@ import 'package:cupertino_ui/cupertino_ui.dart' show CupertinoPage;
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:musify/ongaku/screens/local_files_page.dart';
+import 'package:musify/ongaku/screens/ongaku_acoustic_test_page.dart';
+import 'package:musify/ongaku/screens/ongaku_hearing_test_page.dart';
 import 'package:musify/ongaku/screens/ongaku_import_playlist_page.dart';
+import 'package:musify/ongaku/screens/ongaku_sound_page.dart';
 import 'package:musify/ongaku/screens/ongaku_you_page.dart';
 import 'package:musify/screens/user_songs_page.dart';
 
@@ -74,4 +77,25 @@ List<GoRoute> ongakuImportRoutes(PushPageBuilder pushPage) => [
         state: state,
       ),
     ),
+];
+
+/// Settings > Son calibré, with its acoustic and hearing tests.
+List<GoRoute> ongakuSoundRoutes(PushPageBuilder pushPage) => [
+  GoRoute(
+    path: 'sound',
+    pageBuilder: (context, state) =>
+        pushPage(child: const OngakuSoundPage(), state: state),
+    routes: [
+      GoRoute(
+        path: 'acoustic',
+        pageBuilder: (context, state) =>
+            pushPage(child: const OngakuAcousticTestPage(), state: state),
+      ),
+      GoRoute(
+        path: 'hearing',
+        pageBuilder: (context, state) =>
+            pushPage(child: const OngakuHearingTestPage(), state: state),
+      ),
+    ],
+  ),
 ];

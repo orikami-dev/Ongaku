@@ -32,6 +32,10 @@ check lib/utilities/flutter_bottom_sheet.dart "showDragHandle: false"
 check lib/widgets/playlist_hero_artwork.dart "Ongaku"
 check lib/widgets/confirmation_dialog.dart "onError"
 check android/app/build.gradle.kts "com.orikami.ongaku"
+check lib/main.dart "ongakuStartSound"
+check lib/services/router_service.dart "ongakuSoundRoutes"
+check lib/screens/settings_page.dart "/settings/sound"
+check pubspec.yaml "ongaku_sound"
 python3 scripts/brand_strings.py --check || missing=1
 [ "$missing" = 0 ] || { echo "An upstream change removed an Ongaku hook: re-apply it (see ONGAKU.md)."; exit 1; }
 echo "OK"

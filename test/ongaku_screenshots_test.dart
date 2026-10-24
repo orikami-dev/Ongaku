@@ -23,6 +23,9 @@ import 'package:musify/main.dart';
 import 'package:musify/ongaku/local/local_library.dart';
 import 'package:musify/ongaku/screens/ongaku_now_playing_page.dart';
 import 'package:musify/ongaku/screens/ongaku_shell.dart';
+import 'package:musify/ongaku/sound/sound_engine.dart';
+import 'package:musify/ongaku/sound/sound_math.dart';
+import 'package:musify/ongaku/sound/sound_settings.dart';
 import 'package:musify/ongaku/theme/ongaku_theme.dart';
 import 'package:musify/screens/search_page.dart' show searchHistoryNotifier;
 import 'package:musify/services/audio_service.dart';
@@ -31,6 +34,7 @@ import 'package:musify/services/listening_stats_service.dart';
 import 'package:musify/services/playlists_manager.dart';
 import 'package:musify/services/router_service.dart';
 import 'package:musify/services/settings_manager.dart';
+import 'package:ongaku_sound/ongaku_sound.dart';
 import 'package:musify/theme/app_themes.dart' as themes;
 import 'package:musify/utilities/mediaitem.dart';
 import 'package:musify/widgets/bottom_sheet_bar.dart';
@@ -122,6 +126,14 @@ void main() {
             await _capture(tester, '$prefix-you-$i');
           }
         }
+        if (route == '/settings/sound') {
+          await tester.drag(
+            find.byType(CustomScrollView).last,
+            Offset(0, -size.height * 0.75),
+          );
+          await _settle(tester);
+          await _capture(tester, '$prefix-sound-2');
+        }
         if (route == '/home') {
           // The rest of the home page, one screen at a time.
           for (var i = 1; i <= 4; i++) {
@@ -135,6 +147,18 @@ void main() {
         }
       }
 
+      // The Mode doux sheet, from the player's chips (shown with the
+      // queue on phones).
+      Future<void> crossfadeSheet(BuildContext context) async {
+        final chip = find.byIcon(Icons.waves_rounded);
+        if (chip.evaluate().isEmpty) return;
+        await tester.tap(chip.first);
+        await _settle(tester, frames: 15);
+        await _capture(tester, '$prefix-player-crossfade');
+        Navigator.of(context, rootNavigator: true).pop();
+        await _settle(tester);
+      }
+
       if (player) {
         NavigationManager.router.go('/home');
         await _settle(tester);
@@ -144,6 +168,8 @@ void main() {
         await _settle(tester, frames: 20);
         await _capture(tester, '$prefix-player');
 
+        await crossfadeSheet(context);
+
         await tester.tap(find.byIcon(Icons.format_quote_rounded).first);
         await _settle(tester, frames: 25);
         await _capture(tester, '$prefix-player-lyrics');
@@ -151,6 +177,7 @@ void main() {
         await tester.tap(find.byIcon(Icons.format_list_bulleted_rounded).first);
         await _settle(tester, frames: 15);
         await _capture(tester, '$prefix-player-queue');
+        await crossfadeSheet(context);
 
         Navigator.of(context, rootNavigator: true).pop();
         await _settle(tester);
@@ -178,6 +205,65 @@ void main() {
         '/settings/import-deezer-playlist',
         '/settings/import-apple-music-playlist',
       ],
+    );
+  }, skip: !_enabled);
+
+  testWidgets('calibrated sound', (tester) async {
+    OngakuSoundEngine.supported.value = true;
+    soundLayer.value = SoundLayer.rock;
+    crossfadeMode.value = CrossfadeMode.auto;
+    const earbuds = OutputRoute(
+      OutputType.bluetooth,
+      'Écouteurs',
+      'bt:Écouteurs',
+    );
+    saveSoundProfile(
+      earbuds.id,
+      SoundProfile(
+        gains: const [0, 0, 1, 0, 0, 1, 3, 5, 4, 2],
+        method: ProfileMethod.hearing,
+        date: DateTime(2026, 10, 24),
+        label: 'Écouteurs',
+      ),
+    );
+    saveSoundProfile(
+      'speaker',
+      SoundProfile(
+        gains: const [3, 3, 2, 0, -2, -1, 0, 1, 2, 3],
+        method: ProfileMethod.microphone,
+        date: DateTime(2026, 10, 24),
+        label: 'Haut-parleur du téléphone',
+      ),
+    );
+    OngakuSoundEngine.route.value = earbuds;
+    await shots(
+      tester,
+      prefix: 'sound-earbuds',
+      size: const Size(390, 844),
+      padding: const EdgeInsets.only(top: 44, bottom: 24),
+      mode: ThemeMode.dark,
+      routes: ['/settings/sound', '/settings/sound/hearing'],
+      player: false,
+    );
+    OngakuSoundEngine.route.value = OutputRoute.speaker;
+    await shots(
+      tester,
+      prefix: 'sound-speaker',
+      size: const Size(390, 844),
+      padding: const EdgeInsets.only(top: 44, bottom: 24),
+      mode: ThemeMode.light,
+      routes: ['/settings/sound', '/settings/sound/acoustic'],
+      player: false,
+    );
+    OngakuSoundEngine.route.value = const OutputRoute(OutputType.car, '', 'car');
+    await shots(
+      tester,
+      prefix: 'sound-car',
+      size: const Size(390, 844),
+      padding: const EdgeInsets.only(top: 44, bottom: 24),
+      mode: ThemeMode.dark,
+      routes: ['/settings/sound', '/settings/sound/acoustic'],
+      player: false,
     );
   }, skip: !_enabled);
 

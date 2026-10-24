@@ -154,6 +154,14 @@ class SettingsPage extends StatelessWidget {
               FluentIcons.data_histogram_24_regular,
               onTap: () => context.push('/settings/equalizer'),
             ),
+          // Ongaku: calibrated sound (profiles per output, layers, mode doux).
+          if (isAndroidPlatform)
+            CustomBar(
+              strings.soundTitle,
+              FluentIcons.headphones_sound_wave_24_regular,
+              description: strings.soundRowDesc,
+              onTap: () => context.push('/settings/sound'),
+            ),
           if (online)
             ValueListenableBuilder<bool>(
               valueListenable: playNextSongAutomatically,
