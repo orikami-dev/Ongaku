@@ -130,6 +130,7 @@ the Android label, and the Linux/Windows titles.
   turns; the Couleur row is gone.
 - `OngakuSystemBars`: the navigation bar takes the tab bar colour and the
   app's contrast (it was white on a dark app with the phone in day mode).
+- Sumi accent is violet (#6A4BC4 day, #A993F5 night), as in Kamishibai.
 - `stopCorrectionCompare()`: the before/after sample stops when a test
   starts.
 
@@ -146,7 +147,7 @@ the Android label, and the Linux/Windows titles.
 * Home ⋮ menu: Rafraîchir les recommandations, Historique d'écoute, Mix
   aléatoire (liked songs + local files, shuffled).
 * Themes shared with Kamishibai (`lib/ongaku/theme/ongaku_palettes.dart`):
-  Ongaku (iOS grays, Couleur of your choice), Washi, Sumi, Ai, Matcha,
+  Ongaku (iOS grays), Washi, Sumi (violet), Ai, Matcha,
   Sakura, Kin, each with day and night neutrals and its accent. Picked from
   cards at the top of Apparence (Couleur shows only for Ongaku). Each theme
   has its app icon (`scripts/make_ongaku_icon.py --palettes`): one launcher

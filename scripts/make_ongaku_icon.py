@@ -99,11 +99,21 @@ if __name__ == '__main__' and sys.argv[1] != '--palettes':
 
 PALETTES = {
     'washi': (255, 90, 64),
-    'sumi': (255, 90, 64),
+    'sumi': (123, 78, 255),
     'ai': (122, 157, 232),
     'matcha': (141, 194, 106),
     'sakura': (242, 141, 171),
     'kin': (232, 185, 49),
+}
+
+
+# Faces given by Kamishibai's Sumi icon, so both apps match.
+SUMI_SHADES = {
+    'P1': (169, 140, 255),  # #A98CFF
+    'P2': (123, 78, 255),  # #7B4EFF
+    'P3': (76, 48, 158),  # #4C309E
+    'P4': (47, 30, 97),  # #2F1E61
+    'P5': (58, 36, 122),  # #3A247A
 }
 
 
@@ -128,6 +138,8 @@ def with_palette(name, accent, fn):
         P4: _mix(accent, (0, 0, 0), 0.42),
         P5: _mix(accent, (0, 0, 0), 0.30),
     }
+    if name == 'sumi':
+        shades.update({globals()[k]: v for k, v in SUMI_SHADES.items()})
     # Kin is gold already: its folded corner turns to cream.
     shades[GOLD] = (255, 244, 214) if name == 'kin' else GOLD
     INK = palette_tile_ink(name, accent)
