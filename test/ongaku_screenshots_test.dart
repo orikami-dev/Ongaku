@@ -27,6 +27,7 @@ import 'package:musify/ongaku/theme/ongaku_theme.dart';
 import 'package:musify/screens/search_page.dart' show searchHistoryNotifier;
 import 'package:musify/services/audio_service.dart';
 import 'package:musify/services/common_services.dart';
+import 'package:musify/services/listening_stats_service.dart';
 import 'package:musify/services/playlists_manager.dart';
 import 'package:musify/services/router_service.dart';
 import 'package:musify/services/settings_manager.dart';
@@ -111,6 +112,16 @@ void main() {
         NavigationManager.router.go(route);
         await _settle(tester);
         await _capture(tester, '$prefix-${_slug(route)}');
+        if (route == '/home/you') {
+          for (var i = 1; i <= 2; i++) {
+            await tester.drag(
+              find.byType(CustomScrollView).last,
+              Offset(0, -size.height * 0.7),
+            );
+            await _settle(tester);
+            await _capture(tester, '$prefix-you-$i');
+          }
+        }
         if (route == '/home') {
           // The rest of the home page, one screen at a time.
           for (var i = 1; i <= 4; i++) {
@@ -465,6 +476,23 @@ Future<List<Map<String, dynamic>>> _seedLibrary(String dir) async {
   }
   localSongs.value = songs;
   userRecentlyPlayed.value = [...songs.reversed];
+  // A few months of listening for the "Vous" page.
+  wrappedEnabled.value = true;
+  final now = DateTime.now();
+  for (var back = 4; back >= 0; back--) {
+    final when = DateTime(now.year, now.month - back, 10);
+    for (var i = 0; i < songs.length; i++) {
+      final plays = (songs.length - i) + back % 3;
+      for (var p = 0; p < plays; p++) {
+        listeningStatsService.recordListening(
+          songs[i],
+          Duration(seconds: 150 + 20 * i + 30 * back),
+          incrementPlayCount: true,
+          listenedAt: when,
+        );
+      }
+    }
+  }
   userLikedSongsList.value = songs.take(2).toList();
   userCustomPlaylists.value = [
     {

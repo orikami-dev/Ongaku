@@ -16,7 +16,7 @@ import 'package:musify/ongaku/l10n/ongaku_strings.dart';
 import 'package:musify/utilities/url_launcher.dart';
 import 'package:musify/widgets/shapes/four_sided_cookie_shape.dart';
 
-/// About page header: Ongaku's icon and name in its own font, the version,
+/// About page header: Ongaku's banner, the version,
 /// Orikami's card with the GitHub link, and the fork notice.
 class OngakuAboutHeader extends StatelessWidget {
   const OngakuAboutHeader({super.key});
@@ -27,27 +27,9 @@ class OngakuAboutHeader extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     return Column(
       children: [
-        const SizedBox(height: 14),
-        ClipRSuperellipse(
-          borderRadius: BorderRadius.circular(22),
-          child: Image.asset(
-            'assets/icons/ongaku_icon.png',
-            width: 96,
-            height: 96,
-          ),
-        ),
-        const SizedBox(height: 14),
-        Text(
-          appName,
-          style: TextStyle(
-            fontFamily: 'Inter',
-            color: colorScheme.onSurface,
-            fontSize: 38,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -1.4,
-          ),
-        ),
         const SizedBox(height: 8),
+        const _Banner('assets/icons/ongaku_banner.png'),
+        const SizedBox(height: 14),
         _VersionChip(),
         const SizedBox(height: 24),
         OngakuCreditCard(
@@ -89,33 +71,17 @@ class OngakuAboutHeader extends StatelessWidget {
   }
 }
 
-/// About page: Musify's name in its own font and its banner, above the
-/// card of its author.
+/// About page: Musify's banner, above the card of its author.
 class OngakuUpstreamHeader extends StatelessWidget {
   const OngakuUpstreamHeader({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     return Column(
       children: [
-        Text(
-          upstreamName,
-          style: TextStyle(
-            color: colorScheme.primary,
-            fontSize: 32,
-            fontWeight: FontWeight.bold,
-            fontFamily: 'paytoneOne',
-            letterSpacing: -1.2,
-          ),
-        ),
-        const SizedBox(height: 12),
         GestureDetector(
           onTap: () => launchURL(Uri.parse(upstreamUrl)),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: Image.asset('assets/icons/musify_banner.png'),
-          ),
+          child: const _Banner('assets/icons/musify_banner.png'),
         ),
         const SizedBox(height: 12),
       ],
@@ -160,6 +126,24 @@ class OngakuUpstreamAuthorCard extends StatelessWidget {
           url: 'https://gokadzev.github.io',
         ),
       ],
+    );
+  }
+}
+
+/// A 3:1 banner with rounded corners.
+class _Banner extends StatelessWidget {
+  const _Banner(this.asset);
+
+  final String asset;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: AspectRatio(
+        aspectRatio: 3,
+        child: Image.asset(asset, fit: BoxFit.cover),
+      ),
     );
   }
 }

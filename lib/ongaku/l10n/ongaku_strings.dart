@@ -66,8 +66,6 @@ class OngakuStrings {
   String get catAbout => _t('catAbout');
   String get you => _t('you');
   String get listeningHistory => _t('listeningHistory');
-  String get thisMonth => _t('thisMonth');
-  String get allStats => _t('allStats');
   String get minutes => _t('minutes');
   String get download => _t('download');
   String get removeDownload => _t('removeDownload');
@@ -90,6 +88,19 @@ class OngakuStrings {
   String get importErrNetwork => _t('importErrNetwork');
   String get importErrFile => _t('importErrFile');
   String get recentlyPlayed => _t('recentlyPlayed');
+  String get minutesListened => _t('minutesListened');
+  String get statSongs => _t('statSongs');
+  String get statArtists => _t('statArtists');
+  String get statPlays => _t('statPlays');
+  String get topArtists => _t('topArtists');
+  String get topSongs => _t('topSongs');
+  String get monthByMonth => _t('monthByMonth');
+  String get statsOff => _t('statsOff');
+  String get statsEmpty => _t('statsEmpty');
+  String get openSettings => _t('openSettings');
+  String playCount(int n) =>
+      _t(n == 1 ? 'playCountOne' : 'playCountMany').replaceAll('{n}', '$n');
+  String showAllSongs(int n) => _t('showAllSongs').replaceAll('{n}', '$n');
   String get aboutOngakuRole => _t('aboutOngakuRole');
   String get aboutOriginalRole => _t('aboutOriginalRole');
   String get aboutFork => _t('aboutFork');
@@ -145,8 +156,6 @@ class OngakuStrings {
       'catAbout': 'About',
       'you': 'You',
       'listeningHistory': 'Listening History',
-      'thisMonth': 'This month',
-      'allStats': 'All listening statistics',
       'minutes': 'minutes',
       'download': 'Download',
       'removeDownload': 'Remove download',
@@ -196,6 +205,21 @@ class OngakuStrings {
           'Ongaku is a fork of Musify, the free music app by Valeri '
           'Gokadze, released under the GPL-3.0 licence.',
       'comingSoon': 'coming soon',
+      'minutesListened': 'minutes listened',
+      'statSongs': 'songs',
+      'statArtists': 'artists',
+      'statPlays': 'plays',
+      'topArtists': 'Top Artists',
+      'topSongs': 'Top Songs',
+      'monthByMonth': 'Month by Month',
+      'statsOff':
+          'Listening statistics are turned off. Turn them on in Settings to '
+          'get your Replay.',
+      'statsEmpty': 'Listen to some music to see your Replay here.',
+      'openSettings': 'Open Settings',
+      'playCountOne': '1 play',
+      'playCountMany': '{n} plays',
+      'showAllSongs': 'Show all {n} songs',
       'recentlyPlayed': 'Recently Played',
       'moreBy': 'More by',
       'essentialAlbums': 'Essential Albums',
@@ -250,8 +274,6 @@ class OngakuStrings {
       'catAbout': 'À propos',
       'you': 'Vous',
       'listeningHistory': 'Historique d\'écoute',
-      'thisMonth': 'Ce mois-ci',
-      'allStats': 'Toutes les statistiques d\'écoute',
       'minutes': 'minutes',
       'download': 'Télécharger',
       'removeDownload': 'Retirer le téléchargement',
@@ -305,6 +327,21 @@ class OngakuStrings {
           'Ongaku est un fork de Musify, l’application musicale libre de '
           'Valeri Gokadze, distribuée sous licence GPL-3.0.',
       'comingSoon': 'bientôt disponible',
+      'minutesListened': 'minutes écoutées',
+      'statSongs': 'titres',
+      'statArtists': 'artistes',
+      'statPlays': 'écoutes',
+      'topArtists': 'Top artistes',
+      'topSongs': 'Top titres',
+      'monthByMonth': 'Mois par mois',
+      'statsOff':
+          'Les statistiques d’écoute sont désactivées. Activez-les dans les '
+          'réglages pour voir votre Replay.',
+      'statsEmpty': 'Écoutez de la musique pour voir votre Replay ici.',
+      'openSettings': 'Ouvrir les réglages',
+      'playCountOne': '1 écoute',
+      'playCountMany': '{n} écoutes',
+      'showAllSongs': 'Afficher les {n} titres',
       'recentlyPlayed': 'Écoutés récemment',
       'moreBy': 'Plus de :',
       'essentialAlbums': 'Albums incontournables',

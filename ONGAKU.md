@@ -83,6 +83,18 @@ the Android label, and the Linux/Windows titles.
 * Player: the old ⋯ menu is gone; its actions sit in the bottom row. The heart icon became a star everywhere (`FluentIcons.star_*`).
 * Lyrics: wider LRCLIB search and a per-session timing nudge (± 0.5 s).
 
+## v9
+
+* About: Ongaku's banner (`assets/icons/ongaku_banner.png`, made by
+  `scripts/make_about_banner.py` from the icon: same layout as Musify's
+  banner, Ongaku's colours and folded-paper facets) replaces the icon and
+  name; Musify keeps only its banner.
+* "Vous" is a Replay page: month chips, a gradient card with the minutes,
+  songs, artists and plays of the month, top artists, top songs (tap to
+  play) and minutes month by month. No listening history there any more
+  (still under the home menu). Data: Musify's listening statistics
+  (`lib/ongaku/home/you_stats.dart`).
+
 ## v8
 
 * Round buttons (like, add, download, share, edit) above Play / Shuffle.
