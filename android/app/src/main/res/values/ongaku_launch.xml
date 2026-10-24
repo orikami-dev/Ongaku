@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Ongaku: the opening is a plain screen of the app's own background,
+         with no logo that lingers before the app shows. -->
+    <color name="ongaku_launch">#FFFFFFFF</color>
+</resources>

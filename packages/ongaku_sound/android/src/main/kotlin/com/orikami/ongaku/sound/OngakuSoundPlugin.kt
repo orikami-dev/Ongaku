@@ -207,6 +207,9 @@ class OngakuSoundPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 "setLauncherIcon" -> result.success(
                     setLauncherIcon(call.argument<String>("palette") ?: "ongaku"),
                 )
+                "setOpeningMode" -> result.success(
+                    setOpeningMode(call.argument<String>("mode") ?: "system"),
+                )
                 else -> result.notImplemented()
             }
         } catch (e: Exception) {
@@ -550,6 +553,24 @@ class OngakuSoundPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             energy[band] += re * re + im * im
         }
         return DoubleArray(CENTRES.size) { 10 * log10(max(energy[it], 1e-9)) }
+    }
+
+    /**
+     * Android 12+: the app's own day or night mode, so the opening screen is
+     * dark when the app is set to dark (and light when set to light) even if
+     * the phone is not.
+     */
+    private fun setOpeningMode(mode: String): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return false
+        val manager = context.getSystemService(Context.UI_MODE_SERVICE) as UiModeManager
+        manager.setApplicationNightMode(
+            when (mode) {
+                "dark" -> UiModeManager.MODE_NIGHT_YES
+                "light" -> UiModeManager.MODE_NIGHT_NO
+                else -> UiModeManager.MODE_NIGHT_AUTO
+            },
+        )
+        return true
     }
 
     /** Enables the launcher alias of [palette] and disables the others. */

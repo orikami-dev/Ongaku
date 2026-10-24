@@ -12,6 +12,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:hive/hive.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:musify/theme/app_themes.dart' show themeMode;
 
 /// Page, card and text colours of a palette, for day or night.
 class OngakuNeutrals {
@@ -178,12 +179,21 @@ void setOngakuPalette(OngakuPalette palette) {
 
 AppLifecycleListener? _iconListener;
 
-/// Keeps the launcher icon on the theme's (Android).
+/// Keeps the launcher icon on the theme's, and the opening screen on the
+/// app's day or night mode (Android).
 void ongakuWatchPaletteIcon() {
   if (defaultTargetPlatform != TargetPlatform.android) return;
   _iconListener ??= AppLifecycleListener(
-    onHide: () => _channel
-        .invokeMethod('setLauncherIcon', {'palette': ongakuPalette.value.name})
-        .catchError((Object _) => null),
+    onHide: () {
+      _channel
+          .invokeMethod('setLauncherIcon', {
+            'palette': ongakuPalette.value.name,
+          })
+          .catchError((Object _) => null);
+      // The next opening screen takes the app's day or night mode.
+      _channel
+          .invokeMethod('setOpeningMode', {'mode': themeMode.name})
+          .catchError((Object _) => null);
+    },
   );
 }

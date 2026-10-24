@@ -31,6 +31,7 @@ small hooks marked `Ongaku:` or importing `package:musify/ongaku/...`:
 | `lib/services/router_service.dart` (license) | `applicationVersion: ongakuVersion` |
 | `lib/services/update_manager.dart` | update check compares with `ongakuVersion` (Ongaku's releases, not Musify's) |
 | `lib/utilities/flutter_toast.dart` | a toast replaces the one on screen; quicker `ongakuToastAnimation` |
+| `android/app/src/main/res` (styles, launch_background) | opening screen is the plain app background (`ongaku_launch`), no logo; Android 12+ splash icon blank (`ongaku_splash_blank`); `setOpeningMode` keeps it on the app's day/night mode |
 | `lib/widgets/playlist_page/like_button.dart` | liked star takes `onPrimary` (the theme's accent hid it) |
 | `lib/screens/settings_page.dart` (updates, imports) | "Rechercher une mise à jour" row (`ongakuCheckUpdatesNow`); brand logos on import rows; SoundCloud import |
 | `lib/services/router_service.dart` (home) | `ongakuLikedRoute` |

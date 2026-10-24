@@ -12,7 +12,8 @@ import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:musify/ongaku/screens/ongaku_shell.dart';
 
-/// Status and navigation bars that follow the app's theme, not the system's.
+/// Status and navigation bars that follow the app's theme, not the system's,
+/// and the app's soft fade-in when it opens.
 ///
 /// The Android window takes its background from the system day/night theme,
 /// so a dark Ongaku on a phone in day mode showed a white navigation bar.
@@ -37,7 +38,15 @@ class OngakuSystemBars extends StatelessWidget {
         systemNavigationBarContrastEnforced: false,
         systemNavigationBarIconBrightness: icons,
       ),
-      child: child,
+      // The app fades in over the plain opening screen, once.
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0, end: 1),
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOut,
+        builder: (context, value, child) =>
+            Opacity(opacity: value, child: child),
+        child: child,
+      ),
     );
   }
 }
