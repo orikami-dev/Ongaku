@@ -53,6 +53,13 @@ GoRoute ongakuRecentsRoute(PushPageBuilder pushPage) => GoRoute(
   ),
 );
 
+/// Home > "Morceaux préférés" tile, opened inside the home tab.
+GoRoute ongakuLikedRoute(PushPageBuilder pushPage) => GoRoute(
+  path: 'liked',
+  pageBuilder: (context, state) =>
+      pushPage(child: const UserSongsPage(page: 'liked'), state: state),
+);
+
 /// Settings > Import from Deezer / Apple Music.
 List<GoRoute> ongakuImportRoutes(PushPageBuilder pushPage) => [
   for (final (path, source) in [

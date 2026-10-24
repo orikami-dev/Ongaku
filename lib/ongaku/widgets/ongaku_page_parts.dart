@@ -210,6 +210,82 @@ class OngakuSectionTitle extends StatelessWidget {
   }
 }
 
+/// "Plus de : artist" section title: the artist's round photo, a grey
+/// label above the bold name, and a chevron to the artist page.
+class OngakuArtistSectionTitle extends StatelessWidget {
+  const OngakuArtistSectionTitle({
+    super.key,
+    required this.label,
+    required this.name,
+    this.image,
+    this.onTap,
+  });
+
+  final String label;
+  final String name;
+  final String? image;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final margin = ongakuPageMargin(context);
+    return Padding(
+      padding: EdgeInsets.fromLTRB(margin, 26, margin, 12),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Row(
+          children: [
+            ClipOval(
+              child: SizedBox.square(
+                dimension: 44,
+                child: OngakuCoverImage(image),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Flexible(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    label,
+                    maxLines: 1,
+                    style: TextStyle(
+                      color: colorScheme.onSurface.withValues(alpha: 0.55),
+                      fontSize: 14,
+                    ),
+                  ),
+                  Text(
+                    name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      color: colorScheme.onSurface,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.6,
+                      height: 1.1,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (onTap != null)
+              Icon(
+                Icons.chevron_right_rounded,
+                size: 28,
+                color: colorScheme.onSurface.withValues(alpha: 0.45),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// Horizontal shelf of items with the page margins, snapping per item.
 class OngakuShelf extends StatelessWidget {
   const OngakuShelf({
@@ -467,9 +543,10 @@ class OngakuSquareTile extends StatelessWidget {
 
 /// Artwork filling its box, with a neutral placeholder when missing.
 class OngakuCoverImage extends StatelessWidget {
-  const OngakuCoverImage(this.url, {super.key});
+  const OngakuCoverImage(this.url, {super.key, this.fit = BoxFit.cover});
 
   final String? url;
+  final BoxFit fit;
 
   @override
   Widget build(BuildContext context) {
@@ -477,7 +554,7 @@ class OngakuCoverImage extends StatelessWidget {
     if (url == null || url.isEmpty) return const _CoverPlaceholder();
     return Image(
       image: ArtworkProvider.get(url),
-      fit: BoxFit.cover,
+      fit: fit,
       width: double.infinity,
       height: double.infinity,
       gaplessPlayback: true,
@@ -499,6 +576,95 @@ class _CoverPlaceholder extends StatelessWidget {
           Icons.music_note_rounded,
           size: 40,
           color: colorScheme.onSurface.withValues(alpha: 0.3),
+        ),
+      ),
+    );
+  }
+}
+
+/// Tall "Replay" card: a bright gradient with the period, the minutes and
+/// the artists heard most, like Apple Music Replay.
+class OngakuReplayCard extends StatelessWidget {
+  const OngakuReplayCard({
+    super.key,
+    required this.title,
+    required this.caption,
+    required this.subtitle,
+    required this.colors,
+    this.onTap,
+  });
+
+  final String title;
+  final String caption;
+  final String subtitle;
+  final List<Color> colors;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return OngakuPressable(
+      onTap: onTap,
+      child: ClipRSuperellipse(
+        borderRadius: BorderRadius.circular(14),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: colors,
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Replay',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    color: Colors.white,
+                    fontSize: 30,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -1,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  caption,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.8),
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 17,
+                    height: 1.2,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                if (subtitle.isNotEmpty)
+                  Text(
+                    subtitle,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.85),
+                      fontSize: 14,
+                    ),
+                  ),
+              ],
+            ),
+          ),
         ),
       ),
     );

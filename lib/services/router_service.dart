@@ -192,6 +192,7 @@ class NavigationManager {
               _albumRoute(),
               ongakuYouRoute(_pushPage),
               ongakuRecentsRoute(_pushPage),
+              ongakuLikedRoute(_pushPage),
               GoRoute(
                 path: 'folder/:folderId/:folderName',
                 pageBuilder: (context, state) => _pushPage(

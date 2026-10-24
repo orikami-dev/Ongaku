@@ -30,9 +30,18 @@ const latestReleaseApiUrl =
     'https://api.github.com/repos/$releaseRepoOwner/$releaseRepoName/releases/latest';
 const apkDownloadFilename = '$appName.apk';
 
+/// Ongaku's author, credited first on the About and sponsor sections.
+const ongakuAuthor = 'Orikami';
+
+/// Ongaku's public repository and donation page. Shown dimmed ("bientôt
+/// disponible") until they exist: set them once they are online.
+const String? ongakuRepoUrl = null;
+const String? ongakuSponsorUrl = null;
+
 /// Upstream project this app is based on (credited in the About page).
 const upstreamName = 'Musify';
 const upstreamUrl = 'https://github.com/gokadzev/Musify';
+const upstreamSponsorUrl = 'https://ko-fi.com/gokadzev';
 
 /// Language used until the user picks one: the phone's, when the app has
 /// it, otherwise English (Musify always starts in English).

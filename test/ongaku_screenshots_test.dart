@@ -11,6 +11,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, debugDefaultTargetPlatformOverride;
 import 'package:flutter/rendering.dart' show RenderRepaintBoundary;
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -109,6 +111,17 @@ void main() {
         NavigationManager.router.go(route);
         await _settle(tester);
         await _capture(tester, '$prefix-${_slug(route)}');
+        if (route == '/home') {
+          // The rest of the home page, one screen at a time.
+          for (var i = 1; i <= 4; i++) {
+            await tester.drag(
+              find.byType(CustomScrollView).first,
+              Offset(0, -size.height * 0.8),
+            );
+            await _settle(tester);
+            await _capture(tester, '$prefix-home-$i');
+          }
+        }
       }
 
       if (player) {
@@ -218,6 +231,35 @@ void main() {
         await _settle(tester);
         await _capture(tester, 'theme-$mode');
       }
+      // The Couleur picker as on Android, with the dynamic colour switch.
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      tester
+          .widgetList<CustomBar>(find.byType(CustomBar))
+          .firstWhere((b) => b.tileName == 'Couleur')
+          .onTap!();
+      await _settle(tester);
+      await _capture(tester, 'accent-sheet');
+      Navigator.of(
+        tester.element(find.byType(CustomBar).first),
+        rootNavigator: true,
+      ).pop();
+      await _settle(tester);
+      debugDefaultTargetPlatformOverride = null;
+      // The sponsor section at the bottom of the settings.
+      await tester.drag(
+        find.byType(Scrollable).first,
+        const Offset(0, -6000),
+      );
+      await _settle(tester);
+      await _capture(tester, 'settings-bottom');
+      NavigationManager.router.go('/settings/about');
+      await _settle(tester);
+      await _capture(tester, 'about');
+      await tester.drag(find.byType(Scrollable).last, const Offset(0, -600));
+      await _settle(tester);
+      await _capture(tester, 'about-bottom');
+      NavigationManager.router.go('/settings');
+      await _settle(tester);
       for (final dangerous in [true, false]) {
         final context = tester.element(find.byType(CustomBar).first);
         // ignore: unawaited_futures

@@ -24,15 +24,17 @@ small hooks marked `Ongaku:` or importing `package:musify/ongaku/...`:
 | `lib/services/settings_manager.dart`, `lib/theme/app_colors.dart` | default accent (Apple red), system colors off |
 | `lib/widgets/shapes/*` | squircle instead of cookie shapes |
 | `lib/widgets/playlist_hero_artwork.dart` | square cover instead of the star clip |
-| `lib/screens/settings_page.dart` | pickers close with `ongakuClosePicker`; Spotify row opens Ongaku's import; Deezer / Apple Music import rows |
+| `lib/screens/settings_page.dart` | pickers close with `ongakuClosePicker`; Spotify row opens Ongaku's import; Deezer / Apple Music import rows; dynamic colour switch inside the Couleur picker (`ongakuAccentSheet`), swatch shows the system colour; no audio quality badge row; sponsor section is `OngakuSponsorCards` |
+| `lib/screens/about_page.dart` | `OngakuAboutHeader`, `OngakuUpstreamHeader`, `OngakuUpstreamAuthorCard` |
 | `lib/screens/playlist_page.dart`, `artist_page.dart` | round buttons above Play / Shuffle |
 | `lib/services/router_service.dart` (settings) | `ongakuImportRoutes` |
-| `lib/utilities/flutter_bottom_sheet.dart` | `isCustomBottomSheetOpen` |
+| `lib/services/router_service.dart` (home) | `ongakuLikedRoute` |
+| `lib/utilities/flutter_bottom_sheet.dart` | `isCustomBottomSheetOpen`; `showDragHandle: false` (one handle) |
 | `lib/widgets/confirmation_dialog.dart`, `rename_song_dialog.dart` | readable text on the coloured confirm button |
 | `lib/screens/{home,about}_page.dart`, `listening_recap_card.dart`, `linux_media_controls.dart` | app name |
 | `android/`, `linux/`, `windows/` | app id `com.orikami.ongaku`, labels |
 | `lib/localization/app_*.arb` | "Ongaku" instead of "Musify" in texts, rewritten by `scripts/brand_strings.py` after each merge |
-| `pubspec.yaml` | 3 dependencies (`# Ongaku`), Inter font |
+| `pubspec.yaml` | 3 dependencies (`# Ongaku`), Inter font, About page artwork |
 
 Everything else (playback, YouTube extraction, library, playlists, stats, proxy,
 equalizer, downloads...) is untouched Musify code, so upstream bug fixes and API
@@ -91,6 +93,19 @@ the Android label, and the Linux/Windows titles.
   and cover from oEmbed, songs from the embed player and, for long
   playlists, the Web API with the embed's anonymous token; a CSV export is
   still accepted.
+* Home laid out like Apple Music's Accueil: large title with the You button,
+  a ⋮ menu (You, history, settings) and a small title once scrolled; "Pour
+  vous", "Écoutés récemment" (favourite songs first), "Plus de : artist"
+  shelves for the two artists heard most, Musify's playlists grouped by
+  theme (`lib/ongaku/home/home_shelves.dart`), radios, your playlists,
+  suggestions, albums and Replay cards.
+* Settings: the audio quality badge row is gone, the dynamic accent colour
+  switch moved into the Couleur picker, and the Couleur swatch shows the
+  system colour when it is on.
+* About: Ongaku's icon and name (Inter), Orikami with the GitHub link
+  (`ongakuRepoUrl` in `brand.dart`, dimmed until set), the fork notice, then
+  Musify's name, banner and author. "Financer le projet" lists Orikami
+  (`ongakuSponsorUrl`) first, then Musify's creator.
 
 ## v7
 

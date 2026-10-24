@@ -9,6 +9,7 @@
  */
 
 import 'package:material_ui/material_ui.dart';
+import 'package:musify/services/settings_manager.dart';
 import 'package:musify/utilities/flutter_bottom_sheet.dart';
 
 /// Colours of the rounded icon tiles, as in the iOS Settings app.
@@ -219,4 +220,27 @@ void ongakuClosePicker(BuildContext context) {
     return;
   }
   Navigator.of(context, rootNavigator: true).maybePop();
+}
+
+/// The Couleur picker: the dynamic colour switch (Android 12+) above the
+/// colour grid, which dims while the system colour is used.
+Widget ongakuAccentSheet(
+  BuildContext context, {
+  required Widget? dynamicColor,
+  required Widget colors,
+}) {
+  if (dynamicColor == null) return colors;
+  return Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      dynamicColor,
+      const SizedBox(height: 12),
+      Flexible(
+        child: Opacity(
+          opacity: useSystemColor.value ? 0.45 : 1,
+          child: colors,
+        ),
+      ),
+    ],
+  );
 }

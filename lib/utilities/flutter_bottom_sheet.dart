@@ -32,6 +32,8 @@ PersistentBottomSheetController? showCustomBottomSheet(
 
   final controller = showBottomSheet(
     enableDrag: true,
+    // Ongaku: the sheet draws its own handle, not the theme's too.
+    showDragHandle: false,
     context: context,
     builder: (context) => Container(
       decoration: BoxDecoration(

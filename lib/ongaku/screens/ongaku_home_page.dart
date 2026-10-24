@@ -12,24 +12,30 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:musify/constants/app_constants.dart';
+import 'package:musify/database/playlists.db.dart';
+import 'package:musify/database/radio_stations.db.dart';
 import 'package:musify/extensions/l10n.dart';
 import 'package:musify/main.dart';
+import 'package:musify/ongaku/home/home_shelves.dart';
 import 'package:musify/ongaku/l10n/ongaku_strings.dart';
 import 'package:musify/ongaku/widgets/ongaku_page_parts.dart';
+import 'package:musify/services/artist_service.dart';
 import 'package:musify/services/common_services.dart';
 import 'package:musify/services/listening_stats_service.dart';
 import 'package:musify/services/playlists_manager.dart';
+import 'package:musify/services/router_service.dart';
 import 'package:musify/services/settings_manager.dart';
 import 'package:musify/utilities/app_utils.dart';
+import 'package:musify/utilities/flutter_toast.dart';
 import 'package:musify/utilities/listening_stats_utils.dart';
 import 'package:musify/utilities/mediaitem.dart';
 import 'package:musify/widgets/announcement_box.dart';
-import 'package:musify/widgets/listening_recap_card.dart';
-import 'package:musify/widgets/recommended_songs_section.dart';
 import 'package:musify/widgets/song_artwork.dart';
 
-/// Apple Music "Accueil": large title, "Pour vous" tall cards, recently
-/// played, then recommendations. Same data and actions as Musify's home.
+/// Apple Music "Accueil", laid out like the app: a small title that settles
+/// in the top bar on scroll, "Pour vous" tall cards, recently played,
+/// "Plus de : artist" shelves, themed playlist shelves, radios, your
+/// playlists and Replay. Same data and actions as Musify's home.
 class OngakuHomePage extends StatefulWidget {
   const OngakuHomePage({super.key});
 
@@ -42,6 +48,8 @@ class _OngakuHomePageState extends State<OngakuHomePage> {
     playlistsNum: recommendedCubesNumber,
   );
   late Future<List> _recommendedSongsFuture = getRecommendedSongs();
+  late final Future<List<Map<String, dynamic>>> _artistsFuture = _loadArtists();
+  final _scrolled = ValueNotifier<bool>(false);
 
   @override
   void initState() {
@@ -52,6 +60,7 @@ class _OngakuHomePageState extends State<OngakuHomePage> {
   @override
   void dispose() {
     externalRecommendations.removeListener(_refreshRecommendedSongs);
+    _scrolled.dispose();
     super.dispose();
   }
 
@@ -60,30 +69,98 @@ class _OngakuHomePageState extends State<OngakuHomePage> {
     setState(() => _recommendedSongsFuture = getRecommendedSongs());
   }
 
+  /// The two artists heard most in the recently played songs, with their
+  /// releases, for the "Plus de :" shelves.
+  Future<List<Map<String, dynamic>>> _loadArtists() async {
+    if (offlineMode.value) return const [];
+    final picks = topRecentArtists(userRecentlyPlayed.value, count: 2);
+    final profiles = await Future.wait(
+      picks.map(
+        (pick) => getArtistProfile(pick.id, preferredName: pick.name).catchError(
+          (_) => null,
+        ),
+      ),
+    );
+    return [
+      for (final profile in profiles)
+        if (profile != null && (profile['releases'] as List? ?? []).isNotEmpty)
+          profile,
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n!;
     final strings = OngakuStrings.of(context);
+    final topInset = MediaQuery.paddingOf(context).top;
+    const barHeight = 48.0;
 
     return Scaffold(
-      body: CustomScrollView(
-        physics: const BouncingScrollPhysics(
-          parent: AlwaysScrollableScrollPhysics(),
-        ),
-        slivers: [
-          SliverToBoxAdapter(
-            child: OngakuLargeTitle(
-              title: l10n.home,
-              trailing: const OngakuYouButton(),
+      body: Stack(
+        children: [
+          NotificationListener<ScrollUpdateNotification>(
+            onNotification: (n) {
+              if (n.depth == 0) _scrolled.value = n.metrics.pixels > 64;
+              return false;
+            },
+            child: CustomScrollView(
+              physics: const BouncingScrollPhysics(
+                parent: AlwaysScrollableScrollPhysics(),
+              ),
+              slivers: [
+                SliverToBoxAdapter(
+                  child: SizedBox(height: topInset + barHeight - 12),
+                ),
+                SliverToBoxAdapter(
+                  child: OngakuLargeTitle(
+                    title: l10n.home,
+                    includeStatusBar: false,
+                    trailing: const OngakuYouButton(),
+                  ),
+                ),
+                SliverToBoxAdapter(child: _announcement(context)),
+                SliverToBoxAdapter(
+                  child: OngakuSectionTitle(title: strings.forYou),
+                ),
+                SliverToBoxAdapter(child: _forYouShelf(context)),
+                SliverToBoxAdapter(child: _recentlyPlayed(context)),
+                SliverToBoxAdapter(child: _artistShelf(context, 0)),
+                SliverToBoxAdapter(
+                  child: _themeShelf(context, PlaylistTheme.moods),
+                ),
+                SliverToBoxAdapter(child: _radios(context)),
+                SliverToBoxAdapter(child: _artistShelf(context, 1)),
+                SliverToBoxAdapter(child: _yourPlaylists(context)),
+                SliverToBoxAdapter(
+                  child: _themeShelf(context, PlaylistTheme.charts),
+                ),
+                SliverToBoxAdapter(child: _recommended(context)),
+                SliverToBoxAdapter(
+                  child: _themeShelf(context, PlaylistTheme.hipHop),
+                ),
+                SliverToBoxAdapter(
+                  child: _themeShelf(context, PlaylistTheme.party),
+                ),
+                SliverToBoxAdapter(child: _albums(context)),
+                SliverToBoxAdapter(
+                  child: _themeShelf(context, PlaylistTheme.rock),
+                ),
+                SliverToBoxAdapter(
+                  child: _themeShelf(context, PlaylistTheme.world),
+                ),
+                SliverToBoxAdapter(
+                  child: _themeShelf(context, PlaylistTheme.other),
+                ),
+                SliverToBoxAdapter(child: _replay(context)),
+                const SliverToBoxAdapter(child: SizedBox(height: 32)),
+              ],
             ),
           ),
-          SliverToBoxAdapter(child: _announcement(context)),
-          SliverToBoxAdapter(child: OngakuSectionTitle(title: strings.forYou)),
-          SliverToBoxAdapter(child: _forYouShelf(context)),
-          SliverToBoxAdapter(child: _recentlyPlayed(context)),
-          SliverToBoxAdapter(child: _recap(context)),
-          SliverToBoxAdapter(child: _recommended(context)),
-          const SliverToBoxAdapter(child: SizedBox(height: 32)),
+          _TopBar(
+            title: l10n.home,
+            scrolled: _scrolled,
+            height: topInset + barHeight,
+          ),
         ],
       ),
     );
@@ -114,15 +191,20 @@ class _OngakuHomePageState extends State<OngakuHomePage> {
     );
   }
 
+  ({double width, double height}) _tallSize(BuildContext context) {
+    final width = ongakuShelfItemWidth(context, phone: 1.5, wide: 3.15);
+    final height = (width * 1.33).clamp(
+      240.0,
+      MediaQuery.sizeOf(context).height * 0.58,
+    );
+    return (width: width, height: height);
+  }
+
   /// Liked playlists first ("listen again"), then Musify's suggestions.
   Widget _forYouShelf(BuildContext context) {
     final strings = OngakuStrings.of(context);
     final l10n = context.l10n!;
-    final width = ongakuShelfItemWidth(context, phone: 1.45, wide: 3.15);
-    final height = (width * 1.33).clamp(
-      240.0,
-      MediaQuery.sizeOf(context).height * 0.55,
-    );
+    final size = _tallSize(context);
 
     return ValueListenableBuilder<List<Map>>(
       valueListenable: userLikedPlaylists,
@@ -142,7 +224,7 @@ class _OngakuHomePageState extends State<OngakuHomePage> {
 
             if (items.isEmpty) {
               return SizedBox(
-                height: height,
+                height: size.height,
                 child: snapshot.connectionState == ConnectionState.done
                     ? null
                     : const Center(child: CircularProgressIndicator()),
@@ -150,8 +232,8 @@ class _OngakuHomePageState extends State<OngakuHomePage> {
             }
 
             return OngakuShelf(
-              height: height,
-              itemWidth: width,
+              height: size.height,
+              itemWidth: size.width,
               itemCount: items.length,
               itemBuilder: (context, index) {
                 final (playlist, caption) = items[index];
@@ -171,28 +253,320 @@ class _OngakuHomePageState extends State<OngakuHomePage> {
     );
   }
 
+  double _squareWidth(BuildContext context) =>
+      ongakuShelfItemWidth(context, phone: 2.3, wide: 4.6);
+
+  /// "Écoutés récemment": the favourite songs first, as in Apple Music,
+  /// then the songs played last.
   Widget _recentlyPlayed(BuildContext context) {
     final l10n = context.l10n!;
-    final width = ongakuShelfItemWidth(context, phone: 2.3, wide: 4.6);
+    final strings = OngakuStrings.of(context);
+    final width = _squareWidth(context);
+    final colorScheme = Theme.of(context).colorScheme;
 
     return ValueListenableBuilder<List>(
       valueListenable: userRecentlyPlayed,
       builder: (context, songs, _) {
-        if (songs.isEmpty) return const SizedBox.shrink();
         final shown = songs.take(20).toList();
+        return ValueListenableBuilder<List>(
+          valueListenable: userLikedSongsList,
+          builder: (context, liked, _) {
+            final hasLiked = liked.isNotEmpty;
+            if (shown.isEmpty && !hasLiked) return const SizedBox.shrink();
+            final offset = hasLiked ? 1 : 0;
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                OngakuSectionTitle(
+                  title: strings.recentlyPlayed,
+                  onTap: () => context.push('/home/recents'),
+                ),
+                OngakuShelf(
+                  height: width + 48,
+                  itemWidth: width,
+                  itemCount: shown.length + offset,
+                  itemBuilder: (context, index) {
+                    if (hasLiked && index == 0) {
+                      return OngakuSquareTile(
+                        artwork: ColoredBox(
+                          color: colorScheme.onSurface.withValues(alpha: 0.07),
+                          child: Center(
+                            child: Icon(
+                              Icons.star_rounded,
+                              size: width * 0.55,
+                              color: colorScheme.primary,
+                            ),
+                          ),
+                        ),
+                        title: l10n.likedSongs,
+                        onTap: () => context.push('/home/liked'),
+                      );
+                    }
+                    final song = shown[index - offset] as Map;
+                    return OngakuSquareTile(
+                      artwork: LayoutBuilder(
+                        builder: (context, c) => SongArtworkWidget(
+                          metadata: mapToMediaItem(song),
+                          size: c.maxWidth,
+                          borderRadius: 0,
+                        ),
+                      ),
+                      title: song['title']?.toString() ?? '',
+                      subtitle: song['artist']?.toString(),
+                      onTap: () => audioHandler.playPlaylistSong(
+                        playlist: {'title': l10n.recentlyPlayed, 'list': shown},
+                        songIndex: index - offset,
+                      ),
+                    );
+                  },
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  /// "Plus de : artist": the releases of an artist heard recently.
+  Widget _artistShelf(BuildContext context, int position) {
+    final width = _squareWidth(context);
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _artistsFuture,
+      builder: (context, snapshot) {
+        final artists = snapshot.data ?? const [];
+        if (artists.length <= position) return const SizedBox.shrink();
+        final artist = artists[position];
+        final releases = (artist['releases'] as List).whereType<Map>().toList();
+        final artistId = artist['ytid']?.toString() ?? '';
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            OngakuArtistSectionTitle(
+              label: OngakuStrings.of(context).moreBy,
+              name: artist['title']?.toString() ?? '',
+              image: artist['image']?.toString(),
+              onTap: () => context.push(
+                NavigationManager.artistPath(context, artistId),
+                extra: artist,
+              ),
+            ),
+            OngakuShelf(
+              height: width + 48,
+              itemWidth: width,
+              itemCount: releases.length,
+              itemBuilder: (context, index) {
+                final release = releases[index];
+                return OngakuSquareTile(
+                  artwork: OngakuCoverImage(release['image']?.toString()),
+                  title: release['title']?.toString() ?? '',
+                  subtitle:
+                      release['artist']?.toString() ??
+                      release['year']?.toString(),
+                  onTap: () => context.push(
+                    NavigationManager.albumPath(
+                      context,
+                      release['ytid']?.toString() ?? '',
+                    ),
+                    extra: release,
+                  ),
+                );
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// A shelf of Musify's playlists on one theme.
+  Widget _themeShelf(BuildContext context, PlaylistTheme theme) {
+    return ValueListenableBuilder<bool>(
+      valueListenable: offlineMode,
+      builder: (context, offline, _) {
+        if (offline) return const SizedBox.shrink();
+        final items = playlistsForTheme(playlistsDB, theme);
+        if (items.isEmpty) return const SizedBox.shrink();
+        final width = _squareWidth(context);
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             OngakuSectionTitle(
-              title: l10n.recentlyPlayed,
-              onTap: () => context.push('/home/recents'),
+              title: OngakuStrings.of(context).themeTitle(theme),
+              shrinkToFit: true,
+            ),
+            OngakuShelf(
+              height: width + 30,
+              itemWidth: width,
+              itemCount: items.length,
+              itemBuilder: (context, index) {
+                final playlist = items[index];
+                return OngakuSquareTile(
+                  artwork: OngakuCoverImage(playlist['image']?.toString()),
+                  title: playlist['title']?.toString() ?? '',
+                  onTap: () =>
+                      context.push('/home/playlist/${playlist['ytid']}'),
+                );
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Musify's album list, as a shelf.
+  Widget _albums(BuildContext context) {
+    return ValueListenableBuilder<bool>(
+      valueListenable: offlineMode,
+      builder: (context, offline, _) {
+        if (offline) return const SizedBox.shrink();
+        final albums = playlists
+            .where((p) => p['isAlbum'] == true)
+            .take(24)
+            .toList();
+        if (albums.isEmpty) return const SizedBox.shrink();
+        final width = _squareWidth(context);
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            OngakuSectionTitle(title: OngakuStrings.of(context).essentialAlbums),
+            OngakuShelf(
+              height: width + 48,
+              itemWidth: width,
+              itemCount: albums.length,
+              itemBuilder: (context, index) {
+                final album = albums[index];
+                return OngakuSquareTile(
+                  artwork: OngakuCoverImage(album['image']?.toString()),
+                  title: album['title']?.toString() ?? '',
+                  subtitle: album['artist']?.toString(),
+                  onTap: () => context.push('/home/playlist/${album['ytid']}'),
+                );
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Radio stations, liked ones first; a tap starts the stream.
+  Widget _radios(BuildContext context) {
+    return ValueListenableBuilder<bool>(
+      valueListenable: offlineMode,
+      builder: (context, offline, _) {
+        if (offline || radioStationsDB.isEmpty) return const SizedBox.shrink();
+        final strings = OngakuStrings.of(context);
+        final liked = userLikedRadioStations.value.toSet();
+        final stations = [...radioStationsDB]
+          ..sort(
+            (a, b) =>
+                (liked.contains(b.id) ? 1 : 0) - (liked.contains(a.id) ? 1 : 0),
+          );
+        final shown = stations.take(16).toList();
+        final width = _squareWidth(context);
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            OngakuSectionTitle(
+              title: strings.radios,
+              onTap: () => context.push('/library/radioStations'),
             ),
             OngakuShelf(
               height: width + 48,
               itemWidth: width,
               itemCount: shown.length,
               itemBuilder: (context, index) {
-                final song = shown[index] as Map;
+                final station = shown[index];
+                return OngakuSquareTile(
+                  artwork: ColoredBox(
+                    color: Colors.white,
+                    child: Padding(
+                      padding: EdgeInsets.all(width * 0.12),
+                      child: OngakuCoverImage(station.image, fit: BoxFit.contain),
+                    ),
+                  ),
+                  title: station.name,
+                  subtitle: strings.radioStation,
+                  onTap: () async {
+                    final ok = await audioHandler.playRadioStream(
+                      id: station.id,
+                      name: station.name,
+                      streamUrl: station.streamUrl,
+                      image: station.image,
+                      genre: station.genre,
+                    );
+                    if (!ok && context.mounted) {
+                      showToast(context, context.l10n!.error);
+                    }
+                  },
+                );
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// The user's own playlists (created or imported) as tall cards.
+  Widget _yourPlaylists(BuildContext context) {
+    final strings = OngakuStrings.of(context);
+    final size = _tallSize(context);
+    return ValueListenableBuilder<List>(
+      valueListenable: userCustomPlaylists,
+      builder: (context, custom, _) {
+        final items = custom.whereType<Map>().toList().reversed.toList();
+        if (items.isEmpty) return const SizedBox.shrink();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            OngakuSectionTitle(
+              title: strings.yourPlaylists,
+              onTap: () => context.go('/library'),
+            ),
+            OngakuShelf(
+              height: size.height,
+              itemWidth: size.width,
+              itemCount: items.length,
+              itemBuilder: (context, index) {
+                final playlist = items[index];
+                final count = (playlist['list'] as List?)?.length ?? 0;
+                return OngakuTallCard(
+                  image: playlist['image']?.toString(),
+                  caption: strings.songCount(count),
+                  title: playlist['title']?.toString() ?? '',
+                  onTap: () =>
+                      context.push('/home/playlist/${playlist['ytid']}'),
+                );
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Musify's suggested songs, as a shelf.
+  Widget _recommended(BuildContext context) {
+    return FutureBuilder<List>(
+      future: _recommendedSongsFuture,
+      builder: (context, snapshot) {
+        final data = (snapshot.data ?? const []).whereType<Map>().toList();
+        if (data.isEmpty) return const SizedBox.shrink();
+        final width = _squareWidth(context);
+        final title = context.l10n!.recommendedForYou;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            OngakuSectionTitle(title: title),
+            OngakuShelf(
+              height: width + 48,
+              itemWidth: width,
+              itemCount: data.length,
+              itemBuilder: (context, index) {
+                final song = data[index];
                 return OngakuSquareTile(
                   artwork: LayoutBuilder(
                     builder: (context, c) => SongArtworkWidget(
@@ -204,7 +578,7 @@ class _OngakuHomePageState extends State<OngakuHomePage> {
                   title: song['title']?.toString() ?? '',
                   subtitle: song['artist']?.toString(),
                   onTap: () => audioHandler.playPlaylistSong(
-                    playlist: {'title': l10n.recentlyPlayed, 'list': shown},
+                    playlist: {'title': title, 'list': data},
                     songIndex: index,
                   ),
                 );
@@ -216,67 +590,167 @@ class _OngakuHomePageState extends State<OngakuHomePage> {
     );
   }
 
-  Widget _recap(BuildContext context) {
+  /// "Replay : votre classement musical": this month and the history.
+  Widget _replay(BuildContext context) {
     return ValueListenableBuilder<bool>(
       valueListenable: wrappedEnabled,
       builder: (context, enabled, __) {
         if (!enabled) return const SizedBox.shrink();
+        final strings = OngakuStrings.of(context);
         final monthKey = listeningStatsMonthKey(DateTime.now());
         final stats = listeningStatsService.monthStats(monthKey);
-        final songs = listeningStatsService.monthTopSongs(monthKey);
+        final top = listeningStatsService.monthTopSongs(monthKey);
         final minutes = monthDisplayMinutes(stats);
-        if (minutes <= 0 && songs.isEmpty) return const SizedBox.shrink();
+        final hasMonth = minutes > 0 || top.isNotEmpty;
+        final hasHistory = userRecentlyPlayed.value.isNotEmpty;
+        if (!hasMonth && !hasHistory) return const SizedBox.shrink();
 
-        final preview = songs.take(wrappedShareSongsLimit).toList();
-        final margin = ongakuPageMargin(context);
+        final size = _tallSize(context);
+        final month = formatMonthPeriodLabel(
+          Localizations.localeOf(context),
+          monthKey,
+        );
+        final artists = top
+            .map((s) => s['artist']?.toString() ?? '')
+            .where((a) => a.isNotEmpty)
+            .toSet()
+            .take(3)
+            .join(', ');
+        final cards = [
+          if (hasMonth)
+            OngakuReplayCard(
+              title: strings.replayMonth(month),
+              caption: strings.minShort(minutes),
+              subtitle: artists,
+              colors: const [
+                Color(0xFFF7B733),
+                Color(0xFF6EE7C7),
+                Color(0xFFB45AA0),
+                Color(0xFFE94E77),
+              ],
+              onTap: () => context.push('/home/you'),
+            ),
+          if (hasHistory)
+            OngakuReplayCard(
+              title: strings.replayHistory,
+              caption: context.l10n!.recentlyPlayed,
+              subtitle: userRecentlyPlayed.value
+                  .whereType<Map>()
+                  .map((s) => s['artist']?.toString() ?? '')
+                  .where((a) => a.isNotEmpty)
+                  .toSet()
+                  .take(3)
+                  .join(', '),
+              colors: const [
+                Color(0xFF5B4FD6),
+                Color(0xFF3FA7D6),
+                Color(0xFFE8456B),
+                Color(0xFFE8456B),
+              ],
+              onTap: () => context.push('/home/recents'),
+            ),
+        ];
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            OngakuSectionTitle(
-              title: context.l10n!.timeMachine,
-              onTap: () => context.push('/home/you'),
-            ),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: margin - 8),
-              child: ListeningRecapCard(
-                periodLabel: formatMonthPeriodLabel(
-                  Localizations.localeOf(context),
-                  monthKey,
-                ),
-                minutes: minutes,
-                songs: preview,
-                onSongTap: (index) => audioHandler.playPlaylistSong(
-                  playlist: {
-                    'title': context.l10n!.timeMachine,
-                    'list': preview,
-                  },
-                  songIndex: index,
-                ),
-              ),
+            OngakuSectionTitle(title: strings.replayTitle),
+            OngakuShelf(
+              height: size.height,
+              itemWidth: size.width,
+              itemCount: cards.length,
+              itemBuilder: (context, index) => cards[index],
             ),
           ],
         );
       },
     );
   }
+}
 
-  Widget _recommended(BuildContext context) {
-    return FutureBuilder<List>(
-      future: _recommendedSongsFuture,
-      builder: (context, snapshot) {
-        final data = snapshot.data ?? const [];
-        if (data.isEmpty) return const SizedBox.shrink();
-        return Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: ongakuPageMargin(context) - 10,
+/// Top bar: transparent with the menu button at first, then the small page
+/// title on the page colour once the large title has scrolled away.
+class _TopBar extends StatelessWidget {
+  const _TopBar({
+    required this.title,
+    required this.scrolled,
+    required this.height,
+  });
+
+  final String title;
+  final ValueNotifier<bool> scrolled;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final margin = ongakuPageMargin(context);
+    return ValueListenableBuilder<bool>(
+      valueListenable: scrolled,
+      builder: (context, isScrolled, _) {
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          height: height,
+          padding: EdgeInsets.only(
+            top: MediaQuery.paddingOf(context).top,
+            left: margin,
+            right: margin - 12,
           ),
-          child: RecommendedSongsSection(
-            title: context.l10n!.recommendedForYou,
-            songs: data,
-            listKeyPrefix: 'home_recommended',
+          decoration: BoxDecoration(
+            color: isScrolled
+                ? Theme.of(context).scaffoldBackgroundColor
+                : Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 200),
+                  opacity: isScrolled ? 1 : 0,
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                      color: colorScheme.onSurface,
+                    ),
+                  ),
+                ),
+              ),
+              const _HomeMenu(),
+            ],
           ),
         );
       },
+    );
+  }
+}
+
+/// The "⋮" menu of the home page.
+class _HomeMenu extends StatelessWidget {
+  const _HomeMenu();
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = OngakuStrings.of(context);
+    final l10n = context.l10n!;
+    return PopupMenuButton<String>(
+      icon: Icon(
+        Icons.more_vert_rounded,
+        color: Theme.of(context).colorScheme.primary,
+      ),
+      onSelected: (route) => route.startsWith('/settings')
+          ? context.go(route)
+          : context.push(route),
+      itemBuilder: (context) => [
+        PopupMenuItem(value: '/home/you', child: Text(strings.you)),
+        PopupMenuItem(
+          value: '/home/recents',
+          child: Text(strings.listeningHistory),
+        ),
+        PopupMenuItem(value: '/settings', child: Text(l10n.settings)),
+      ],
     );
   }
 }

@@ -27,6 +27,7 @@ import 'package:musify/constants/app_constants.dart';
 import 'package:musify/extensions/l10n.dart';
 import 'package:musify/main.dart';
 import 'package:musify/ongaku/l10n/ongaku_strings.dart';
+import 'package:musify/ongaku/widgets/ongaku_credits.dart';
 import 'package:musify/ongaku/widgets/ongaku_page_parts.dart';
 import 'package:musify/ongaku/widgets/ongaku_settings_ui.dart';
 import 'package:musify/screens/search_page.dart';
@@ -50,7 +51,6 @@ import 'package:musify/widgets/confirmation_dialog.dart';
 import 'package:musify/widgets/custom_bar.dart';
 import 'package:musify/widgets/mini_player_bottom_space.dart';
 import 'package:musify/widgets/section_header.dart';
-import 'package:musify/widgets/shapes/four_sided_cookie_shape.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -102,12 +102,15 @@ class SettingsPage extends StatelessWidget {
             context.l10n!.accentColor,
             FluentIcons.color_24_regular,
             borderRadius: commonCustomBarRadiusFirst,
-            // Ongaku: the current colour shows on every platform.
+            // Ongaku: the current colour shows on every platform, the
+            // system's when the dynamic colour is on.
             trailing: Container(
               width: 26,
               height: 26,
               decoration: BoxDecoration(
-                color: primaryColorSetting,
+                color: isAndroidPlatform && useSystemColor.value
+                    ? Theme.of(context).colorScheme.primary
+                    : primaryColorSetting,
                 shape: BoxShape.circle,
                 border: Border.all(
                   color: Theme.of(context).colorScheme.outlineVariant,
@@ -131,16 +134,7 @@ class SettingsPage extends StatelessWidget {
                 onChanged: (value) => _togglePureBlack(context, value),
               ),
             ),
-          if (isAndroidPlatform)
-            CustomBar(
-              context.l10n!.dynamicColor,
-              FluentIcons.toggle_left_24_regular,
-              description: context.l10n!.dynamicColorDescription,
-              trailing: Switch(
-                value: useSystemColor.value,
-                onChanged: (value) => _toggleSystemColor(context, value),
-              ),
-            ),
+          // Ongaku: the dynamic colour switch is in the Couleur picker.
           CustomBar(
             context.l10n!.language,
             FluentIcons.translate_24_regular,
@@ -153,21 +147,7 @@ class SettingsPage extends StatelessWidget {
             FluentIcons.music_note_1_24_regular,
             onTap: () => _showAudioQualityPicker(context),
           ),
-          ValueListenableBuilder<bool>(
-            valueListenable: showAudioQualityBadge,
-            builder: (_, value, __) {
-              return CustomBar(
-                context.l10n!.audioQualityBadge,
-                FluentIcons.badge_24_regular,
-                description: context.l10n!.audioQualityBadgeDescription,
-                trailing: Switch(
-                  value: value,
-                  onChanged: (value) =>
-                      _toggleAudioQualityBadge(context, value),
-                ),
-              );
-            },
-          ),
+          // Ongaku: no audio quality badge row.
           if (isAndroidPlatform)
             CustomBar(
               context.l10n!.equalizer,
@@ -512,54 +492,14 @@ class SettingsPage extends StatelessWidget {
       : OngakuSettingsGroup(title: title, tint: tint, children: rows);
 
   Widget _buildSponsorSection(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
     return Column(
       children: [
         SectionHeader(
-          title: context.l10n!.becomeSponsor,
+          title: context.l10n!.sponsorProject,
           icon: FluentIcons.star_24_filled,
         ),
-        Card(
-          margin: const EdgeInsets.only(bottom: 8),
-          elevation: 0,
-          color: colorScheme.primaryContainer,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: InkWell(
-            onTap: () => launchURL(Uri.parse('https://ko-fi.com/gokadzev')),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
-              child: Row(
-                children: [
-                  FourSidedCookieShape(
-                    size: 44,
-                    color: colorScheme.onPrimaryContainer.withValues(
-                      alpha: 0.14,
-                    ),
-                    child: Icon(
-                      FluentIcons.drink_coffee_24_filled,
-                      color: colorScheme.onPrimaryContainer,
-                      size: 24,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Text(
-                      context.l10n!.sponsorProject,
-                      style: TextStyle(
-                        color: colorScheme.onPrimaryContainer,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
+        // Ongaku: Orikami first, then Musify's creator.
+        const OngakuSponsorCards(),
       ],
     );
   }
@@ -614,12 +554,30 @@ class SettingsPage extends StatelessWidget {
     }
 
     final colorScheme = Theme.of(context).colorScheme;
+    final dynamicOn = isAndroidPlatform && useSystemColor.value;
 
     showCustomBottomSheet(
       context,
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: GridView.builder(
+        // Ongaku: the dynamic colour switch sits above the colours.
+        child: ongakuAccentSheet(
+          context,
+          dynamicColor: isAndroidPlatform
+              ? CustomBar(
+                  context.l10n!.dynamicColor,
+                  FluentIcons.toggle_left_24_regular,
+                  description: context.l10n!.dynamicColorDescription,
+                  trailing: Switch(
+                    value: useSystemColor.value,
+                    onChanged: (value) {
+                      _toggleSystemColor(context, value);
+                      ongakuClosePicker(context);
+                    },
+                  ),
+                )
+              : null,
+          colors: GridView.builder(
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 5,
             mainAxisSpacing: 12,
@@ -630,7 +588,7 @@ class SettingsPage extends StatelessWidget {
           itemCount: availableColors.length,
           itemBuilder: (context, index) {
             final color = availableColors[index];
-            final isSelected = color == primaryColorSetting;
+            final isSelected = !dynamicOn && color == primaryColorSetting;
 
             return GestureDetector(
               onTap: () => _selectAccentColor(context, color),
@@ -655,6 +613,7 @@ class SettingsPage extends StatelessWidget {
               ),
             );
           },
+          ),
         ),
       ),
     );
@@ -875,12 +834,6 @@ class SettingsPage extends StatelessWidget {
     addOrUpdateData<bool>('settings', 'usePureBlackColor', value);
     usePureBlackColor.value = value;
     Musify.updateAppState(context);
-    showToast(context, context.l10n!.settingChangedMsg);
-  }
-
-  void _toggleAudioQualityBadge(BuildContext context, bool value) {
-    addOrUpdateData<bool>('settings', 'showAudioQualityBadge', value);
-    showAudioQualityBadge.value = value;
     showToast(context, context.l10n!.settingChangedMsg);
   }
 

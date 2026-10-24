@@ -67,6 +67,9 @@ flutter:
   assets:
     - assets/licenses/
     - assets/icons/musify_icon.png
+    # Ongaku: About page artwork.
+    - assets/icons/ongaku_icon.png
+    - assets/icons/musify_banner.png
 
   fonts:
     - family: paytoneOne
