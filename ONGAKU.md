@@ -241,3 +241,12 @@ the Android label, and the Linux/Windows titles.
   flutter test test/ongaku_screenshots_test.dart \
     --dart-define=ONGAKU_SHOTS=true --dart-define=ONGAKU_SHOTS_DIR=/tmp/shots
   ```
+
+## Publication
+
+Published at https://github.com/orikami-dev/ongaku (branch `main`). `README.md`,
+`NOTICE.md`, `CHANGELOG.md`, `docs/` and `.github/FUNDING.yml` are Ongaku's own: on an upstream merge,
+keep Ongaku's version. Releases are tagged `vX.Y` or `vX.Y.Z` (1.0.x upstream fixes, 1.x.0 new feature,
+x.0 redesign) with one asset `Ongaku-<version>-arm64.apk`; the in-app updater reads `check.json` on the `update` branch.
+Release title `Ongaku <version>`, notes from `docs/releases/<version>.md`, and a line
+in `CHANGELOG.md` and in the README's major updates table.

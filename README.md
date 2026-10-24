@@ -1,121 +1,84 @@
-<div align="center">
-<img src="https://github.com/gokadzev/Musify/raw/master/.github/assets/Musify-banner.png" width="100%">
+<p align="center">
+  <img src="docs/images/ongaku-icone.png" width="128" alt="Ongaku">
+</p>
 
-# Musify
+<h1 align="center">Ongaku</h1>
+<p align="center"><b>Écoute. Respire.</b><br>par ORIKAMI</p>
 
-Unlock the full potential of music: Stream effortlessly with one app!
-
-[![Stars](https://img.shields.io/github/stars/gokadzev/Musify?style=flat-square&color=D3BEAB)](https://github.com/gokadzev/Musify/stargazers)
-[![Forks](https://img.shields.io/github/forks/gokadzev/Musify?style=flat-square&color=D3BEAB)](https://github.com/gokadzev/Musify/fork)
-[![Downloads](https://img.shields.io/github/downloads/gokadzev/Musify/total?style=flat-square&color=D3BEAB)](https://github.com/gokadzev/Musify/releases)
-[![GitHub release](https://img.shields.io/github/v/release/gokadzev/Musify?color=D3BEAB)](https://github.com/gokadzev/Musify/releases)
-[![License](https://img.shields.io/github/license/gokadzev/Musify?color=D3BEAB)](LICENSE)
-
----
-
-<a href="https://ko-fi.com/gokadzev" target="_blank" title="ko-fi">
-  <img src="https://github.com/user-attachments/assets/1c204507-d124-4b34-878b-96c39c9bb3f8"  alt="ko-fi badge" style="width: 150px;">
-</a>
-
-
+<p align="center">
+  <a href="https://github.com/orikami-dev/ongaku/releases/latest">⬇️ <b>Télécharger la dernière version</b></a>
+  ·
+  <a href="https://github.com/orikami-dev/ongaku/releases">📦 Toutes les versions</a>
+  ·
+  <a href="CHANGELOG.md">📝 Journal des versions</a>
+</p>
 
 ---
 
-## Features
+## 🎵 Le projet
 
-<center>
+Ongaku est un lecteur de musique Android gratuit et sans publicité, au style Apple Music. Il reprend tout ce que fait [Musify](https://github.com/gokadzev/Musify) (recherche, streaming, playlists, paroles, radios, téléchargements) et lui donne une interface pensée pour le téléphone et les pliants.
 
-Online song search with suggestions <br/>
-Offline listening support <br/>
-Import & export your data and never lose it <br/>
-Add custom playlists with link <br/>
-Listening Recaps <br/>
-Spotify playlist import <br/>
-Radio stations <br/>
-Optimized sound experience <br/>
-SponsorBlock support <br/>
-Lyrics support <br/>
-No ads <br/>
-No subscriptions <br/>
-Built-in updater <br/>
-Built-in equalizer with presets <br/>
-21 supported languages <br/>
-Material UI & accent colors & dynamic colors (Android 12+) <br/>
+<p align="center">
+  <img src="docs/images/captures-1.0.png" width="92%" alt="Accueil, lecteur, paroles et Tous les titres">
+</p>
 
-</center>
+| | |
+|---|---|
+| 🏠 **Pour vous** | Accueil façon Apple Music, avec tes playlists, tes écoutes récentes et des sélections. |
+| 🎧 **Lecteur** | Plein écran animé, fond aux couleurs de la pochette, paroles synchronisées dans leur propre zone. |
+| 📁 **Fichiers locaux** | La musique déjà présente sur le téléphone, à côté du streaming. |
+| 🔊 **Son calibré** | Un réglage par sortie (haut-parleur, écouteurs, voiture), avec test acoustique ou test d'audition. |
+| 🌙 **Mode doux** | Fondu enchaîné entre les titres. |
+| 🚗 **Android Auto** | Tes onglets et ta musique en voiture. |
+| 🔄 **Mises à jour intégrées** | Les nouvelles versions sont proposées directement dans l'app. |
 
+## 🎨 Quatre thèmes
 
----
+Chaque thème a ses couleurs et son icône d'app assortie.
 
-## Screenshots
+| Thème | En une phrase |
+|---|---|
+| 🖋️ **Sumi** | L'encre de Chine, sombre, avec une touche violette. |
+| 📜 **Washi** | Le papier japonais, clair et chaleureux. |
+| 🌸 **Sakura** | La nuit rose des cerisiers en fleurs. |
+| 🍵 **Matcha** | Le vert tendre du thé, en clair. |
 
-| ![Screenshot 1](https://raw.githubusercontent.com/gokadzev/Musify/master/fastlane/metadata/android/en-US/images/phoneScreenshots/01.jpg) | ![Screenshot 2](https://raw.githubusercontent.com/gokadzev/Musify/master/fastlane/metadata/android/en-US/images/phoneScreenshots/02.jpg) | ![Screenshot 3](https://raw.githubusercontent.com/gokadzev/Musify/master/fastlane/metadata/android/en-US/images/phoneScreenshots/03.jpg) | ![Screenshot 4](https://raw.githubusercontent.com/gokadzev/Musify/master/fastlane/metadata/android/en-US/images/phoneScreenshots/04.jpg) |
-|----------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------|
+<p align="center">
+  <img src="docs/images/themes-1.0.png" width="92%" alt="Sumi, Washi, Sakura et Matcha">
+</p>
 
+## ✨ Points forts
 
----
+- 📐 Interface à la taille de chaque écran : téléphones, pliants, tablettes.
+- 📖 Sur un pliant à moitié ouvert, le lecteur se partage : pochette ou paroles en haut, commandes et file d'attente en bas.
+- 🔤 « Tous les titres » avec index alphabétique.
+- 📥 Import de playlists Spotify, Deezer et Apple Music, avec nom, pochette et tous les titres.
+- 📊 Replay : tes statistiques d'écoute.
+- 🚫 Sans publicité, sans abonnement, SponsorBlock intégré.
 
-## Download
+<p align="center">
+  <img src="docs/images/pliants-1.0.png" width="92%" alt="Lecteur sur un pliant à moitié ouvert et sur grand écran">
+</p>
 
+## ⭐ Mises à jour majeures
 
-[<img src="https://github.com/gokadzev/Musify/raw/master/.github/assets/get-it-on-github.png" alt="Get it on Github" height="80">](https://github.com/gokadzev/Musify/releases/latest)
-[<img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" alt="Get it on Fdroid" height="80">](https://f-droid.org/packages/com.gokadzev.musify.fdroid)
+| Version | Ce qu'elle a apporté |
+|---|---|
+| [1.0](https://github.com/orikami-dev/ongaku/releases/tag/v1.0) | Première version publique : lecteur partagé sur les pliants, interface à la taille de l'écran, Android Auto, mises à jour intégrées. |
 
+## 🛠️ Le dépôt
 
----
+| Dossier | Contenu |
+|---|---|
+| `lib/ongaku/` | Tout le code propre à Ongaku (interface, lecteur, son, thèmes, fichiers locaux) |
+| `lib/` (reste) | Le code de Musify, gardé tel quel pour suivre ses mises à jour |
+| `packages/` | Paquets embarqués (lecture audio, extraction) |
+| `docs/` | Notes de chaque version (`docs/releases`), images |
+| `scripts/` | Synchronisation avec Musify, vérifications |
 
-## Contributors
+Construire : `flutter build apk --flavor github --release --target-platform android-arm64`. Les points de contact avec Musify sont listés dans [ONGAKU.md](ONGAKU.md).
 
-Special thanks to all contributors for their time and effort.
+## ⚖️ Licences
 
-<a href="https://github.com/gokadzev/Musify/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=gokadzev/Musify" alt="Contributors"/>
-</a>
-
-
----
-
-## Contribute
-
-Contributions are always welcome. Please read our [contributing guidelines](https://github.com/gokadzev/Musify/blob/master/CONTRIBUTING.md) before contributing.
-
----
-
-## F.A.Q
-
-You can see frequently asked questions and their answers [here](https://github.com/gokadzev/Musify/discussions/728).
-
----
-
-## Credits
-
-[Musify](https://github.com/Harsh-23/Musify) - Original inspiration for the concept and name. It is now completely reimplemented with new design and branding.
-
-
----
-
-## License
-
-```
-Copyright © 2026 Valeri Gokadze
-
-Musify is free software licensed under GPL v3.0. You may use, modify, and distribute
-this software freely, but must keep the source code open and publicly available, retain
-all copyright notices, disclose all changes made, and use the same GPL v3.0 license.
-
-Prohibited: Closed-source distributions or commercial redistribution of modified versions.
-```
-
-See the [GNU General Public License](https://github.com/gokadzev/Musify/blob/master/LICENSE) for full details.
-
----
-
-## Disclaimer
-
-```
-Musify and its contributors do not host, own, or distribute any copyrighted audio content.
-The app provides access to content through plugins and external sources. All trademarks, songs, audio files, and related content remain the property of their respective owners and are protected by applicable copyright laws.
-Included plugins are provided for interoperability and educational purposes only. Users are solely responsible for ensuring that their use of the app complies with local laws, copyright regulations, and the terms of service of the respective content providers.
-The developers of Musify do not encourage or endorse copyright infringement and assume no liability for misuse of the software or third-party plugins.
-```
----
+Ongaku est une version modifiée de [Musify](https://github.com/gokadzev/Musify) de Valeri Gokadze et ses contributeurs, distribuée comme lui sous licence GNU GPL v3.0 (voir [LICENSE](LICENSE) et [NOTICE.md](NOTICE.md)). Pour soutenir Musify : [ko-fi.com/gokadzev](https://ko-fi.com/gokadzev). Ongaku n'est affilié ni à Apple, ni à YouTube, ni à Google, ni à Spotify, ni à Deezer.
