@@ -1,0 +1,64 @@
+name: Sync with Musify
+
+# Every day, merges the latest Musify changes (bug fixes, API/YouTube updates)
+# into a branch, checks that Ongaku still builds, and opens a pull request.
+on:
+  schedule:
+    - cron: '0 5 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Merge upstream
+        id: merge
+        run: |
+          git config user.name "ongaku-sync"
+          git config user.email "ongaku-sync@users.noreply.github.com"
+          git remote add upstream https://github.com/gokadzev/Musify.git
+          git fetch upstream master
+          if git merge-base --is-ancestor upstream/master HEAD; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          git checkout -b "sync/musify-$(date +%Y%m%d)"
+          if git merge --no-edit upstream/master; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            git merge --abort
+            echo "changed=conflict" >> "$GITHUB_OUTPUT"
+          fi
+      - run: |
+          pip install -U yq
+          echo "FLUTTER_VERSION=$(yq -r .environment.flutter pubspec.yaml | sed 's/\^//g')" >> $GITHUB_ENV
+        if: steps.merge.outputs.changed == 'true'
+      - uses: subosito/flutter-action@v2
+        if: steps.merge.outputs.changed == 'true'
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+      - name: Verify (analyze, tests, Ongaku hooks)
+        if: steps.merge.outputs.changed == 'true'
+        run: scripts/verify.sh
+      - name: Open pull request
+        if: steps.merge.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git push -u origin HEAD
+          gh pr create --base master --title "Sync with Musify $(date +%Y-%m-%d)" \
+            --body "Automatic merge of upstream Musify. Analyze, tests and Ongaku hook checks passed."
+      - name: Report conflict
+        if: steps.merge.outputs.changed == 'conflict'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create --title "Musify sync needs manual merge" \
+            --body "Run scripts/sync_upstream.sh locally and resolve the conflict in the Ongaku hooks (see ONGAKU.md)."

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Made by scripts/make_ongaku_icon.py with palettes. -->
+    <color name="ic_launcher_background_washi">#1F1416</color>
+    <color name="ic_launcher_background_sumi">#000000</color>
+    <color name="ic_launcher_background_ai">#161821</color>
+    <color name="ic_launcher_background_matcha">#171B19</color>
+    <color name="ic_launcher_background_sakura">#1E171D</color>
+    <color name="ic_launcher_background_kin">#1E1A15</color>
+</resources>

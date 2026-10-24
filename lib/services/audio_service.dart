@@ -1,0 +1,2785 @@
+/*
+ *     Copyright (C) 2026 Valeri Gokadze
+ *
+ *     Musify is free software: you can redistribute it and/or modify
+ *     it under the terms of the GNU General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ *
+ *     Musify is distributed in the hope that it will be useful,
+ *     but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *     GNU General Public License for more details.
+ *
+ *     You should have received a copy of the GNU General Public License
+ *     along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *
+ *
+ *     For more information about Musify, including how to contribute,
+ *     please visit: https://github.com/gokadzev/Musify
+ */
+
+import 'dart:async';
+import 'dart:io';
+
+import 'package:audio_service/audio_service.dart';
+import 'package:audio_session/audio_session.dart';
+import 'package:hive/hive.dart';
+import 'package:just_audio/just_audio.dart';
+import 'package:musify/constants/clients.dart';
+import 'package:musify/main.dart';
+import 'package:musify/models/position_data.dart';
+import 'package:musify/ongaku/brand.dart';
+import 'package:musify/ongaku/services/ongaku_auto_browser.dart';
+import 'package:musify/ongaku/services/ongaku_notification.dart';
+import 'package:musify/services/audio_service_android_auto.dart';
+import 'package:musify/services/common_services.dart';
+import 'package:musify/services/data_manager.dart';
+import 'package:musify/services/listening_stats_service.dart';
+import 'package:musify/services/settings_manager.dart';
+import 'package:musify/utilities/map_utils.dart';
+import 'package:musify/utilities/media_duration.dart';
+import 'package:musify/utilities/mediaitem.dart';
+import 'package:musify/utilities/platform_utils.dart';
+import 'package:musify/utilities/queue_entry_utils.dart';
+import 'package:rxdart/rxdart.dart';
+
+class MusifyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
+  MusifyAudioHandler() {
+    final androidEqualizer = Platform.isAndroid ? AndroidEqualizer() : null;
+    _androidEqualizer = androidEqualizer;
+    audioPlayer = AudioPlayer(
+      handleInterruptions: isMobilePlatform,
+      handleAudioSessionActivation: isMobilePlatform,
+      audioPipeline: androidEqualizer == null
+          ? null
+          : AudioPipeline(androidAudioEffects: [androidEqualizer]),
+      audioLoadConfiguration: const AudioLoadConfiguration(
+        androidLoadControl: AndroidLoadControl(
+          maxBufferDuration: Duration(seconds: 60),
+          bufferForPlaybackDuration: Duration(milliseconds: 500),
+          bufferForPlaybackAfterRebufferDuration: Duration(seconds: 3),
+        ),
+      ),
+    );
+
+    // Ongaku: the car shows Ongaku's tabs, local files and All Songs.
+    _androidAutoBrowser = OngakuAutoBrowser(this);
+    _setupEventSubscriptions();
+    if (isAndroidPlatform) {
+      _androidAutoBrowser.setupMediaBrowserSubscriptions();
+    }
+    _updatePlaybackState();
+
+    if (isAndroidPlatform) {
+      audioPlayer.setAndroidAudioAttributes(
+        const AndroidAudioAttributes(
+          contentType: AndroidAudioContentType.music,
+          usage: AndroidAudioUsage.media,
+        ),
+      );
+    }
+
+    _initialize();
+  }
+
+  // Player and service collaborators.
+  late final AndroidEqualizer? _androidEqualizer;
+  late final AudioPlayer audioPlayer;
+  late final AndroidAutoBrowser _androidAutoBrowser;
+  bool _equalizerInitialized = false;
+  Future<bool>? _equalizerInitFuture;
+  DateTime _equalizerRetryNotBefore = DateTime.fromMillisecondsSinceEpoch(0);
+
+  // Queue contents and active positions.
+  final List<Map> _queueList = [];
+  final List<Map> _originalQueueList = [];
+  final Map<String, Map> _originalQueueEntriesById = {};
+  final List<Map> _historyList = [];
+  final BehaviorSubject<List<Map>> _queueMapStream =
+      BehaviorSubject<List<Map>>.seeded([]);
+  final QueueEntryIdManager _queueEntryIds = QueueEntryIdManager();
+  int _currentQueueIndex = 0;
+  int _currentLoadingIndex = -1;
+  int _currentLoadingTransitionId = -1;
+
+  // Playback transition and state-update coordination.
+  bool _isUpdatingState = false;
+  bool _pendingPlaybackStateUpdate = false;
+  bool _pendingForcedPlaybackStateUpdate = false;
+  int _songTransitionCounter = 0;
+  bool _queuePlayWhenReady = true;
+  bool _completionEventPending = false;
+  bool _completionHandlerLoadStarted = false;
+  String? _lastError;
+  int _consecutiveErrors = 0;
+
+  // Timers and sleep-timer state.
+  Timer? _sleepTimer;
+  Timer? _debounceTimer;
+  bool sleepTimerExpired = false;
+  bool sleepTimerEndOfSong = false;
+
+  // Background stream preload state.
+  int _activePreloadCount = 0;
+  final Set<String> _preloadingYtIds = <String>{};
+  final Set<String> _preloadedYtIds = <String>{};
+
+  // Playback, history, and timing limits.
+  static const int _maxConsecutiveErrors = 3;
+  static const int _maxHistorySize = 50;
+  static const int _queueLookahead = 3;
+  static const int _maxConcurrentPreloads = 2;
+  static const Duration _errorRetryDelay = Duration(seconds: 2);
+  static const Duration _songTransitionTimeout = Duration(seconds: 30);
+  static const Duration _debounceInterval = Duration(milliseconds: 150);
+  static const Duration _positionDataThreshold = Duration(milliseconds: 250);
+  static const Duration _playbackStateHeartbeat = Duration(seconds: 1);
+
+  // Derived player streams.
+  late final Stream<PositionData> _positionDataStream =
+      Rx.combineLatest3<Duration, Duration, Duration?, PositionData>(
+        audioPlayer.positionStream,
+        audioPlayer.bufferedPositionStream,
+        audioPlayer.durationStream,
+        (position, bufferedPosition, duration) =>
+            PositionData(position, bufferedPosition, duration ?? Duration.zero),
+      ).distinct((prev, curr) {
+        return (prev.position - curr.position).abs() < _positionDataThreshold &&
+            prev.duration == curr.duration &&
+            (prev.bufferedPosition - curr.bufferedPosition).abs() <
+                _positionDataThreshold;
+      }).asBroadcastStream();
+
+  Stream<PositionData> get positionDataStream => _positionDataStream;
+
+  Stream<double> get volumeStream => audioPlayer.volumeStream;
+  double get volume => audioPlayer.volume;
+
+  /// Current snapshot, for listeners that subscribe while paused and would
+  /// otherwise see nothing until the next position event.
+  PositionData get currentPositionData => PositionData(
+    audioPlayer.position,
+    audioPlayer.bufferedPosition,
+    audioPlayer.duration ?? Duration.zero,
+  );
+
+  late final Stream<PlaybackState> _playbackStateStream = playbackState
+      .distinct((prev, curr) {
+        final prevPositionBucket =
+            prev.updatePosition.inMilliseconds ~/
+            _positionDataThreshold.inMilliseconds;
+        final currPositionBucket =
+            curr.updatePosition.inMilliseconds ~/
+            _positionDataThreshold.inMilliseconds;
+        return prev.playing == curr.playing &&
+            prev.processingState == curr.processingState &&
+            prev.queueIndex == curr.queueIndex &&
+            prev.speed == curr.speed &&
+            prevPositionBucket == currPositionBucket;
+      })
+      .asBroadcastStream();
+
+  Stream<PlaybackState> get playbackStateStream => _playbackStateStream;
+  Stream<List<Map>> get queueAsMapStream => _queueMapStream.stream;
+  int get currentQueueIndex => _currentQueueIndex;
+  bool get _hasCurrentQueueIndex =>
+      _currentQueueIndex >= 0 && _currentQueueIndex < _queueList.length;
+
+  Map? get currentSong =>
+      _hasCurrentQueueIndex ? _queueList[_currentQueueIndex] : null;
+
+  bool get hasNext =>
+      _hasCurrentQueueIndex && _currentQueueIndex < _queueList.length - 1;
+
+  bool get shouldContinuePlayback =>
+      _currentLoadingIndex >= 0 ? _queuePlayWhenReady : audioPlayer.playing;
+
+  bool get hasPrevious => _currentQueueIndex > 0 || _historyList.isNotEmpty;
+
+  bool get canSkipToNext =>
+      _hasCurrentQueueIndex &&
+      (hasNext ||
+          repeatNotifier.value == AudioServiceRepeatMode.all ||
+          (playNextSongAutomatically.value &&
+              audioPlayer.playing &&
+              !offlineMode.value &&
+              repeatNotifier.value == AudioServiceRepeatMode.none &&
+              _currentLoadingIndex == -1));
+
+  List<MediaControl> _controls(bool playing) => ongakuControls(
+    playing: playing,
+    hasMultipleTracks: _queueList.length > 1,
+    currentSong: currentSong,
+  );
+
+  final _processingStateMap = {
+    ProcessingState.idle: AudioProcessingState.idle,
+    ProcessingState.loading: AudioProcessingState.loading,
+    ProcessingState.buffering: AudioProcessingState.buffering,
+    ProcessingState.ready: AudioProcessingState.ready,
+    ProcessingState.completed: AudioProcessingState.completed,
+  };
+
+  void _logStreamError(String message, Object error, StackTrace stackTrace) {
+    logger.log(message, error: error, stackTrace: stackTrace);
+  }
+
+  void _setupEventSubscriptions() {
+    audioPlayer.playbackEventStream
+        .throttleTime(const Duration(milliseconds: 100))
+        .listen(
+          (event) {
+            _updatePlaybackState();
+          },
+          onError: (error, stackTrace) {
+            _logStreamError('Playback event stream error', error, stackTrace);
+          },
+        );
+
+    audioPlayer.processingStateStream.distinct().listen(
+      _handleProcessingStateChange,
+      onError: (error, stackTrace) {
+        _logStreamError('Processing state stream error', error, stackTrace);
+      },
+    );
+
+    audioPlayer.durationStream.listen(
+      (duration) {
+        if (_currentQueueIndex >= 0 &&
+            _currentQueueIndex < _queueList.length &&
+            duration != null &&
+            _playerSourceMatchesCurrentSong()) {
+          _updateCurrentMediaItemWithDuration(
+            duration,
+            preserveLongerKnown: _currentPlayerSourceIsClipped(),
+          );
+        }
+      },
+      onError: (error, stackTrace) {
+        _logStreamError('Duration stream error', error, stackTrace);
+      },
+    );
+
+    audioPlayer.playerStateStream
+        .distinct()
+        .throttleTime(const Duration(milliseconds: 100))
+        .listen(
+          (state) {
+            listeningStatsService.handlePlayerStateForListeningStats(
+              state,
+              currentSong: currentSong,
+            );
+            if (state.processingState == ProcessingState.idle &&
+                !state.playing &&
+                _lastError != null) {
+              Future.microtask(_handlePlaybackError);
+            }
+            _debouncedStateUpdate();
+          },
+          onError: (error, stackTrace) {
+            _logStreamError('Player state stream error', error, stackTrace);
+          },
+        );
+
+    Rx.combineLatest2(
+          audioPlayer.currentIndexStream.distinct(),
+          audioPlayer.sequenceStateStream.distinct(),
+          (index, sequence) => {'index': index, 'sequence': sequence},
+        )
+        .throttleTime(const Duration(milliseconds: 100))
+        .listen(
+          (_) => _debouncedStateUpdate(),
+          onError: (error, stackTrace) {
+            _logStreamError('Current index stream error', error, stackTrace);
+          },
+        );
+  }
+
+  void _debouncedStateUpdate() {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(_debounceInterval, () {
+      if (!_isUpdatingState) {
+        _updatePlaybackState();
+      }
+    });
+  }
+
+  void _hydrateQueueEntryIds() {
+    _queueEntryIds
+      ..ensureIds(_queueList)
+      ..ensureIds(_originalQueueList);
+  }
+
+  void _rebuildOriginalQueueEntryIndex() {
+    _originalQueueEntriesById
+      ..clear()
+      ..addEntries(
+        _originalQueueList.map(
+          (song) => MapEntry(_queueEntryIds.ensureId(song), song),
+        ),
+      );
+  }
+
+  MediaItem _getMediaItemForQueue(Map song) {
+    return mapToMediaItem(song).copyWith(id: _queueEntryIds.ensureId(song));
+  }
+
+  List<MediaItem> _buildQueueMediaItems() =>
+      _queueList.map(_getMediaItemForQueue).toList(growable: false);
+
+  bool _playerSourceMatchesCurrentSong() {
+    if (!_hasCurrentQueueIndex) return false;
+
+    final sourceTag = audioPlayer.sequenceState.currentSource?.tag;
+    if (sourceTag is! MediaItem) return false;
+
+    final sourceYtid = sourceTag.extras?['ytid']?.toString();
+    final currentYtid = _queueList[_currentQueueIndex]['ytid']?.toString();
+    if (sourceYtid != null &&
+        sourceYtid.isNotEmpty &&
+        currentYtid != null &&
+        currentYtid.isNotEmpty) {
+      return sourceYtid == currentYtid;
+    }
+
+    final currentId = _queueList[_currentQueueIndex]['id']?.toString();
+    return currentId != null &&
+        currentId.isNotEmpty &&
+        sourceTag.id == currentId;
+  }
+
+  bool _currentPlayerSourceIsClipped() {
+    // A clipped SponsorBlock child can report only its own duration. Keeping
+    // the longer track metadata deliberately favors a stable full-track total
+    // over briefly publishing a segment length in the system notification.
+    return audioPlayer.sequenceState.currentSource is ClippingAudioSource;
+  }
+
+  bool _isCurrentMediaItemMatchingSong(
+    MediaItem? currentItem,
+    MediaItem currentQueueMediaItem,
+    String? currentSongYtid,
+  ) {
+    if (currentItem == null) return false;
+
+    if (currentItem.id == currentQueueMediaItem.id) {
+      return true;
+    }
+
+    return currentSongYtid != null &&
+        currentSongYtid.isNotEmpty &&
+        currentItem.extras?['ytid']?.toString() == currentSongYtid;
+  }
+
+  void _updateCurrentMediaItemWithDuration(
+    Duration duration, {
+    bool preserveLongerKnown = false,
+  }) {
+    try {
+      final queueIndex = _currentQueueIndex;
+      if (queueIndex < 0 || queueIndex >= _queueList.length) return;
+
+      final currentSong = _queueList[queueIndex];
+      final currentMediaItem = _getMediaItemForQueue(currentSong);
+      final currentSongYtid = currentSong['ytid']?.toString();
+      final currentItem = mediaItem.valueOrNull;
+      final isMatchingCurrentItem = _isCurrentMediaItemMatchingSong(
+        currentItem,
+        currentMediaItem,
+        currentSongYtid,
+      );
+
+      final existingQueue = queue.valueOrNull;
+      final queueItem =
+          existingQueue != null && queueIndex < existingQueue.length
+          ? existingQueue[queueIndex]
+          : null;
+      final storedDuration = readMediaDuration(currentSong['duration']);
+      var stableDuration = storedDuration;
+      if (isMatchingCurrentItem) {
+        stableDuration = preferStableMediaDuration(
+          stableDuration,
+          currentItem?.duration,
+          preserveLongerKnown: true,
+        );
+      }
+      stableDuration = preferStableMediaDuration(
+        stableDuration,
+        queueItem?.duration,
+        preserveLongerKnown: true,
+      );
+      stableDuration = preferStableMediaDuration(
+        stableDuration,
+        duration,
+        preserveLongerKnown: preserveLongerKnown,
+      );
+      if (stableDuration == null) return;
+
+      final durationSeconds = stableDuration.inSeconds;
+      var queueMapChanged = false;
+      if (!durationEquals(storedDuration, stableDuration)) {
+        currentSong['duration'] = durationSeconds;
+        queueMapChanged = true;
+      }
+      final queueEntryId = _queueEntryIds.ensureId(currentSong);
+      final originalSong = _originalQueueEntriesById[queueEntryId];
+      if (originalSong != null &&
+          !durationEquals(
+            readMediaDuration(originalSong['duration']),
+            stableDuration,
+          )) {
+        originalSong['duration'] = durationSeconds;
+      }
+
+      var mediaItemChanged = false;
+      if (currentItem != null &&
+          isMatchingCurrentItem &&
+          !durationEquals(currentItem.duration, stableDuration)) {
+        mediaItem.add(currentItem.copyWith(duration: stableDuration));
+        mediaItemChanged = true;
+      } else if (!isMatchingCurrentItem) {
+        mediaItem.add(currentMediaItem.copyWith(duration: stableDuration));
+        mediaItemChanged = true;
+      }
+
+      listeningStatsService.updateListeningSessionDuration(
+        currentSongYtid,
+        stableDuration,
+      );
+
+      var publishedQueueChanged = false;
+      if (existingQueue != null && queueItem != null) {
+        if (!durationEquals(queueItem.duration, stableDuration)) {
+          final updatedQueue = List<MediaItem>.from(existingQueue);
+          updatedQueue[queueIndex] = queueItem.copyWith(
+            duration: stableDuration,
+          );
+          queue.add(updatedQueue);
+          publishedQueueChanged = true;
+        }
+      } else {
+        final rebuiltQueue = _buildQueueMediaItems();
+        if (queueIndex < rebuiltQueue.length) {
+          rebuiltQueue[queueIndex] = rebuiltQueue[queueIndex].copyWith(
+            duration: stableDuration,
+          );
+        }
+        queue.add(rebuiltQueue);
+        publishedQueueChanged = true;
+      }
+
+      if (queueMapChanged) {
+        _queueMapStream.add(List.unmodifiable(_queueList));
+      }
+      if (mediaItemChanged || publishedQueueChanged) {
+        _updatePlaybackState(force: true);
+      }
+    } catch (e, stackTrace) {
+      logger.log(
+        'Error updating media item with duration',
+        error: e,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  void resetListeningStatsSession({
+    bool countCurrentTick = false,
+    bool flushStats = true,
+  }) {
+    listeningStatsService.finishListeningSession(
+      countCurrentTick: countCurrentTick,
+      flushStats: flushStats,
+    );
+  }
+
+  void startListeningStatsSessionIfNeeded() {
+    listeningStatsService.startListeningSessionIfNeeded(
+      currentSong: currentSong,
+      isPlaying: audioPlayer.playing,
+    );
+  }
+
+  Future<void> _initialize() async {
+    try {
+      if (isMobilePlatform) {
+        final session = await AudioSession.instance;
+        await session.configure(const AudioSessionConfiguration.music());
+      }
+
+      // Always set loop mode to off - we handle all repeating through _handleSongCompletion
+      // This ensures ProcessingState.completed is always fired for song transitions
+      await audioPlayer.setLoopMode(LoopMode.off);
+
+      // Apply stored shuffle mode to audio player
+      await audioPlayer.setShuffleModeEnabled(shuffleNotifier.value);
+
+      // Initialize equalizer once at startup
+      unawaited(_ensureEqualizerConfigured());
+    } catch (e, stackTrace) {
+      logger.log(
+        'Error initializing audio session',
+        error: e,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  Future<bool> _ensureEqualizerConfigured({bool force = false}) async {
+    if (_androidEqualizer == null) return false;
+    if (_equalizerInitialized) return true;
+
+    final now = DateTime.now();
+    if (!force && now.isBefore(_equalizerRetryNotBefore)) {
+      return false;
+    }
+
+    if (!force && audioPlayer.audioSource == null) {
+      return false;
+    }
+
+    final inFlight = _equalizerInitFuture;
+    if (inFlight != null) {
+      return inFlight;
+    }
+
+    _equalizerInitFuture = _configureEqualizer();
+    try {
+      return await _equalizerInitFuture!;
+    } finally {
+      _equalizerInitFuture = null;
+    }
+  }
+
+  Future<bool> _configureEqualizer() async {
+    final equalizer = _androidEqualizer;
+    if (equalizer == null) return false;
+
+    try {
+      final params = await equalizer.parameters.timeout(
+        const Duration(seconds: 3),
+      );
+
+      final savedGains = equalizerBandGains.value;
+      if (savedGains.isNotEmpty) {
+        for (var i = 0; i < params.bands.length && i < savedGains.length; i++) {
+          final clamped = savedGains[i].clamp(
+            params.minDecibels,
+            params.maxDecibels,
+          );
+          await params.bands[i].setGain(clamped);
+        }
+      }
+
+      await equalizer.setEnabled(equalizerEnabled.value);
+      _equalizerInitialized = true;
+      _equalizerRetryNotBefore = DateTime.fromMillisecondsSinceEpoch(0);
+      return true;
+    } catch (e, stackTrace) {
+      _equalizerRetryNotBefore = DateTime.now().add(
+        const Duration(seconds: 10),
+      );
+      logger.log(
+        'Equalizer initialization deferred',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      return false;
+    }
+  }
+
+  Future<AndroidEqualizerParameters?> getEqualizerParameters() async {
+    final equalizer = _androidEqualizer;
+    if (equalizer == null) return null;
+
+    final initialized = await _ensureEqualizerConfigured();
+    if (!initialized) return null;
+    try {
+      return await equalizer.parameters.timeout(const Duration(seconds: 2));
+    } catch (e, stackTrace) {
+      logger.log(
+        'Failed to get equalizer parameters',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      return null;
+    }
+  }
+
+  Future<void> setEqualizerEnabled(bool enabled) async {
+    final equalizer = _androidEqualizer;
+    if (equalizer == null) return;
+
+    final initialized = await _ensureEqualizerConfigured(force: true);
+    if (!initialized) return;
+    try {
+      await equalizer.setEnabled(enabled);
+      equalizerEnabled.value = enabled;
+      unawaited(addOrUpdateData<bool>('settings', 'equalizerEnabled', enabled));
+    } catch (e, stackTrace) {
+      logger.log(
+        'Failed to set equalizer enabled state',
+        error: e,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  Future<void> setEqualizerBandGain(int index, double gain) async {
+    final equalizer = _androidEqualizer;
+    if (equalizer == null) return;
+
+    final initialized = await _ensureEqualizerConfigured(force: true);
+    if (!initialized) return;
+
+    try {
+      final params = await equalizer.parameters;
+      if (index < 0 || index >= params.bands.length) {
+        return;
+      }
+
+      final clamped = gain.clamp(params.minDecibels, params.maxDecibels);
+      await params.bands[index].setGain(clamped);
+
+      final gains = params.bands.map((band) => band.gain).toList();
+      equalizerBandGains.value = gains;
+      unawaited(
+        addOrUpdateData<List<double>>('settings', 'equalizerBandGains', gains),
+      );
+    } catch (e, stackTrace) {
+      logger.log(
+        'Failed to set equalizer band gain',
+        error: e,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  Future<void> resetEqualizerBands() async {
+    final equalizer = _androidEqualizer;
+    if (equalizer == null) return;
+
+    final initialized = await _ensureEqualizerConfigured(force: true);
+    if (!initialized) return;
+
+    try {
+      final params = await equalizer.parameters;
+      for (final band in params.bands) {
+        await band.setGain(0);
+      }
+      final gains = List<double>.filled(params.bands.length, 0);
+      equalizerBandGains.value = gains;
+      unawaited(
+        addOrUpdateData<List<double>>('settings', 'equalizerBandGains', gains),
+      );
+    } catch (e, stackTrace) {
+      logger.log(
+        'Failed to reset equalizer bands',
+        error: e,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  bool _hasSignificantPositionChange(
+    Duration currentPosition,
+    Duration lastUpdatePosition,
+    DateTime lastUpdateTime,
+    DateTime now,
+    double speed,
+  ) {
+    final expectedPosition =
+        lastUpdatePosition + (now.difference(lastUpdateTime)) * speed;
+    return (currentPosition - expectedPosition).abs() >
+        const Duration(milliseconds: 500);
+  }
+
+  void _updatePlaybackState({bool force = false}) {
+    if (_isUpdatingState) {
+      _pendingPlaybackStateUpdate = true;
+      _pendingForcedPlaybackStateUpdate |= force;
+      return;
+    }
+
+    _isUpdatingState = true;
+
+    try {
+      final now = DateTime.now();
+      final currentPosition = audioPlayer.position;
+      final playerProcessingState = audioPlayer.processingState;
+      final isPlaying =
+          audioPlayer.playing &&
+          playerProcessingState != ProcessingState.completed;
+      final currentState = playbackState.valueOrNull;
+      final newProcessingState =
+          _processingStateMap[playerProcessingState] ??
+          AudioProcessingState.idle;
+      final bufferedPosition = audioPlayer.bufferedPosition;
+
+      final shouldEmitProgressTick =
+          currentState != null &&
+          isPlaying &&
+          now.difference(currentState.updateTime) >= _playbackStateHeartbeat;
+      final hasBufferedPositionChange =
+          currentState == null ||
+          (bufferedPosition - currentState.bufferedPosition).abs() >=
+              const Duration(seconds: 1);
+
+      final shouldUpdate =
+          currentState == null ||
+          currentState.playing != isPlaying ||
+          currentState.processingState != newProcessingState ||
+          currentState.queueIndex != _currentQueueIndex ||
+          currentState.speed != audioPlayer.speed ||
+          shouldEmitProgressTick ||
+          hasBufferedPositionChange ||
+          (_hasSignificantPositionChange(
+            currentPosition,
+            currentState.updatePosition,
+            currentState.updateTime,
+            now,
+            currentState.speed,
+          ));
+
+      if (force || shouldUpdate) {
+        playbackState.add(
+          PlaybackState(
+            controls: _controls(isPlaying),
+            systemActions: const {
+              MediaAction.seek,
+              MediaAction.seekForward,
+              MediaAction.seekBackward,
+            },
+            androidCompactActionIndices: ongakuCompactActionIndices,
+            processingState: newProcessingState,
+            playing: isPlaying,
+            updatePosition: currentPosition,
+            bufferedPosition: bufferedPosition,
+            speed: audioPlayer.speed,
+            queueIndex:
+                _currentQueueIndex >= 0 &&
+                    _currentQueueIndex < _queueList.length
+                ? _currentQueueIndex
+                : null,
+            updateTime: now,
+          ),
+        );
+      }
+    } catch (e, stackTrace) {
+      logger.log(
+        'Error updating playback state',
+        error: e,
+        stackTrace: stackTrace,
+      );
+    } finally {
+      _isUpdatingState = false;
+      if (_pendingPlaybackStateUpdate) {
+        final forcePendingUpdate = _pendingForcedPlaybackStateUpdate;
+        _pendingPlaybackStateUpdate = false;
+        _pendingForcedPlaybackStateUpdate = false;
+        _updatePlaybackState(force: forcePendingUpdate);
+      }
+    }
+  }
+
+  void _handleProcessingStateChange(ProcessingState state) {
+    try {
+      if (state == ProcessingState.completed) {
+        if (sleepTimerEndOfSong) {
+          sleepTimerExpired = true;
+          sleepTimerEndOfSong = false;
+          stop();
+          sleepTimerNotifier.value = null;
+          return;
+        }
+
+        listeningStatsService.finishListeningSession(
+          countCurrentTick: true,
+          wasPlaying: true,
+        );
+
+        if (!sleepTimerExpired && !_completionEventPending) {
+          _completionEventPending = true;
+
+          Future.microtask(() async {
+            try {
+              if (!sleepTimerExpired && _completionEventPending) {
+                await _handleSongCompletion();
+              }
+            } finally {
+              // Only reset if still marked as pending (another event didn't override)
+              if (_completionEventPending) {
+                _completionEventPending = false;
+                _completionHandlerLoadStarted = false;
+              }
+            }
+          });
+        }
+      } else if (state == ProcessingState.ready) {
+        _completionEventPending = false;
+        _completionHandlerLoadStarted = false;
+
+        // Clear the expired flag so future song completions are not
+        // blocked after a sleep timer fired in a previous session.
+        // Do NOT touch sleepTimerEndOfSong here — 'ready' fires not
+        // only for new songs but also on buffering recovery within the
+        // same song, which would cancel an active "end of song" timer.
+        sleepTimerExpired = false;
+      }
+    } catch (e, stackTrace) {
+      logger.log(
+        'Error handling processing state change',
+        error: e,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  bool _canRetryPlayback() =>
+      hasNext ||
+      (repeatNotifier.value == AudioServiceRepeatMode.all &&
+          _queueList.isNotEmpty) ||
+      playNextSongAutomatically.value;
+
+  void _handlePlaybackError() {
+    _consecutiveErrors++;
+    logger.log(
+      'Playback error occurred. Consecutive errors: $_consecutiveErrors',
+      error: _lastError,
+    );
+
+    if (_consecutiveErrors >= _maxConsecutiveErrors) {
+      logger.log('Max consecutive errors reached. Stopping playback.');
+      unawaited(stop());
+      return;
+    }
+
+    if (_canRetryPlayback()) {
+      final failedSongIndex = _currentQueueIndex;
+      Future.delayed(_errorRetryDelay, () {
+        // Only retry if still on the same song (user didn't manually change tracks)
+        if (_currentQueueIndex == failedSongIndex) {
+          skipToNext();
+        }
+      });
+    } else {
+      _lastError = null;
+    }
+  }
+
+  Future<void> _handleSongCompletion() async {
+    try {
+      if (_hasCurrentQueueIndex) {
+        _addToHistory(_queueList[_currentQueueIndex]);
+      }
+
+      // Determine what to play next based on queue position and repeat mode
+      if (repeatNotifier.value == AudioServiceRepeatMode.one) {
+        // Repeat single song - play current song again
+        await playAgain();
+      } else {
+        // For all other cases (next song, repeat all, auto-play), skipToNext handles it
+        await skipToNext();
+      }
+    } catch (e, stackTrace) {
+      logger.log(
+        'Error handling song completion',
+        error: e,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  /// Queues one similar song when the current song is the last of the queue.
+  Future<void> _backgroundAddSongsToQueue() async {
+    // Repeat modes keep the queue cycling, so extending it would corrupt it.
+    if (offlineMode.value ||
+        hasNext ||
+        repeatNotifier.value != AudioServiceRepeatMode.none) {
+      return;
+    }
+
+    final baseYtid = _getCurrentSongForRecommendations()?['ytid']?.toString();
+    if (baseYtid == null || baseYtid.isEmpty) return;
+
+    try {
+      final knownYtids = <String>{};
+      for (final song in _queueList) {
+        if (song['ytid'] != null) knownYtids.add(song['ytid'].toString());
+      }
+      for (final song in _historyList) {
+        if (song['ytid'] != null) knownYtids.add(song['ytid'].toString());
+      }
+
+      final recommended =
+          await getSimilarSong(baseYtid, excludedYtIds: knownYtids).timeout(
+            const Duration(seconds: 10),
+            onTimeout: () {
+              logger.log('Background song fetch timed out');
+              return null;
+            },
+          );
+
+      // The user may have skipped, paused or extended the queue meanwhile.
+      final isStillRelevant =
+          audioPlayer.playing &&
+          !hasNext &&
+          _getCurrentSongForRecommendations()?['ytid']?.toString() == baseYtid;
+      if (recommended == null || !isStillRelevant) return;
+
+      await _insertRecommendedSong(recommended);
+    } catch (e, stackTrace) {
+      logger.log(
+        'Error in background song addition',
+        error: e,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  Map? _getCurrentSongForRecommendations() {
+    final currentMediaItem = mediaItem.valueOrNull;
+
+    if (currentMediaItem == null || currentMediaItem.id.isEmpty) {
+      logger.log('No current media item available');
+      return null;
+    }
+
+    return mediaItemToMap(currentMediaItem);
+  }
+
+  void _addToHistory(Map song) {
+    try {
+      final historySong = cloneMap(song);
+      _historyList.insert(0, historySong);
+
+      // Clear manually added/auto-picked flags since song has been played
+      song['isManuallyAdded'] = false;
+      song['isAutoPicked'] = false;
+
+      if (_historyList.length > _maxHistorySize) {
+        _historyList.removeRange(_maxHistorySize, _historyList.length);
+      }
+    } catch (e, stackTrace) {
+      logger.log('Error adding to history', error: e, stackTrace: stackTrace);
+    }
+  }
+
+  Future<void> addToQueue(Map song, {bool playNext = false}) async {
+    try {
+      if (song['ytid'] == null || song['ytid'].toString().isEmpty) {
+        logger.log('Invalid song data for queue');
+        return;
+      }
+
+      final insertIndex = playNext
+          ? (_currentQueueIndex + 1).clamp(0, _queueList.length)
+          : _queueList.length;
+
+      final isFirstSong = await _insertSongToQueueInternal(
+        song,
+        insertIndex,
+        flagName: 'isManuallyAdded',
+      );
+
+      if (isFirstSong) {
+        await _playFromQueue(0);
+      }
+    } catch (e, stackTrace) {
+      logger.log('Error adding to queue', error: e, stackTrace: stackTrace);
+    }
+  }
+
+  Future<void> _insertRecommendedSong(Map song) async {
+    try {
+      if (song['ytid'] == null || song['ytid'].toString().isEmpty) {
+        logger.log('Invalid recommended song data for queue');
+        return;
+      }
+
+      final insertIndex = _queueList.length;
+
+      // Check BEFORE insertion: is the current song the last in queue?
+      final isCurrentSongAtEnd =
+          _queueList.isNotEmpty && _currentQueueIndex == _queueList.length - 1;
+
+      final isFirstSong = await _insertSongToQueueInternal(
+        song,
+        insertIndex,
+        flagName: 'isAutoPicked',
+      );
+
+      final shouldPlayInsertedSong =
+          playNextSongAutomatically.value &&
+          !sleepTimerExpired &&
+          _currentLoadingIndex == -1 &&
+          audioPlayer.processingState == ProcessingState.completed &&
+          isCurrentSongAtEnd;
+
+      if (shouldPlayInsertedSong) {
+        await _playFromQueue(insertIndex);
+      } else if (isFirstSong) {
+        await _playFromQueue(0);
+      }
+    } catch (e, stackTrace) {
+      logger.log(
+        'Error inserting recommended song',
+        error: e,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  Future<bool> _insertSongToQueueInternal(
+    Map song,
+    int insertIndex, {
+    required String flagName,
+  }) async {
+    final queueSong = _queueEntryIds.createSong(song);
+    queueSong[flagName] = true;
+    _queueList.insert(insertIndex, queueSong);
+
+    final isFirstSong = _currentQueueIndex < 0;
+    if (isFirstSong) {
+      _currentQueueIndex = 0;
+    }
+
+    _updateQueueMediaItems();
+    _cleanupOldPreloadedSongs();
+
+    return !audioPlayer.playing && _queueList.length == 1;
+  }
+
+  void _cleanupOldPreloadedSongs() {
+    Future.microtask(() async {
+      try {
+        final queueYtIds = _queueList
+            .map((song) => song['ytid']?.toString())
+            .where((ytid) => ytid != null)
+            .toSet();
+
+        final removed = _preloadedYtIds.length + _preloadingYtIds.length;
+        _preloadedYtIds.removeWhere((ytid) => !queueYtIds.contains(ytid));
+        _preloadingYtIds.removeWhere((ytid) => !queueYtIds.contains(ytid));
+        final cleaned =
+            removed - (_preloadedYtIds.length + _preloadingYtIds.length);
+
+        if (cleaned > 0) {
+          logger.log('Cleaned up $cleaned old preload entries');
+        }
+      } catch (e, stackTrace) {
+        logger.log(
+          'Error cleaning up preloaded songs',
+          error: e,
+          stackTrace: stackTrace,
+        );
+      }
+    });
+  }
+
+  Future<void> addPlaylistToQueue(
+    List<Map> songs, {
+    bool replace = false,
+    int? startIndex,
+    bool? shuffle,
+  }) async {
+    try {
+      final manuallyAddedSongs = replace ? _getUnplayedManualSongs() : <Map>[];
+      final shuffleAfterReplace = shuffle ?? shuffleNotifier.value;
+      if (replace) {
+        _queueList.clear();
+        _originalQueueList.clear();
+        _originalQueueEntriesById.clear();
+        _currentQueueIndex = 0;
+        _currentLoadingIndex = -1;
+        _currentLoadingTransitionId = -1;
+        _resetPreloadingState();
+        if (shuffleNotifier.value != shuffleAfterReplace) {
+          shuffleNotifier.value = shuffleAfterReplace;
+          unawaited(
+            Hive.box('settings').put('shuffleEnabled', shuffleAfterReplace),
+          );
+          await audioPlayer.setShuffleModeEnabled(shuffleAfterReplace);
+        }
+      }
+
+      int? targetQueueIndex;
+      Map? startSong;
+      final newSongs = <Map>[];
+      final appendedStartQueueIndex = !replace && startIndex != null
+          ? appendedQueueIndexForSourceIndex(
+              songs,
+              startIndex,
+              _queueList.length,
+            )
+          : null;
+
+      for (var i = 0; i < songs.length; i++) {
+        final song = songs[i];
+        if (song['ytid'] != null && song['ytid'].toString().isNotEmpty) {
+          final queueSong = _queueEntryIds.createSong(song);
+          if (replace) {
+            newSongs.add(queueSong);
+            if (startIndex == i) startSong = queueSong;
+          } else {
+            _queueList.add(queueSong);
+          }
+        }
+      }
+
+      if (replace) {
+        if (shuffleAfterReplace && newSongs.isNotEmpty) {
+          _originalQueueList.addAll(cloneMaps(newSongs));
+          _rebuildOriginalQueueEntryIndex();
+          newSongs
+            ..remove(startSong)
+            ..shuffle();
+          _queueList
+            ..addAll(startSong != null ? [startSong] : <Map>[])
+            ..addAll(newSongs);
+          targetQueueIndex = 0;
+        } else {
+          _queueList.addAll(newSongs);
+          if (startSong != null) {
+            targetQueueIndex = _queueList.indexOf(startSong);
+          }
+        }
+      }
+
+      if (replace && manuallyAddedSongs.isNotEmpty) {
+        // Always insert after the starting song index
+        final insertIndex = (targetQueueIndex ?? 0) + 1;
+        final safeInsertIndex = insertIndex > _queueList.length
+            ? _queueList.length
+            : insertIndex;
+        _queueList.insertAll(safeInsertIndex, manuallyAddedSongs);
+      }
+
+      _hydrateQueueEntryIds();
+      _updateQueueMediaItems();
+
+      if (targetQueueIndex != null) {
+        await _playFromQueue(targetQueueIndex);
+      } else if (appendedStartQueueIndex != null) {
+        await _playFromQueue(appendedStartQueueIndex);
+      } else if (replace && _queueList.isNotEmpty) {
+        await _playFromQueue(0);
+      }
+    } catch (e, stackTrace) {
+      logger.log(
+        'Error adding playlist to queue',
+        error: e,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  Future<void> removeFromQueue(int index) async {
+    try {
+      if (index < 0 || index >= _queueList.length) return;
+
+      final removedSong = _queueList[index];
+      final removedQueueEntryId = _queueEntryIds.ensureId(removedSong);
+      _queueList.removeAt(index);
+
+      if (shuffleNotifier.value && _originalQueueList.isNotEmpty) {
+        _originalQueueList.removeWhere(
+          (s) => _queueEntryIds.ensureId(s) == removedQueueEntryId,
+        );
+        _rebuildOriginalQueueEntryIndex();
+      }
+
+      if (index == _currentLoadingIndex) {
+        _currentLoadingIndex = -1;
+        _currentLoadingTransitionId = -1;
+      } else if (index < _currentLoadingIndex) {
+        _currentLoadingIndex--;
+      }
+
+      if (index < _currentQueueIndex) {
+        _currentQueueIndex--;
+      } else if (index == _currentQueueIndex) {
+        if (_queueList.isEmpty) {
+          await stop();
+        } else {
+          if (_currentQueueIndex >= _queueList.length) {
+            _currentQueueIndex = _queueList.length - 1;
+          }
+          await _playFromQueue(_currentQueueIndex);
+        }
+      }
+
+      _hydrateQueueEntryIds();
+      _updateQueueMediaItems();
+    } catch (e, stackTrace) {
+      logger.log('Error removing from queue', error: e, stackTrace: stackTrace);
+    }
+  }
+
+  void _moveQueueEntry(int oldIndex, int newIndex) {
+    final song = _queueList.removeAt(oldIndex);
+    _queueList.insert(newIndex, song);
+    _currentQueueIndex = indexAfterQueueReorder(
+      _currentQueueIndex,
+      oldIndex,
+      newIndex,
+    );
+    _currentLoadingIndex = indexAfterQueueReorder(
+      _currentLoadingIndex,
+      oldIndex,
+      newIndex,
+    );
+    _updateQueueMediaItems();
+  }
+
+  Future<void> reorderQueue(int oldIndex, int newIndex) async {
+    try {
+      _queueEntryIds.ensureIds(_queueList);
+
+      if (oldIndex < 0 ||
+          oldIndex >= _queueList.length ||
+          newIndex < 0 ||
+          newIndex > _queueList.length - 1) {
+        return;
+      }
+
+      _moveQueueEntry(oldIndex, newIndex);
+    } catch (e, stackTrace) {
+      logger.log('Error reordering queue', error: e, stackTrace: stackTrace);
+    }
+  }
+
+  Future<void> reorderQueueById(String queueEntryId, int targetIndex) async {
+    try {
+      _queueEntryIds.ensureIds(_queueList);
+
+      final oldIndex = _queueList.indexWhere(
+        (s) => _queueEntryIds.ensureId(s) == queueEntryId,
+      );
+      if (oldIndex == -1) return;
+
+      final newIndex = targetIndex.clamp(0, _queueList.length - 1);
+      _moveQueueEntry(oldIndex, newIndex);
+    } catch (e, stackTrace) {
+      logger.log(
+        'Error reordering queue by id',
+        error: e,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  void clearQueue() {
+    try {
+      final currentSong = _hasCurrentQueueIndex
+          ? cloneMap(_queueList[_currentQueueIndex])
+          : null;
+
+      _queueList.clear();
+      _originalQueueList.clear();
+      _originalQueueEntriesById.clear();
+
+      if (currentSong != null) {
+        _queueList.add(currentSong);
+        _originalQueueList.add(cloneMap(currentSong));
+        _rebuildOriginalQueueEntryIndex();
+      }
+
+      _currentQueueIndex = currentSong != null ? 0 : -1;
+      _currentLoadingIndex = -1;
+      _currentLoadingTransitionId = -1;
+      _resetPreloadingState();
+      _hydrateQueueEntryIds();
+      _updateQueueMediaItems();
+      _updatePlaybackState();
+    } catch (e, stackTrace) {
+      logger.log('Error clearing queue', error: e, stackTrace: stackTrace);
+    }
+  }
+
+  void _updateQueueMediaItems() {
+    try {
+      _queueEntryIds.ensureIds(_queueList);
+
+      final mediaItems = _buildQueueMediaItems();
+      queue.add(mediaItems);
+
+      _queueMapStream.add(List.unmodifiable(_queueList));
+
+      if (_currentQueueIndex >= 0 && _currentQueueIndex < mediaItems.length) {
+        final currentMediaItem = mediaItems[_currentQueueIndex];
+        mediaItem.add(currentMediaItem);
+      }
+    } catch (e, stackTrace) {
+      logger.log(
+        'Error updating queue media items',
+        error: e,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  void _emitOptimisticLoadingState({
+    Map? song,
+    int? queueIndex,
+    bool includeMediaItem = false,
+    String? mediaId,
+  }) {
+    try {
+      if (includeMediaItem && song != null) {
+        var immediateMediaItem = mapToMediaItem(song);
+        if (mediaId != null) {
+          immediateMediaItem = immediateMediaItem.copyWith(id: mediaId);
+        }
+        Future.microtask(() {
+          mediaItem.add(immediateMediaItem);
+        });
+      }
+
+      playbackState.add(
+        PlaybackState(
+          controls: _controls(true),
+          systemActions: const {
+            MediaAction.seek,
+            MediaAction.seekForward,
+            MediaAction.seekBackward,
+          },
+          androidCompactActionIndices: ongakuCompactActionIndices,
+          processingState: AudioProcessingState.loading,
+          speed: audioPlayer.speed,
+          queueIndex:
+              queueIndex ?? (_hasCurrentQueueIndex ? _currentQueueIndex : null),
+          updateTime: DateTime.now(),
+        ),
+      );
+    } catch (e, stackTrace) {
+      logger.log(
+        'Error emitting optimistic loading state',
+        error: e,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  Future<void> _playFromQueue(int index, {bool playWhenReady = true}) async {
+    if (index < 0 || index >= _queueList.length) {
+      logger.log('Invalid queue index: $index');
+      return;
+    }
+
+    // If already loading any song, skip the request
+    // UNLESS we're in the middle of handling a completion event (allow one load attempt)
+    if (_currentLoadingIndex == index && !_completionEventPending) {
+      return;
+    }
+
+    if (_currentLoadingIndex >= 0 &&
+        _completionEventPending &&
+        !_completionHandlerLoadStarted) {
+      _completionHandlerLoadStarted = true;
+    } else if (_currentLoadingIndex >= 0 &&
+        _completionEventPending &&
+        _completionHandlerLoadStarted) {
+      return;
+    }
+
+    // Start new transition
+    _songTransitionCounter++;
+    final currentTransitionId = _songTransitionCounter;
+    _currentLoadingIndex = index;
+    _currentLoadingTransitionId = currentTransitionId;
+    _queuePlayWhenReady = playWhenReady;
+
+    try {
+      final previousQueueIndex = _currentQueueIndex;
+      final previousMediaItem = mediaItem.valueOrNull;
+      _currentQueueIndex = index;
+
+      final currentSong = _queueList[_currentQueueIndex];
+      final currentMediaItem = _getMediaItemForQueue(currentSong);
+      final uniqueId = currentMediaItem.id;
+
+      await Future.microtask(() {
+        mediaItem.add(currentMediaItem);
+      });
+
+      _emitOptimisticLoadingState(
+        queueIndex: _currentQueueIndex,
+        mediaId: uniqueId,
+      );
+
+      final success = await playSong(
+        _queueList[index],
+        mediaId: uniqueId,
+        transitionId: currentTransitionId,
+        playWhenReady: playWhenReady,
+      );
+
+      // Only process result if this is still the current transition
+      if (currentTransitionId == _currentLoadingTransitionId) {
+        if (success) {
+          _consecutiveErrors = 0;
+          _preloadUpcomingSongs();
+          // Trigger background song addition if auto-play is enabled
+          if (playNextSongAutomatically.value) {
+            unawaited(_backgroundAddSongsToQueue());
+          }
+        } else {
+          _currentQueueIndex = previousQueueIndex;
+          if (previousMediaItem != null) {
+            mediaItem.add(previousMediaItem);
+          }
+          _updatePlaybackState();
+          _handlePlaybackError();
+        }
+      }
+    } catch (e, stackTrace) {
+      logger.log('Error playing from queue', error: e, stackTrace: stackTrace);
+      _handlePlaybackError();
+    } finally {
+      // Only reset if this is still the transition that started it
+      if (currentTransitionId == _currentLoadingTransitionId) {
+        _currentLoadingIndex = -1;
+        _currentLoadingTransitionId = -1;
+      }
+    }
+  }
+
+  void _preloadUpcomingSongs() {
+    // Don't attempt to preload while offline mode is enabled or no current song
+    if (offlineMode.value || _currentQueueIndex < 0) return;
+
+    Future.microtask(() async {
+      try {
+        final songsToPreload = <Map>[];
+
+        for (var i = 1; i <= _queueLookahead; i++) {
+          final nextIndex = _currentQueueIndex + i;
+          if (nextIndex < _queueList.length) {
+            final nextSong = _queueList[nextIndex];
+            final ytid = nextSong['ytid'];
+
+            if (ytid != null &&
+                !isSongAlreadyOffline(ytid) &&
+                !_preloadedYtIds.contains(ytid) &&
+                !_preloadingYtIds.contains(ytid)) {
+              songsToPreload.add(nextSong);
+            }
+          }
+        }
+
+        await _preloadSongsSequentially(songsToPreload);
+      } catch (e, stackTrace) {
+        logger.log(
+          'Error in _preloadUpcomingSongs',
+          error: e,
+          stackTrace: stackTrace,
+        );
+      }
+    });
+  }
+
+  Future<void> _preloadSongsSequentially(List<Map> songsToPreload) async {
+    for (final song in songsToPreload) {
+      while (_activePreloadCount >= _maxConcurrentPreloads) {
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+
+      final ytid = song['ytid'];
+      if (ytid == null || _preloadingYtIds.contains(ytid)) {
+        continue;
+      }
+
+      unawaited(_preloadSingleSongControlled(song));
+    }
+  }
+
+  Future<void> _preloadSingleSongControlled(Map nextSong) async {
+    final ytid = nextSong['ytid'];
+    if (ytid == null) return;
+
+    _preloadingYtIds.add(ytid);
+    _activePreloadCount++;
+    String? preloadUrl;
+
+    try {
+      // Don't attempt to fetch remote streams while offline mode is enabled
+      if (offlineMode.value) {
+        logger.log('Offline mode enabled; skipping preload for $ytid');
+        preloadUrl = null;
+      } else {
+        // fetchSongStreamUrl handles caching, freshness checks, and validation
+        preloadUrl = await fetchSongStreamUrl(ytid, nextSong['isLive'] ?? false)
+            .timeout(
+              const Duration(seconds: 8),
+              onTimeout: () {
+                logger.log('Preload timeout for song $ytid');
+                return null;
+              },
+            );
+      }
+    } catch (e, stackTrace) {
+      logger.log(
+        'Error preloading song $ytid',
+        error: e,
+        stackTrace: stackTrace,
+      );
+    } finally {
+      _preloadingYtIds.remove(ytid);
+      if (_activePreloadCount > 0) {
+        _activePreloadCount--;
+      }
+      if (preloadUrl != null && preloadUrl.isNotEmpty) {
+        _preloadedYtIds.add(ytid);
+      }
+    }
+  }
+
+  Map? _firstPlayableSong(Iterable songs) {
+    for (final song in songs.whereType<Map>()) {
+      if (songYtid(song) != null) return song;
+    }
+    return null;
+  }
+
+  Map? _findResumableSongByYtid(String? ytid) {
+    if (ytid == null || ytid.isEmpty) return null;
+
+    final activeSong = currentSong;
+    if (activeSong?['ytid']?.toString() == ytid) return activeSong;
+
+    for (final source in [
+      _queueList,
+      userRecentlyPlayed.value,
+      userOfflineSongs.value,
+      userLikedSongsList.value,
+    ]) {
+      final song = findSongByYtid(source, ytid);
+      if (song != null) return song;
+    }
+
+    return null;
+  }
+
+  @override
+  Map? latestResumableSong() {
+    final activeSong = currentSong;
+    if (activeSong != null && songYtid(activeSong) != null) return activeSong;
+
+    final activeMediaItem = mediaItem.valueOrNull;
+    final activeYtid = activeMediaItem?.extras?['ytid']?.toString();
+    final activeMediaSong = _findResumableSongByYtid(activeYtid);
+    if (activeMediaSong != null) return activeMediaSong;
+    if (activeYtid != null &&
+        activeYtid.isNotEmpty &&
+        activeMediaItem != null) {
+      return mediaItemToMap(activeMediaItem);
+    }
+
+    return _firstPlayableSong(userRecentlyPlayed.value) ??
+        _firstPlayableSong(userOfflineSongs.value) ??
+        _firstPlayableSong(userLikedSongsList.value);
+  }
+
+  @override
+  Map<String, dynamic>? normaliseResumableSong(Map song) {
+    final ytid = songYtid(song);
+    if (ytid == null) return null;
+
+    final normalised = cloneMap(song);
+    normalised['id'] = ytid;
+    normalised['ytid'] = ytid;
+    normalised['highResImage'] ??=
+        normalised['image'] ?? normalised['lowResImage'] ?? '';
+    normalised['lowResImage'] ??= normalised['highResImage'];
+    normalised['isLive'] ??= false;
+    return normalised;
+  }
+
+  @override
+  Future<void> playResumableSong(Map song) async {
+    final normalisedSong = normaliseResumableSong(song);
+    if (normalisedSong == null) return;
+
+    await playPlaylistSong(
+      playlist: {
+        'title': appName, // Ongaku
+        'source': 'system-recent',
+        'list': [normalisedSong],
+      },
+      songIndex: 0,
+    );
+  }
+
+  // Android Auto / MediaBrowserService callbacks
+
+  @override
+  List<Map> get browserQueue => _queueList;
+
+  @override
+  Stream<List<MediaItem>> get browserQueueStream => queue;
+
+  @override
+  String ensureBrowserQueueEntryId(Map song) => _queueEntryIds.ensureId(song);
+
+  @override
+  void logBrowserError(
+    String message, {
+    Object? error,
+    StackTrace? stackTrace,
+  }) {
+    logger.log(message, error: error, stackTrace: stackTrace);
+  }
+
+  @override
+  Future<void> resumeAudio() => play();
+
+  @override
+  Future<void> playBrowserPlaylist(List<Map> songs, {required int songIndex}) =>
+      addPlaylistToQueue(songs, replace: true, startIndex: songIndex);
+
+  @override
+  void publishPreparedBrowserItem(MediaItem item) {
+    mediaItem.add(item);
+    queue.add([item]);
+    playbackState.add(
+      PlaybackState(
+        controls: _controls(false),
+        systemActions: const {
+          MediaAction.seek,
+          MediaAction.seekForward,
+          MediaAction.seekBackward,
+        },
+        androidCompactActionIndices: ongakuCompactActionIndices,
+        processingState: AudioProcessingState.ready,
+        queueIndex: 0,
+        updateTime: DateTime.now(),
+      ),
+    );
+  }
+
+  @override
+  Future<List<MediaItem>> getChildren(
+    String parentMediaId, [
+    Map<String, dynamic>? options,
+  ]) => _androidAutoBrowser.children(parentMediaId);
+
+  @override
+  ValueStream<Map<String, dynamic>> subscribeToChildren(String parentMediaId) =>
+      _androidAutoBrowser.subscribeToChildren(parentMediaId);
+
+  @override
+  Future<List<MediaItem>> search(
+    String query, [
+    Map<String, dynamic>? extras,
+  ]) => _androidAutoBrowser.search(query);
+
+  @override
+  Future<void> playFromSearch(String query, [Map<String, dynamic>? extras]) =>
+      _androidAutoBrowser.playFromSearch(query);
+
+  @override
+  Future<MediaItem?> getMediaItem(String mediaId) =>
+      _androidAutoBrowser.mediaItemForId(mediaId);
+
+  @override
+  Future<void> prepareFromMediaId(
+    String mediaId, [
+    Map<String, dynamic>? extras,
+  ]) => _androidAutoBrowser.prepareFromId(mediaId);
+
+  @override
+  Future<void> playFromMediaId(
+    String mediaId, [
+    Map<String, dynamic>? extras,
+  ]) async {
+    await _androidAutoBrowser.playFromMediaId(mediaId);
+  }
+
+  // Audio service lifecycle
+
+  @override
+  Future<void> onTaskRemoved() async {
+    try {
+      await stop();
+      if (isMobilePlatform) {
+        final session = await AudioSession.instance;
+        await session.setActive(false);
+      }
+    } catch (e, stackTrace) {
+      logger.log('Error in onTaskRemoved', error: e, stackTrace: stackTrace);
+    }
+    await super.onTaskRemoved();
+  }
+
+  @override
+  Future<void> play() async {
+    if (isDesktopPlatform && _currentLoadingIndex >= 0)
+      _queuePlayWhenReady = true;
+    try {
+      if (audioPlayer.audioSource == null) {
+        final recentSong = latestResumableSong();
+        if (recentSong != null) {
+          await playResumableSong(recentSong);
+          return;
+        }
+      }
+      // Do NOT await play(): its future only completes when playback pauses/
+      // stops/finishes (just_audio semantics), which would defer the resume
+      // below until the song ended - losing the whole session.
+      unawaited(
+        audioPlayer.play().catchError((Object e, StackTrace stackTrace) {
+          logger.log(
+            'Error starting playback',
+            error: e,
+            stackTrace: stackTrace,
+          );
+          _lastError = e.toString();
+        }),
+      );
+      listeningStatsService.resumeListeningSession(currentSong: currentSong);
+    } catch (e, stackTrace) {
+      logger.log('Error in play()', error: e, stackTrace: stackTrace);
+      _lastError = e.toString();
+    }
+  }
+
+  @override
+  Future<void> pause() async {
+    if (isDesktopPlatform && _currentLoadingIndex >= 0)
+      _queuePlayWhenReady = false;
+    try {
+      listeningStatsService.recordListeningSessionProgress(
+        wasPlaying: audioPlayer.playing,
+      );
+      unawaited(listeningStatsService.flush());
+      await audioPlayer.pause();
+    } catch (e, stackTrace) {
+      logger.log('Error in pause()', error: e, stackTrace: stackTrace);
+    }
+  }
+
+  Future<void> setVolume(double value) async {
+    try {
+      await audioPlayer.setVolume(value.clamp(0.0, 1.0));
+    } catch (e, stackTrace) {
+      logger.log('Error in setVolume()', error: e, stackTrace: stackTrace);
+    }
+  }
+
+  @override
+  Future<void> stop() async {
+    _debounceTimer?.cancel();
+    _completionEventPending = false;
+    _currentLoadingIndex = -1;
+    _currentLoadingTransitionId = -1;
+    _lastError = null;
+    _consecutiveErrors = 0;
+    try {
+      listeningStatsService.finishListeningSession(
+        countCurrentTick: true,
+        wasPlaying: audioPlayer.playing,
+      );
+      await audioPlayer.stop();
+      _resetPreloadingState();
+    } catch (e, stackTrace) {
+      logger.log('Error in stop()', error: e, stackTrace: stackTrace);
+    }
+    await super.stop();
+  }
+
+  /// Returns unplayed manually added songs after the current queue index.
+  List<Map> _getUnplayedManualSongs() {
+    return _queueList
+        .skip(_currentQueueIndex >= 0 ? _currentQueueIndex + 1 : 0)
+        .where(
+          (song) =>
+              song['isManuallyAdded'] == true && song['isAutoPicked'] != true,
+        )
+        .toList();
+  }
+
+  void _resetPreloadingState() {
+    _activePreloadCount = 0;
+    _preloadingYtIds.clear();
+    _preloadedYtIds.clear();
+  }
+
+  @override
+  Future<void> setSpeed(double speed) async {
+    await audioPlayer.setSpeed(speed);
+    _updatePlaybackState();
+  }
+
+  @override
+  Future<void> seek(Duration position) async {
+    try {
+      listeningStatsService.recordListeningSessionProgress(
+        wasPlaying: audioPlayer.playing,
+      );
+      await audioPlayer.seek(position);
+      unawaited(listeningStatsService.flush());
+    } catch (e, stackTrace) {
+      logger.log('Error in seek()', error: e, stackTrace: stackTrace);
+    }
+  }
+
+  @override
+  Future<void> fastForward() {
+    final target = audioPlayer.position + const Duration(seconds: 15);
+    final trackDuration = audioPlayer.duration;
+    final clamped = (trackDuration != null && target > trackDuration)
+        ? trackDuration
+        : target;
+    return seek(clamped);
+  }
+
+  @override
+  Future<void> rewind() {
+    final target = audioPlayer.position - const Duration(seconds: 15);
+    final clamped = target < Duration.zero ? Duration.zero : target;
+    return seek(clamped);
+  }
+
+  Future<bool> _resolveOfflineAndSetPaths(Map songData) async {
+    try {
+      final ytid = songData['ytid']?.toString();
+      if (ytid != null && ytid.isNotEmpty) {
+        final offlineSong = getOfflineSongByYtid(ytid);
+        if (offlineSong.isNotEmpty) {
+          final audioPath = offlineSong['audioPath']?.toString();
+          if (audioPath != null && audioPath.isNotEmpty) {
+            final f = File(audioPath);
+            if (await f.exists()) {
+              songData['audioPath'] = audioPath;
+              if (offlineSong['artworkPath'] != null) {
+                songData['artworkPath'] = offlineSong['artworkPath'];
+              }
+              return true;
+            }
+          }
+        }
+      }
+    } catch (e, st) {
+      logger.log(
+        'Error while checking offline songs',
+        error: e,
+        stackTrace: st,
+      );
+    }
+
+    // Fallback: prefer an existing local `audioPath` on the passed song
+    // object if the file exists.
+    try {
+      final path = songData['audioPath']?.toString();
+      if (path != null && path.isNotEmpty) {
+        final f = File(path);
+        if (await f.exists()) return true;
+      }
+    } catch (_) {}
+
+    return false;
+  }
+
+  /// Check if the given transitionId is stale (outdated by a newer request).
+  bool _isStaleTransition(int? transitionId) {
+    return transitionId != null && transitionId != _currentLoadingTransitionId;
+  }
+
+  Future<bool> playSong(
+    Map song, {
+    String? mediaId,
+    int? transitionId,
+    bool playWhenReady = true,
+  }) async {
+    try {
+      final songData = cloneMap(song);
+
+      if (songData['ytid'] == null || songData['ytid'].toString().isEmpty) {
+        logger.log('Invalid song data: missing ytid');
+        return false;
+      }
+
+      _lastError = null;
+      if (audioPlayer.playing) {
+        listeningStatsService.recordListeningSessionProgress(
+          wasPlaying: audioPlayer.playing,
+        );
+        await audioPlayer.pause();
+      }
+
+      final playback = await _resolvePlaybackSource(songData);
+
+      // Abort if a newer song was requested while we were fetching the stream URL.
+      // This is the primary guard against the race condition where a slow streaming
+      // load overrides a song the user already switched to.
+      if (_isStaleTransition(transitionId)) {
+        logger.log(
+          'Song load superseded by newer request, aborting: ${songData['ytid']}',
+        );
+        return false;
+      }
+
+      if (playback == null) {
+        _lastError = 'Failed to get song URL';
+        return false;
+      }
+
+      _emitOptimisticLoadingState(
+        song: songData,
+        includeMediaItem: true,
+        mediaId: mediaId,
+      );
+
+      final audioSource = await buildAudioSource(
+        songData,
+        playback.songUrl,
+        playback.isOffline,
+      );
+
+      // Check again after building the audio source (SponsorBlock fetch can also be slow).
+      if (_isStaleTransition(transitionId)) {
+        logger.log(
+          'Song load superseded after building audio source, aborting: ${songData['ytid']}',
+        );
+        return false;
+      }
+
+      if (audioSource == null) {
+        logger.log('Failed to build audio source for ${songData['ytid']}');
+        _lastError = 'Failed to build audio source';
+        return false;
+      }
+
+      return await _setAudioSourceAndPlay(
+        songData,
+        audioSource,
+        playback.songUrl,
+        playback.isOffline,
+        mediaId: mediaId,
+        transitionId: transitionId,
+        playWhenReady: playWhenReady,
+      );
+    } catch (e, stackTrace) {
+      logger.log('Error playing song', error: e, stackTrace: stackTrace);
+      _lastError = e.toString();
+      return false;
+    }
+  }
+
+  Future<_PlaybackSource?> _resolvePlaybackSource(Map songData) async {
+    final isOffline = await _resolveOfflineAndSetPaths(songData);
+    if (!isOffline && offlineMode.value) {
+      logger.log(
+        'Offline mode enabled and no local file found for ${songData['ytid']}',
+      );
+      return null;
+    }
+
+    final songUrl = await _getPlaybackUrl(songData, isOffline);
+
+    if (songUrl == null || songUrl.isEmpty) {
+      if (!isOffline) {
+        logger.log('Failed to get song URL for ${songData['ytid']}');
+        return null;
+      }
+
+      // If offline mode is enabled, do NOT fall back to online streams.
+      // This prevents network requests while the user explicitly requested
+      // offline-only operation.
+      try {
+        if (offlineMode.value) {
+          logger.log(
+            'Offline mode enabled and offline file missing for ${songData['ytid']}. Not falling back to online.',
+          );
+          return null;
+        }
+      } catch (_) {
+        // If offlineMode isn't accessible, fail rather than fallback to online
+        logger.log('Could not check offline mode, failing playback');
+        return null;
+      }
+
+      logger.log(
+        'Offline file missing for ${songData['ytid']}, switching to online',
+      );
+
+      final onlineUrl = await fetchSongStreamUrl(
+        songData['ytid'],
+        songData['isLive'] ?? false,
+      );
+
+      if (onlineUrl == null || onlineUrl.isEmpty) {
+        logger.log('Failed to get song URL for ${songData['ytid']}');
+        return null;
+      }
+
+      return _PlaybackSource(songUrl: onlineUrl, isOffline: false);
+    }
+
+    return _PlaybackSource(songUrl: songUrl, isOffline: isOffline);
+  }
+
+  Future<String?> _getPlaybackUrl(Map song, bool isOffline) async {
+    if (isOffline) {
+      return _getOfflineSongUrl(song);
+    }
+
+    return fetchSongStreamUrl(song['ytid'], song['isLive'] ?? false);
+  }
+
+  Future<String?> _getOfflineSongUrl(Map song) async {
+    final audioPath = song['audioPath']?.toString();
+    if (audioPath == null || audioPath.isEmpty) {
+      logger.log('Missing audioPath for offline song: ${song['ytid']}');
+      return null;
+    }
+
+    final file = File(audioPath);
+    if (await file.exists()) {
+      return audioPath;
+    }
+
+    logger.log('Offline audio file not found: $audioPath');
+
+    final offlineSong = userOfflineSongs.value.firstWhere(
+      (s) => s['ytid'] == song['ytid'],
+      orElse: () => <String, dynamic>{},
+    );
+
+    if (offlineSong.isNotEmpty && offlineSong['audioPath'] != null) {
+      final fallbackPath = offlineSong['audioPath']?.toString();
+      if (fallbackPath == null || fallbackPath.isEmpty) return null;
+      final fallbackFile = File(fallbackPath);
+      if (await fallbackFile.exists()) {
+        song['audioPath'] = fallbackPath;
+        return fallbackPath;
+      }
+    }
+
+    return null;
+  }
+
+  Future<bool> _setAudioSourceAndPlay(
+    Map song,
+    AudioSource audioSource,
+    String songUrl,
+    bool isOffline, {
+    String? mediaId,
+    bool allowOnlineRetry = true,
+    int? transitionId,
+    bool playWhenReady = true,
+  }) async {
+    try {
+      // Final staleness check before we touch the audio player.
+      // If another song was requested between the URL fetch and here, abort.
+      if (_isStaleTransition(transitionId)) {
+        return false;
+      }
+
+      // Snapshot the pre-swap playing state now: by the time we're committed
+      // to this transition (below), audioPlayer.playing reflects the new
+      // source, not whatever session we're about to finish.
+      final wasPlayingBeforeSwap = audioPlayer.playing;
+
+      final loadedDuration = await audioPlayer
+          .setAudioSource(audioSource)
+          .timeout(_songTransitionTimeout);
+
+      // Check once more after the async setAudioSource: a fast offline song
+      // could have loaded and started playing while we were buffering/setting up.
+      // If so, stop the source we just loaded and yield to the newer song.
+      if (_isStaleTransition(transitionId)) {
+        unawaited(audioPlayer.stop());
+        return false;
+      }
+
+      final resolvedDuration = loadedDuration ?? audioPlayer.duration;
+      if (resolvedDuration != null && _playerSourceMatchesCurrentSong()) {
+        _updateCurrentMediaItemWithDuration(
+          resolvedDuration,
+          preserveLongerKnown: _currentPlayerSourceIsClipped(),
+        );
+      }
+
+      // Finish the old session and start the new one as one atomic pair, only
+      // after every abort path above is cleared. Finishing before the staleness
+      // re-check let a stale transition kill a newer transition's session.
+      // Do this before awaiting play() so Wrapped starts counting from the
+      // first moments of the new track, not after the async handoff.
+      listeningStatsService
+        ..finishListeningSession(
+          countCurrentTick: true,
+          wasPlaying: wasPlayingBeforeSwap,
+        )
+        ..startListeningSession(song, duration: audioPlayer.duration);
+      final startPlayback = transitionId == null || !isDesktopPlatform
+          ? playWhenReady
+          : _queuePlayWhenReady;
+      if (startPlayback)
+        unawaited(
+          audioPlayer.play().catchError((Object e, StackTrace stackTrace) {
+            logger.log(
+              'Error starting playback',
+              error: e,
+              stackTrace: stackTrace,
+            );
+            _lastError = e.toString();
+          }),
+        );
+      unawaited(updateRecentlyPlayed(song['ytid'], songFallback: song));
+
+      if (!isOffline) {
+        final cacheKey =
+            'song_${song['ytid']}_${audioQualitySetting.value}_url';
+        unawaited(addOrUpdateData<String>('cache', cacheKey, songUrl));
+      }
+
+      _updatePlaybackState();
+
+      Future.delayed(const Duration(seconds: 2), _preloadUpcomingSongs);
+
+      return true;
+    } catch (e, stackTrace) {
+      logger.log(
+        'Error setting audio source',
+        error: e,
+        stackTrace: stackTrace,
+      );
+
+      if (isOffline) {
+        // If offline mode is explicitly enabled, do not attempt any online
+        // fallback — respect the user's offline-only preference.
+        try {
+          if (offlineMode.value) {
+            return false;
+          }
+        } catch (_) {
+          // If offlineMode isn't accessible, fallthrough to attempt fallback.
+        }
+
+        return _attemptOfflineFallback(
+          song,
+          mediaId: mediaId,
+          transitionId: transitionId,
+          playWhenReady: playWhenReady,
+        );
+      }
+
+      if (allowOnlineRetry) {
+        if (offlineMode.value) {
+          _lastError = e.toString();
+          return false;
+        }
+        return _retryPlayWithFreshUrl(
+          song,
+          mediaId: mediaId,
+          transitionId: transitionId,
+          playWhenReady: playWhenReady,
+          invalidateCache: true,
+        );
+      }
+
+      _lastError = e.toString();
+      return false;
+    }
+  }
+
+  Future<bool> _retryPlayWithFreshUrl(
+    Map song, {
+    String? mediaId,
+    int? transitionId,
+    bool playWhenReady = true,
+    bool invalidateCache = false,
+  }) async {
+    final songId = song['ytid']?.toString();
+    if (songId == null || songId.isEmpty) return false;
+
+    if (invalidateCache) await invalidateSongStreamCache(songId);
+
+    final freshUrl = await fetchSongStreamUrl(songId, song['isLive'] ?? false);
+    if (freshUrl == null || freshUrl.isEmpty) return false;
+
+    final freshSource = await buildAudioSource(song, freshUrl, false);
+    if (freshSource == null) return false;
+
+    return _setAudioSourceAndPlay(
+      song,
+      freshSource,
+      freshUrl,
+      false,
+      mediaId: mediaId,
+      allowOnlineRetry: false,
+      transitionId: transitionId,
+      playWhenReady: playWhenReady,
+    );
+  }
+
+  Future<bool> _attemptOfflineFallback(
+    Map song, {
+    String? mediaId,
+    int? transitionId,
+    bool playWhenReady = true,
+  }) async {
+    if (offlineMode.value) return false;
+    return _retryPlayWithFreshUrl(
+      song,
+      mediaId: mediaId,
+      transitionId: transitionId,
+      playWhenReady: playWhenReady,
+    );
+  }
+
+  Future<void> playNext(Map song) async {
+    await addToQueue(song, playNext: true);
+  }
+
+  Future<void> playPlaylistSong({
+    Map<dynamic, dynamic>? playlist,
+    required int songIndex,
+    bool? shuffle,
+  }) async {
+    try {
+      if (playlist != null && playlist['list'] != null) {
+        await addPlaylistToQueue(
+          List<Map>.from(playlist['list']),
+          replace: true,
+          startIndex: songIndex,
+          shuffle: shuffle,
+        );
+      }
+    } catch (e, stackTrace) {
+      logger.log('Error playing playlist', error: e, stackTrace: stackTrace);
+    }
+  }
+
+  /// Play a radio stream directly without queue management
+  Future<bool> playRadioStream({
+    required String id,
+    required String name,
+    required String streamUrl,
+    required String image,
+    String? genre,
+  }) async {
+    try {
+      // Create a song-like map for the radio stream
+      final radioSong = {
+        'id': id,
+        'ytid': id, // Use radio ID as ytid for compatibility
+        'title': name,
+        'artist': genre ?? 'Radio Station',
+        'album': 'Live Stream',
+        'highResImage': image,
+        'lowResImage': image,
+        'duration': null, // Radio streams are live
+        'isLive': true,
+      };
+
+      _lastError = null;
+      final wasPlayingBeforeSwap = audioPlayer.playing;
+      if (audioPlayer.playing) {
+        listeningStatsService.recordListeningSessionProgress(
+          wasPlaying: audioPlayer.playing,
+        );
+        await audioPlayer.pause();
+      }
+
+      // Update media item and queue for mini player visibility
+      final mediaItem = mapToMediaItem(radioSong);
+      this.mediaItem.add(mediaItem);
+      queue.add([mediaItem]);
+
+      // Build audio source from stream URL
+      final audioSource = await buildAudioSource(
+        radioSong,
+        streamUrl,
+        false, // Radio streams are always online
+      );
+
+      if (audioSource == null) {
+        logger.log('Failed to build audio source for radio stream: $id');
+        _lastError = 'Failed to load radio stream';
+        return false;
+      }
+
+      // Play the radio stream
+      await audioPlayer
+          .setAudioSource(audioSource)
+          .timeout(_songTransitionTimeout);
+
+      listeningStatsService.finishListeningSession(
+        countCurrentTick: true,
+        wasPlaying: wasPlayingBeforeSwap,
+      );
+
+      await audioPlayer.play().catchError((Object e, StackTrace stackTrace) {
+        logger.log(
+          'Error starting radio playback',
+          error: e,
+          stackTrace: stackTrace,
+        );
+        _lastError = e.toString();
+      });
+
+      _updatePlaybackState();
+      return true;
+    } catch (e, stackTrace) {
+      logger.log(
+        'Error playing radio stream',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      _lastError = e.toString();
+      return false;
+    }
+  }
+
+  Future<AudioSource?> buildAudioSource(
+    Map song,
+    String songUrl,
+    bool isOffline,
+  ) async {
+    try {
+      final tag = mapToMediaItem(song);
+
+      if (isOffline) {
+        final fileSource = AudioSource.file(songUrl, tag: tag);
+
+        if (sponsorBlockSupport.value) {
+          return _applyOfflineSponsorBlock(fileSource, song['ytid']) ??
+              fileSource;
+        }
+
+        return fileSource;
+      }
+
+      final uri = Uri.parse(songUrl);
+      final needsClientHeaders =
+          song['isLive'] != true && uri.host.endsWith('googlevideo.com');
+      final audioSource = AudioSource.uri(
+        uri,
+        headers: needsClientHeaders
+            ? streamPlaybackHeaders(song['ytid']?.toString())
+            : null,
+        tag: tag,
+      );
+
+      if (!sponsorBlockSupport.value) {
+        return audioSource;
+      }
+
+      final spbAudioSource = await checkIfSponsorBlockIsAvailable(
+        audioSource,
+        song['ytid'],
+      );
+      return spbAudioSource ?? audioSource;
+    } catch (e, stackTrace) {
+      logger.log(
+        'Error building audio source',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      return null;
+    }
+  }
+
+  AudioSource? _applyOfflineSponsorBlock(
+    UriAudioSource audioSource,
+    String songId,
+  ) {
+    final segments = getCachedSponsorBlockSegments(songId);
+    if (segments != null) {
+      return segments.isEmpty
+          ? null
+          : _buildSkippedAudioSource(audioSource, segments);
+    }
+    // Nothing stored yet, e.g. a song downloaded before this existed: look it
+    // up now so the next playback of it skips offline too.
+    if (!offlineMode.value) unawaited(cacheSponsorBlockSegments(songId));
+    return null;
+  }
+
+  Future<AudioSource?> checkIfSponsorBlockIsAvailable(
+    UriAudioSource audioSource,
+    String songId,
+  ) async {
+    try {
+      final segments = await getSkipSegments(songId);
+      if (segments.isEmpty) return null;
+      return _buildSkippedAudioSource(audioSource, segments);
+    } catch (e, stackTrace) {
+      logger.log(
+        'Error checking sponsor block',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      return null;
+    }
+  }
+
+  static AudioSource? _buildSkippedAudioSource(
+    UriAudioSource source,
+    List<Map<String, int>> segments,
+  ) {
+    segments.sort((a, b) => (a['start'] ?? 0).compareTo(b['start'] ?? 0));
+    final children = <AudioSource>[];
+    var lastEnd = 0;
+    for (final segment in segments) {
+      final start = segment['start'] ?? 0;
+      final end = segment['end'] ?? 0;
+      if (start > lastEnd) {
+        children.add(
+          ClippingAudioSource(
+            child: source,
+            start: Duration(seconds: lastEnd),
+            end: Duration(seconds: start),
+            tag: source.tag,
+          ),
+        );
+      }
+      if (end > lastEnd) lastEnd = end;
+    }
+    children.add(
+      ClippingAudioSource(
+        child: source,
+        start: Duration(seconds: lastEnd),
+        tag: source.tag,
+      ),
+    );
+    if (children.length == 1) return children.first;
+    // ignore: deprecated_member_use
+    return ConcatenatingAudioSource(children: children);
+  }
+
+  Future<void> skipToSong(int newIndex) async {
+    try {
+      if (newIndex < 0 || newIndex >= _queueList.length) {
+        logger.log('Invalid song index: $newIndex');
+        return;
+      }
+      await _playFromQueue(newIndex);
+    } catch (e, stackTrace) {
+      logger.log('Error skipping to song', error: e, stackTrace: stackTrace);
+    }
+  }
+
+  @override
+  Future<void> skipToQueueItem(int index) => skipToSong(index);
+
+  @override
+  Future<void> skipToNext({bool playWhenReady = true}) async {
+    try {
+      if (_currentQueueIndex < _queueList.length - 1) {
+        await _playFromQueue(
+          _currentQueueIndex + 1,
+          playWhenReady: playWhenReady,
+        );
+      } else if (repeatNotifier.value == AudioServiceRepeatMode.all &&
+          _queueList.isNotEmpty) {
+        await _playFromQueue(0, playWhenReady: playWhenReady);
+      } else if (playNextSongAutomatically.value &&
+          _currentLoadingIndex == -1) {
+        // At end of queue with auto-play enabled - trigger background fetch
+        unawaited(_backgroundAddSongsToQueue());
+      } else {
+        if (audioPlayer.processingState != ProcessingState.completed) {
+          await stop();
+        }
+      }
+
+      _cleanupOldPreloadedSongs();
+    } catch (e, stackTrace) {
+      logger.log(
+        'Error skipping to next song',
+        error: e,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  @override
+  Future<void> skipToPrevious({bool playWhenReady = true}) async {
+    try {
+      if (_currentQueueIndex > 0) {
+        await _playFromQueue(
+          _currentQueueIndex - 1,
+          playWhenReady: playWhenReady,
+        );
+      } else if (_historyList.isNotEmpty) {
+        final lastSong = cloneMap(_historyList.removeLast());
+        _queueList.insert(0, lastSong);
+        _currentQueueIndex = 0;
+        _currentLoadingIndex = -1;
+        _currentLoadingTransitionId = -1;
+        _updateQueueMediaItems();
+        await _playFromQueue(0, playWhenReady: playWhenReady);
+      }
+
+      _cleanupOldPreloadedSongs();
+    } catch (e, stackTrace) {
+      logger.log(
+        'Error skipping to previous song',
+        error: e,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  Future<void> playAgain() async {
+    try {
+      listeningStatsService.finishListeningSession(
+        countCurrentTick: true,
+        wasPlaying: audioPlayer.playing,
+      );
+      await audioPlayer.seek(Duration.zero);
+      final song = currentSong;
+      if (song != null) {
+        listeningStatsService.startListeningSession(
+          song,
+          duration: audioPlayer.duration,
+        );
+        unawaited(updateRecentlyPlayed(song['ytid'], songFallback: song));
+      }
+    } catch (e, stackTrace) {
+      logger.log('Error playing again', error: e, stackTrace: stackTrace);
+    }
+  }
+
+  void _enableShuffle(
+    List<Map> unplayedManualSongs,
+    Set<String> manualSongIds,
+  ) {
+    _originalQueueList
+      ..clear()
+      ..addAll(cloneMaps(_queueList));
+    _rebuildOriginalQueueEntryIndex();
+
+    _shuffleQueueList(unplayedManualSongs, manualSongIds);
+  }
+
+  /// Shuffles the whole queue, keeping the current song first and any
+  /// unplayed manually added songs right after it.
+  void _shuffleQueueList(
+    List<Map> unplayedManualSongs,
+    Set<String> manualSongIds,
+  ) {
+    final currentSong = _queueList[_currentQueueIndex];
+    final shuffledQueue = shuffleQueueOrder(
+      songs: _queueList,
+      currentSong: currentSong,
+      unplayedManualSongs: unplayedManualSongs,
+      manualSongIds: manualSongIds,
+      queueEntryIds: _queueEntryIds,
+    );
+    _queueList
+      ..clear()
+      ..addAll(shuffledQueue.songs);
+    _currentQueueIndex = shuffledQueue.currentIndex;
+    _updateQueueMediaItems();
+  }
+
+  void _disableShuffle(
+    List<Map> unplayedManualSongs,
+    Set<String> manualSongIds,
+  ) {
+    if (_originalQueueList.isEmpty ||
+        _currentQueueIndex < 0 ||
+        _currentQueueIndex >= _queueList.length)
+      return;
+
+    final currentSong = _queueList[_currentQueueIndex];
+    final restoredQueue = restoreQueueOrder(
+      originalSongs: _originalQueueList,
+      currentSong: currentSong,
+      unplayedManualSongs: unplayedManualSongs,
+      manualSongIds: manualSongIds,
+      queueEntryIds: _queueEntryIds,
+    );
+    _queueList
+      ..clear()
+      ..addAll(restoredQueue.songs);
+    _currentQueueIndex = restoredQueue.currentIndex;
+
+    _originalQueueList.clear();
+    _originalQueueEntriesById.clear();
+    _updateQueueMediaItems();
+  }
+
+  /// Reshuffles the queue on every call. Leaves the saved original order
+  /// untouched so turning shuffle mode off still restores it.
+  Future<void> shuffleQueue() async {
+    try {
+      if (_queueList.length < 2 ||
+          _currentQueueIndex < 0 ||
+          _currentQueueIndex >= _queueList.length) {
+        return;
+      }
+
+      _hydrateQueueEntryIds();
+      final unplayedManualSongs = _getUnplayedManualSongs();
+      final manualSongIds = unplayedManualSongs
+          .map(_queueEntryIds.ensureId)
+          .toSet();
+      _shuffleQueueList(unplayedManualSongs, manualSongIds);
+
+      _cleanupOldPreloadedSongs();
+      _preloadUpcomingSongs();
+      _updatePlaybackState(force: true);
+    } catch (e, stackTrace) {
+      logger.log('Error shuffling queue', error: e, stackTrace: stackTrace);
+    }
+  }
+
+  @override
+  Future<void> setShuffleMode(AudioServiceShuffleMode shuffleMode) async {
+    try {
+      final shuffleEnabled = shuffleMode != AudioServiceShuffleMode.none;
+      final wasShuffled = shuffleNotifier.value;
+
+      shuffleNotifier.value = shuffleEnabled;
+      unawaited(Hive.box('settings').put('shuffleEnabled', shuffleEnabled));
+      await audioPlayer.setShuffleModeEnabled(shuffleEnabled);
+
+      if (_queueList.isEmpty) return;
+
+      // Can't shuffle if current queue index is invalid
+      if (!_hasCurrentQueueIndex) return;
+
+      if (shuffleEnabled != wasShuffled) {
+        _hydrateQueueEntryIds();
+        final (unplayedManualSongs, manualSongIds) = _getManualSongData();
+
+        if (shuffleEnabled) {
+          _enableShuffle(unplayedManualSongs, manualSongIds);
+        } else {
+          _disableShuffle(unplayedManualSongs, manualSongIds);
+        }
+      }
+    } catch (e, stackTrace) {
+      logger.log(
+        'Error setting shuffle mode',
+        error: e,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  (List<Map>, Set<String>) _getManualSongData() {
+    final unplayedManualSongs = _getUnplayedManualSongs();
+    final manualSongIds = unplayedManualSongs
+        .map(_queueEntryIds.ensureId)
+        .toSet();
+    return (unplayedManualSongs, manualSongIds);
+  }
+
+  @override
+  Future<void> setRepeatMode(AudioServiceRepeatMode repeatMode) async {
+    try {
+      repeatNotifier.value = repeatMode;
+      unawaited(Hive.box('settings').put('repeatMode', repeatMode.index));
+
+      // Always set loop mode to off - we handle all repeating through _handleSongCompletion
+      // This ensures ProcessingState.completed is always fired for proper song transitions
+      await audioPlayer.setLoopMode(LoopMode.off);
+    } catch (e, stackTrace) {
+      logger.log('Error setting repeat mode', error: e, stackTrace: stackTrace);
+    }
+  }
+
+  Future<void> setSleepTimer(Duration duration) async {
+    try {
+      _sleepTimer?.cancel();
+      sleepTimerExpired = false;
+      sleepTimerNotifier.value = duration;
+
+      _sleepTimer = Timer(duration, () async {
+        sleepTimerExpired = true;
+        await stop();
+        sleepTimerNotifier.value = null;
+      });
+    } catch (e, stackTrace) {
+      logger.log('Error setting sleep timer', error: e, stackTrace: stackTrace);
+    }
+  }
+
+  void cancelSleepTimer() {
+    try {
+      _sleepTimer?.cancel();
+      _sleepTimer = null;
+      sleepTimerExpired = false;
+      sleepTimerEndOfSong = false;
+      sleepTimerNotifier.value = Duration.zero;
+    } catch (e, stackTrace) {
+      logger.log(
+        'Error canceling sleep timer',
+        error: e,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  Future<void> setSleepTimerEndOfSong() async {
+    try {
+      _sleepTimer?.cancel();
+      sleepTimerExpired = false;
+      sleepTimerEndOfSong = true;
+      sleepTimerNotifier.value = const Duration(milliseconds: -1);
+    } catch (e, stackTrace) {
+      logger.log(
+        'Error setting sleep timer end of song',
+        error: e,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  @override
+  Future<void> customAction(String name, [Map<String, dynamic>? extras]) async {
+    try {
+      switch (name) {
+        case 'clearQueue':
+          clearQueue();
+          break;
+        case 'addToQueue':
+          if (extras?['song'] != null) {
+            await addToQueue(
+              extras!['song'] as Map,
+              playNext: extras['playNext'] ?? false,
+            );
+          }
+          break;
+        case 'removeFromQueue':
+          if (extras?['index'] != null) {
+            await removeFromQueue(extras!['index'] as int);
+          }
+          break;
+        case 'reorderQueue':
+          if (extras?['oldIndex'] != null && extras?['newIndex'] != null) {
+            await reorderQueue(
+              extras!['oldIndex'] as int,
+              extras['newIndex'] as int,
+            );
+          }
+          break;
+        default:
+          if (!await ongakuCustomAction(name)) {
+            await super.customAction(name, extras);
+          }
+      }
+    } catch (e, stackTrace) {
+      logger.log(
+        'Error in customAction: $name',
+        error: e,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+}
+
+class _PlaybackSource {
+  const _PlaybackSource({required this.songUrl, required this.isOffline});
+
+  final String songUrl;
+  final bool isOffline;
+}

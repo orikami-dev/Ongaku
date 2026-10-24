@@ -1,0 +1,252 @@
+# Ongaku
+
+Apple Music style edition of [Musify](https://github.com/gokadzev/Musify) (GPL-3.0).
+Same features and library as Musify, new interface, plus local file playback.
+Layouts adapt to phones, foldables, tablets and desktops.
+
+## How it stays in sync with Musify
+
+All Ongaku code lives in **`lib/ongaku/`** (theme, shell, mini player, full-screen
+player, local files, layout helpers, branding). Upstream files are only touched by
+small hooks marked `Ongaku:` or importing `package:musify/ongaku/...`:
+
+| File | Hook |
+| --- | --- |
+| `lib/main.dart` | `getOngakuTheme` / `getOngakuColorScheme` / `OngakuScrollBehavior`, name constants |
+| `lib/services/router_service.dart` | `OngakuShell` instead of `BottomNavigationPage`, iOS page transitions, Local Files route |
+| `lib/screens/library_page.dart` | "Local Files" row, large title |
+| `lib/screens/search_page.dart` | large title |
+| `lib/widgets/section_header.dart` | Ongaku section title, compact action buttons |
+| `lib/services/common_services.dart` | 3 guards: local songs never call YouTube |
+| `lib/utilities/mediaitem.dart` | carries local artwork/path through `MediaItem` |
+| `lib/widgets/song_bar.dart` | shows local artwork |
+| `lib/services/update_manager.dart` | update URLs point at Ongaku, not Musify |
+| `lib/services/settings_manager.dart`, `lib/theme/app_colors.dart` | default accent (Apple red), system colors off |
+| `lib/widgets/shapes/*` | squircle instead of cookie shapes |
+| `lib/widgets/playlist_hero_artwork.dart` | square cover instead of the star clip |
+| `lib/screens/settings_page.dart` | pickers close with `ongakuClosePicker`; Spotify row opens Ongaku's import; Deezer / Apple Music import rows; dynamic colour switch inside the Couleur picker (`ongakuAccentSheet`), swatch shows the system colour; no audio quality badge row; sponsor section is `OngakuSponsorCards` |
+| `lib/screens/about_page.dart` | `OngakuAboutHeader`, `OngakuUpstreamHeader`, `OngakuUpstreamAuthorCard` |
+| `lib/screens/playlist_page.dart`, `artist_page.dart` | round buttons above Play / Shuffle |
+| `lib/services/router_service.dart` (settings) | `ongakuImportRoutes` |
+| `lib/services/router_service.dart` (license) | `applicationVersion: ongakuVersion` |
+| `lib/services/update_manager.dart` | update check compares with `ongakuVersion` (Ongaku's releases, not Musify's) |
+| `lib/utilities/flutter_toast.dart` | a toast replaces the one on screen; quicker `ongakuToastAnimation` |
+| `android/app/src/main/res` (styles, launch_background) | opening screen is the plain app background (`ongaku_launch`), no logo; Android 12+ splash icon blank (`ongaku_splash_blank`); `setOpeningMode` keeps it on the app's day/night mode |
+| `lib/widgets/playlist_page/like_button.dart` | liked star takes `onPrimary` (the theme's accent hid it) |
+| `lib/screens/settings_page.dart` (updates, imports) | "Rechercher une mise à jour" row (`ongakuCheckUpdatesNow`); brand logos on import rows; SoundCloud import |
+| `lib/services/router_service.dart` (home) | `ongakuLikedRoute` |
+| `lib/utilities/flutter_bottom_sheet.dart` | `isCustomBottomSheetOpen`; `showDragHandle: false` (one handle) |
+| `lib/widgets/confirmation_dialog.dart`, `rename_song_dialog.dart` | readable text on the coloured confirm button |
+| `lib/screens/{home,about}_page.dart`, `listening_recap_card.dart`, `linux_media_controls.dart` | app name |
+| `android/`, `linux/`, `windows/` | app id `com.orikami.ongaku`, labels |
+| `lib/localization/app_*.arb` | "Ongaku" instead of "Musify" in texts, rewritten by `scripts/brand_strings.py` after each merge |
+| `pubspec.yaml` | 4 dependencies (`# Ongaku`, including the local `packages/ongaku_sound` plugin), Inter font, About page artwork |
+| `lib/main.dart` (start) | `ongakuStartSound(audioHandler)`: calibrated sound and Mode doux; `ongakuWatchPaletteIcon()`: app icon of the theme |
+| `lib/main.dart` (app builder) | `OngakuSystemBars`: status and navigation bars follow the app theme, not the system |
+| `android/app/src/main/AndroidManifest.xml` | launcher filter moved to one `activity-alias` per theme |
+| `lib/screens/settings_page.dart` (Apparence) | `OngakuPalettePicker` (the Thème row, unfolding its cards) first; no Couleur row |
+| `lib/services/router_service.dart` (settings) | `ongakuSoundRoutes` |
+| `lib/screens/settings_page.dart` (Lecture) | Musify's Égaliseur row removed, "Son calibré" row in its place (Android) |
+| `lib/widgets/playlist_page/playlist_sliver_app_bar.dart` | `OngakuPlaylistSpace`: title fixed under the cover, small title in the bar once collapsed |
+| `lib/widgets/playlist_page/playlist_header.dart` | `actions`: type and count chips left and right of the round buttons (`OngakuChipRow`) |
+| `lib/screens/playlist_page.dart`, `artist_page.dart` (header) | round buttons passed to `PlaylistHeader.actions` |
+| `lib/services/audio_service.dart` (Android Auto) | `OngakuAutoBrowser`: Accueil, Bibliothèque (Tous les titres, fichiers locaux), Lecture aléatoire rows |
+| `lib/services/router_service.dart`, `lib/screens/library_page.dart` | "Tous les titres": `ongakuAllSongsRoute`, `ongakuAllSongsBar` |
+
+Everything else (playback, YouTube extraction, library, playlists, stats, proxy,
+equalizer, downloads...) is untouched Musify code, so upstream bug fixes and API
+updates arrive unchanged.
+
+```
+scripts/sync_upstream.sh   # fetch + merge Musify, then verify
+scripts/verify.sh          # analyze + tests + checks that every hook is still present
+```
+
+`.github/workflows/ongaku_sync.yml` does the same every day and opens a pull
+request when Musify changed (or an issue if a hook conflicts). Merge it when green.
+Upstream's own release workflows are left as they are to avoid merge conflicts:
+disable them in the GitHub Actions settings of the repository.
+
+## Local files
+
+Library > Local Files: add files, or a folder (scanned recursively, rescanned on
+open). Tags and cover art are read from the files (MP3/ID3, M4A, FLAC, OGG, ...),
+with `Artist - Title` file names and `cover.jpg` as fallbacks. Local songs are normal
+Musify songs (`ytid` starting with `local_`, with an `audioPath`), so queue, likes,
+playlists, shuffle and offline mode work with them.
+
+## Paused
+
+Android Auto and the video mode. The Android Auto tabs (Recents, Library, Playlists, Up Next, with local files) are written in `lib/ongaku/services/ongaku_auto_browser.dart` but not enabled; to enable them, replace `AndroidAutoBrowser(this)` by `OngakuAutoBrowser(this)` in `lib/services/audio_service.dart`.
+
+## Changing the name
+
+Edit `lib/ongaku/brand.dart`, `android/app/build.gradle.kts` (`applicationId`),
+the Android label, and the Linux/Windows titles.
+
+## Layout, lyrics and lock screen (v3)
+
+* `screens/ongaku_shell.dart`: 5 tabs (Home, New, Radio, Library, Search). Phone: mini player docked above the bar. Open foldable or tablet: tabs left, mini player right. `ongaku_routes.dart` adds branches 4 (New) and 5 (Radio) after upstream's four, so upstream indexes never move.
+* `screens/ongaku_now_playing_page.dart`: full screen player on phones, right-hand panel on wide screens with lyrics filling the left side.
+* `lyrics/synced_lyrics.dart`: .lrc next to a local file, then LRCLIB, then Musify's plain lyrics spread over the song.
+* `theme/artwork_palette.dart` + `widgets/artwork_background.dart`: backgrounds take the colours of the current artwork.
+* `services/ongaku_notification.dart`: lock screen buttons (favourite, previous, play, next, shuffle). Hooks in `audio_service.dart`: `_controls`, the three `androidCompactActionIndices` and `customAction`; one line in `main.dart`.
+* Icon: `scripts/make_ongaku_icon.py <res dir> <out dir>`.
+
+## v4
+
+* Bar: Home, Library, Search, Settings. "You" is the round button on the Home title (route /home/you: stats + listening history). Recently played opens /home/recents as a pushed page.
+* Settings are grouped by category (`settings_page.dart` `_buildCategories`); `CustomBar` and `SectionHeader` delegate to `widgets/ongaku_settings_ui.dart` and `ongaku_page_parts.dart`, so every list in the app shares the iOS look.
+* Player: the old ⋯ menu is gone; its actions sit in the bottom row. The heart icon became a star everywhere (`FluentIcons.star_*`).
+* Lyrics: wider LRCLIB search and a per-session timing nudge (± 0.5 s).
+
+## v10: calibrated sound and Mode doux
+
+* Settings > Lecture > Son calibré (Android 9+). One profile per output:
+  phone speaker, each model of earbuds or headphones (Bluetooth or wired),
+  car (Android Auto, detected through car mode). Applied with
+  `DynamicsProcessing` (10 bands, 31 Hz to 16 kHz, limiter) on the
+  player's audio session, switched automatically when the output changes.
+* Phone speaker and car: acoustic test with the microphone (noise check,
+  6 s exponential sweep, Farina deconvolution, octave levels, gentle
+  correction that cuts more than it boosts).
+* Earbuds and headphones: hearing test (beeps getting louder, 9 bands,
+  staircase, half-gain rule); a microphone cannot measure inside the ear.
+* Layers on top of the profile: Rock, Pop, Hip-hop, Électro, Classique,
+  Jazz, Voix, and Auto, which listens to the music (Visualizer, needs the
+  microphone permission) and blends to the matching layer over 2 s.
+  Stereo widening (`Virtualizer`) on headphones. No head tracking.
+* Mode doux (player chip and settings): off, Auto or a fixed 1 to 12 s.
+  A second player finishes the ending song while Musify moves to the next
+  one (fetched in advance by Musify), equal-power crossfade. Auto: 6 s
+  (3 s for short songs), none between two songs of the same album, and an
+  earlier start when the song already fades out. Never with repeat one,
+  the end-of-song sleep timer, live streams or SponsorBlock-cut songs.
+* Code: `packages/ongaku_sound` (Kotlin plugin), `lib/ongaku/sound/`
+  (maths, settings, engine, crossfade), pages in `lib/ongaku/screens/`.
+  The maths is tested on simulated signals (`test/ongaku_sound_test.dart`).
+  Musify's own equalizer is hidden and kept off (v10.1).
+
+## v12
+
+- Player pulled up from the bottom on every screen, dragged down to close;
+  on large screens the lyrics slide out of the panel into their own card
+  beside it, on phones lyrics and queue rise from the controls. Layout and
+  behaviour unchanged.
+- Large-screen panel: with the big artwork, no header or mode chips, the
+  title and star sit under the artwork (the artwork showed twice); header
+  and chips come back with the queue.
+- Mini player slides in when a song starts.
+- Settings: the Thème row (palette icon) unfolds the theme cards, its arrow
+  turns; the Couleur row is gone.
+- `OngakuSystemBars`: the navigation bar takes the tab bar colour and the
+  app's contrast (it was white on a dark app with the phone in day mode).
+- Sumi accent is violet (#6A4BC4 day, #A993F5 night), as in Kamishibai.
+- Version: Ongaku's own build number (`ongakuVersion` in brand.dart, pubspec 12.0.0+1200), shown in About with "Basé sur Musify 10.5.3" under it.
+- `stopCorrectionCompare()`: the before/after sample stops when a test
+  starts.
+
+## v10.1
+
+* Sound layers are accent pills (the chips could not be chosen on the
+  phone).
+* "Écouter la différence" on the test results and on the output card:
+  play the demo loop (`assets/sounds/ongaku_demo.ogg`, made by
+  `scripts/make_demo_sample.py`) or the current song, switching between
+  Avant (flat) and Après (the correction), via `OngakuSoundEngine.preview`.
+* Musify's equalizer is gone from the settings and switched off at start,
+  so it never stacks with the calibrated sound.
+* Home ⋮ menu: Rafraîchir les recommandations, Historique d'écoute, Mix
+  aléatoire (liked songs + local files, shuffled).
+* Themes shared with Kamishibai (`lib/ongaku/theme/ongaku_palettes.dart`):
+  Ongaku (iOS grays), Washi, Sumi (violet), Ai, Matcha,
+  Sakura, Kin, each with day and night neutrals and its accent. Picked from
+  cards at the top of Apparence (Couleur shows only for Ongaku). Each theme
+  has its app icon (`scripts/make_ongaku_icon.py --palettes`): one launcher
+  `activity-alias` per theme in the manifest, switched when the app goes
+  to the background (`setLauncherIcon` in the `ongaku_sound` plugin).
+
+## v9
+
+* About: Ongaku's banner (`assets/icons/ongaku_banner.png`, made by
+  `scripts/make_about_banner.py` from the icon: same layout as Musify's
+  banner, Ongaku's colours and folded-paper facets) replaces the icon and
+  name; Musify keeps only its banner.
+* "Vous" is a Replay page: month chips, a gradient card with the minutes,
+  songs, artists and plays of the month, top artists, top songs (tap to
+  play) and minutes month by month. No listening history there any more
+  (still under the home menu). Data: Musify's listening statistics
+  (`lib/ongaku/home/you_stats.dart`).
+
+## v8
+
+* Round buttons (like, add, download, share, edit) above Play / Shuffle.
+* Imports keep the source playlist's name and cover, for Spotify, Deezer and
+  Apple Music. Apple Music reads every song through the web API
+  (amp-api.music.apple.com, with the public token of the website's script);
+  the page alone only holds the first songs. Spotify reads the link: name
+  and cover from oEmbed, songs from the embed player and, for long
+  playlists, the Web API with the embed's anonymous token; a CSV export is
+  still accepted.
+* Home laid out like Apple Music's Accueil: large title with the You button,
+  a ⋮ menu (You, history, settings) and a small title once scrolled; "Pour
+  vous", "Écoutés récemment" (favourite songs first), "Plus de : artist"
+  shelves for the two artists heard most, Musify's playlists grouped by
+  theme (`lib/ongaku/home/home_shelves.dart`), radios, your playlists,
+  suggestions, albums and Replay cards.
+* Settings: the audio quality badge row is gone, the dynamic accent colour
+  switch moved into the Couleur picker, and the Couleur swatch shows the
+  system colour when it is on.
+* About: Ongaku's icon and name (Inter), Orikami with the GitHub link
+  (`ongakuRepoUrl` in `brand.dart`, dimmed until set), the fork notice, then
+  Musify's name, banner and author. "Financer le projet" lists Orikami
+  (`ongakuSponsorUrl`) first, then Musify's creator.
+
+## v7
+
+* Choosing a theme mode (or a language, accent colour or audio quality) in
+  Settings crashed the app: the picker is a sheet of the app shell, and
+  `Navigator.pop(context)` from the settings page popped the settings page,
+  the last page of its tab. `ongakuClosePicker` closes the sheet itself.
+  Covered by the "theme mode picker" test of the screenshot harness.
+* Playlist, album and artist covers are square with lightly rounded corners
+  (upstream clipped them to an eight-pointed star).
+* Texts say "Ongaku" instead of "Musify" (update question, offline mode,
+  recap, Spotify import...), except the Crowdin translation link.
+* Playlist import from Deezer and Apple Music (Settings), next to Musify's
+  Spotify import, in `lib/ongaku/import/`. Deezer: public API from a share
+  link (short links followed). Apple Music: the public page of a shared
+  playlist (its `serialized-server-data`, then schema.org data), or a file
+  exported from the Music app / iTunes (UTF-16 text) or a CSV. Songs are
+  then found on YouTube Music like the Spotify import. Private playlists
+  cannot be read. Tests: `test/ongaku_import_test.dart`.
+* The confirm button of confirmation and rename dialogs had primary text on a
+  primary or error background (invisible): its text now uses onPrimary/onError.
+
+## v6
+
+* Fixes: the notification buttons no longer read the global handler while it
+  is being built (a `LateInitializationError` was logged at every start and
+  broke upstream's desktop tests); the progress bar showed "LIVE" until a
+  song's length was known; the player kept the previous song's colours when a
+  song had no artwork; the times under the progress bar used the system font.
+* Library and Search get the same large title as Home and Settings; long
+  section titles shrink instead of being cut; the You page has a back chevron
+  and a rounded history card; the accent colour swatch shows on every
+  platform; local songs can be added to playlists from the player.
+* `test/ongaku_screenshots_test.dart` renders every screen to PNG without a
+  device (phone, open foldable, light and dark). Skipped by default:
+
+  ```
+  flutter test test/ongaku_screenshots_test.dart \
+    --dart-define=ONGAKU_SHOTS=true --dart-define=ONGAKU_SHOTS_DIR=/tmp/shots
+  ```
+
+## Publication
+
+Published at https://github.com/orikami-dev/ongaku (branch `main`). `README.md`,
+`NOTICE.md`, `CHANGELOG.md`, `docs/` and `.github/FUNDING.yml` are Ongaku's own: on an upstream merge,
+keep Ongaku's version. Releases are tagged `vX.Y` or `vX.Y.Z` (1.0.x upstream fixes, 1.x.0 new feature,
+x.0 redesign) with one asset `Ongaku-<version>-arm64.apk`; the in-app updater reads `check.json` on the `update` branch.
+Release title `Ongaku <version>`, notes from `docs/releases/<version>.md`, and a line
+in `CHANGELOG.md` and in the README's major updates table.
