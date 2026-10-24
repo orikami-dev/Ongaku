@@ -84,6 +84,7 @@ void main() {
     required ThemeMode mode,
     required List<String> routes,
     bool player = true,
+    double? hingeAt,
   }) async {
     tester.view.physicalSize = size * 3;
     tester.view.devicePixelRatio = 3;
@@ -93,6 +94,17 @@ void main() {
       left: padding.left * 3,
       right: padding.right * 3,
     );
+    if (hingeAt != null) {
+      // A half folded screen, hinge across it (tabletop posture), in
+      // logical pixels like the engine reports it.
+      tester.view.displayFeatures = [
+        ui.DisplayFeature(
+          bounds: Rect.fromLTWH(0, hingeAt, size.width, 0),
+          type: ui.DisplayFeatureType.fold,
+          state: ui.DisplayFeatureState.postureHalfOpened,
+        ),
+      ];
+    }
     addTearDown(tester.view.reset);
     themes.themeMode = mode;
     themes.brightness = mode == ThemeMode.dark
@@ -325,6 +337,27 @@ void main() {
       padding: const EdgeInsets.only(top: 32, bottom: 20),
       mode: ThemeMode.dark,
       routes: ['/home', '/library', '/settings'],
+    );
+  }, skip: !_enabled);
+
+  testWidgets('half folded foldables, dark', (tester) async {
+    await shots(
+      tester,
+      prefix: 'tabletop-fold',
+      size: const Size(841, 673),
+      padding: const EdgeInsets.only(top: 24, bottom: 16),
+      mode: ThemeMode.dark,
+      routes: ['/home'],
+      hingeAt: 336.5,
+    );
+    await shots(
+      tester,
+      prefix: 'tabletop-flip',
+      size: const Size(412, 915),
+      padding: const EdgeInsets.only(top: 32, bottom: 20),
+      mode: ThemeMode.dark,
+      routes: ['/home'],
+      hingeAt: 457.5,
     );
   }, skip: !_enabled);
 

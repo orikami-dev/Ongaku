@@ -9,6 +9,7 @@
  */
 
 import 'dart:async';
+import 'dart:ui' show DisplayFeatureState, DisplayFeatureType;
 
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/services.dart';
@@ -53,6 +54,19 @@ Future<void> openOngakuNowPlaying(BuildContext context) {
 
 /// Open foldables, tablets and desktops show the player as a side panel.
 bool usesPlayerPanel(Size size) => size.width >= 600 && size.height >= 480;
+
+/// The fold of a foldable half opened like a laptop or standing on a table
+/// (flex or tabletop posture): a horizontal hinge across the screen. Null
+/// when the screen is flat or the fold is vertical.
+Rect? tabletopHinge(MediaQueryData media) {
+  for (final feature in media.displayFeatures) {
+    if (feature.type == DisplayFeatureType.cutout) continue;
+    if (feature.state != DisplayFeatureState.postureHalfOpened) continue;
+    final bounds = feature.bounds;
+    if (bounds.width > bounds.height && bounds.top > 0) return bounds;
+  }
+  return null;
+}
 
 const _white = Colors.white;
 Color _whiteA(double a) => Colors.white.withValues(alpha: a);
@@ -132,6 +146,12 @@ class _OngakuNowPlayingPageState extends State<OngakuNowPlayingPage>
           });
           return const SizedBox.shrink();
         }
+        // Half folded: artwork or lyrics above the hinge, controls and
+        // queue below it.
+        final hinge = tabletopHinge(MediaQuery.of(context));
+        if (hinge != null) {
+          return _buildTabletop(context, metadata, animation, hinge);
+        }
         return LayoutBuilder(
           builder: (context, constraints) {
             final panel = usesPlayerPanel(constraints.biggest);
@@ -151,7 +171,6 @@ class _OngakuNowPlayingPageState extends State<OngakuNowPlayingPage>
     MediaItem metadata,
     Animation<double> animation,
   ) {
-    final height = MediaQuery.sizeOf(context).height;
     final padding = MediaQuery.paddingOf(context);
 
     final content = Column(
@@ -238,6 +257,17 @@ class _OngakuNowPlayingPageState extends State<OngakuNowPlayingPage>
       ],
     );
 
+    return _pulledSheet(context, animation, content);
+  }
+
+  /// The full screen player sheet: pulled up from the bottom when it opens,
+  /// and down again with the finger to close it.
+  Widget _pulledSheet(
+    BuildContext context,
+    Animation<double> animation,
+    Widget content,
+  ) {
+    final height = MediaQuery.sizeOf(context).height;
     return AnimatedBuilder(
       animation: Listenable.merge([animation, _drag]),
       builder: (context, child) {
@@ -281,6 +311,131 @@ class _OngakuNowPlayingPageState extends State<OngakuNowPlayingPage>
         ),
       ),
     );
+  }
+
+  // ------------------------------------------------------------ tabletop
+
+  Widget _buildTabletop(
+    BuildContext context,
+    MediaItem metadata,
+    Animation<double> animation,
+    Rect hinge,
+  ) {
+    final size = MediaQuery.sizeOf(context);
+    final padding = MediaQuery.paddingOf(context);
+    final wide = size.width >= 600;
+
+    final top = AnimatedSwitcher(
+      duration: const Duration(milliseconds: 380),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      child: _panelLyrics
+          ? SyncedLyricsView(
+              key: const ValueKey('lyrics'),
+              fontSize: wide ? 30 : 26,
+              padding: const EdgeInsets.fromLTRB(28, 8, 28, 0),
+            )
+          : Padding(
+              key: const ValueKey('art'),
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Center(child: _BigArtwork(metadata: metadata)),
+            ),
+    );
+
+    final controls = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          children: [
+            Expanded(child: _TitleArtist(metadata: metadata)),
+            const SizedBox(width: 8),
+            _StarButton(metadata: metadata),
+          ],
+        ),
+        const SizedBox(height: 8),
+        const _ProgressBar(),
+        const SizedBox(height: 2),
+        const _TransportControls(size: 40),
+        const SizedBox(height: 10),
+        _BottomButtons(
+          metadata: metadata,
+          lyricsOn: _panelLyrics,
+          queueOn: _panelQueue,
+          onLyrics: () => _toggleLyrics(true),
+          onQueue: () => _toggleQueue(true),
+        ),
+      ],
+    );
+
+    final queue = AnimatedSwitcher(
+      duration: const Duration(milliseconds: 320),
+      transitionBuilder: (child, a) => FadeTransition(opacity: a, child: child),
+      child: _panelQueue
+          ? const _UpNext(key: ValueKey('queue'), dense: true)
+          : const SizedBox.shrink(),
+    );
+
+    final bottom = wide
+        ? Row(
+            children: [
+              Expanded(
+                flex: 5,
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 520),
+                    child: controls,
+                  ),
+                ),
+              ),
+              if (_panelQueue) ...[
+                const SizedBox(width: 24),
+                Expanded(flex: 4, child: queue),
+              ],
+            ],
+          )
+        : Column(
+            children: [
+              Expanded(child: queue),
+              const SizedBox(height: 8),
+              controls,
+            ],
+          );
+
+    final content = Column(
+      children: [
+        SizedBox(
+          height: hinge.top,
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              24 + padding.left,
+              padding.top + 8,
+              24 + padding.right,
+              8,
+            ),
+            child: Column(
+              children: [
+                const _Grabber(),
+                Expanded(child: top),
+              ],
+            ),
+          ),
+        ),
+        SizedBox(height: hinge.height),
+        Expanded(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              22 + padding.left,
+              14,
+              22 + padding.right,
+              padding.bottom + 12,
+            ),
+            child: bottom,
+          ),
+        ),
+      ],
+    );
+
+    return _pulledSheet(context, animation, content);
   }
 
   // ------------------------------------------------------------ panel
