@@ -50,6 +50,7 @@ small hooks marked `Ongaku:` or importing `package:musify/ongaku/...`:
 | `lib/widgets/playlist_page/playlist_sliver_app_bar.dart` | `OngakuPlaylistSpace`: title fixed under the cover, small title in the bar once collapsed |
 | `lib/widgets/playlist_page/playlist_header.dart` | `actions`: type and count chips left and right of the round buttons (`OngakuChipRow`) |
 | `lib/screens/playlist_page.dart`, `artist_page.dart` (header) | round buttons passed to `PlaylistHeader.actions` |
+| `lib/services/audio_service.dart` (Android Auto) | `OngakuAutoBrowser`: Accueil, Bibliothèque (Tous les titres, fichiers locaux), Lecture aléatoire rows |
 | `lib/services/router_service.dart`, `lib/screens/library_page.dart` | "Tous les titres": `ongakuAllSongsRoute`, `ongakuAllSongsBar` |
 
 Everything else (playback, YouTube extraction, library, playlists, stats, proxy,

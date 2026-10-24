@@ -53,6 +53,7 @@ check lib/screens/playlist_page.dart "actions: \["
 check lib/screens/artist_page.dart "actions: \["
 check lib/services/router_service.dart "ongakuAllSongsRoute"
 check lib/screens/library_page.dart "ongakuAllSongsBar"
+check lib/services/audio_service.dart "OngakuAutoBrowser(this)"
 python3 scripts/brand_strings.py --check || missing=1
 [ "$missing" = 0 ] || { echo "An upstream change removed an Ongaku hook: re-apply it (see ONGAKU.md)."; exit 1; }
 echo "OK"

@@ -30,6 +30,7 @@ import 'package:musify/constants/clients.dart';
 import 'package:musify/main.dart';
 import 'package:musify/models/position_data.dart';
 import 'package:musify/ongaku/brand.dart';
+import 'package:musify/ongaku/services/ongaku_auto_browser.dart';
 import 'package:musify/ongaku/services/ongaku_notification.dart';
 import 'package:musify/services/audio_service_android_auto.dart';
 import 'package:musify/services/common_services.dart';
@@ -62,7 +63,8 @@ class MusifyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
       ),
     );
 
-    _androidAutoBrowser = AndroidAutoBrowser(this);
+    // Ongaku: the car shows Ongaku's tabs, local files and All Songs.
+    _androidAutoBrowser = OngakuAutoBrowser(this);
     _setupEventSubscriptions();
     if (isAndroidPlatform) {
       _androidAutoBrowser.setupMediaBrowserSubscriptions();

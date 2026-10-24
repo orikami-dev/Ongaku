@@ -1,0 +1,13 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Ongaku: Mode doux, three soft waves. -->
+    <path
+        android:strokeColor="#FFFFFFFF"
+        android:strokeAlpha="1"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M3,7.5c1.5,-1.5 3,-1.5 4.5,0s3,1.5 4.5,0 3,-1.5 4.5,0 3,1.5 4.5,0M3,12c1.5,-1.5 3,-1.5 4.5,0s3,1.5 4.5,0 3,-1.5 4.5,0 3,1.5 4.5,0M3,16.5c1.5,-1.5 3,-1.5 4.5,0s3,1.5 4.5,0 3,-1.5 4.5,0 3,1.5 4.5,0" />
+</vector>

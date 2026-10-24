@@ -89,6 +89,8 @@ class OngakuStrings {
   String get importErrNetwork => _t('importErrNetwork');
   String get importErrFile => _t('importErrFile');
   String get recentlyPlayed => _t('recentlyPlayed');
+  String get autoHome => _t('autoHome');
+  String get autoShuffle => _t('autoShuffle');
   String get allSongs => _t('allSongs');
   String get allSongsEmpty => _t('allSongsEmpty');
   String get importSoundCloud => _t('importSoundCloud');
@@ -390,6 +392,8 @@ class OngakuStrings {
       'allSongs': 'All Songs',
       'allSongsEmpty':
           'Songs you like, download, add to a playlist or import from the device show up here.',
+      'autoHome': 'Home',
+      'autoShuffle': 'Shuffle',
       'recentlyPlayed': 'Recently Played',
       'moreBy': 'More by',
       'essentialAlbums': 'Essential Albums',
@@ -602,6 +606,8 @@ class OngakuStrings {
       'allSongs': 'Tous les titres',
       'allSongsEmpty':
           'Les titres que vous aimez, téléchargez, ajoutez à une playlist ou importez depuis l\'appareil apparaissent ici.',
+      'autoHome': 'Accueil',
+      'autoShuffle': 'Lecture aléatoire',
       'recentlyPlayed': 'Écoutés récemment',
       'moreBy': 'Plus de :',
       'essentialAlbums': 'Albums incontournables',

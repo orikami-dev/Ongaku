@@ -11,16 +11,23 @@
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:musify/main.dart';
+import 'package:musify/ongaku/l10n/ongaku_strings.dart';
+import 'package:musify/ongaku/sound/sound_settings.dart';
 import 'package:musify/services/common_services.dart';
 import 'package:musify/services/settings_manager.dart';
 
 /// Lock screen / notification player: favourite, previous, play, next and
 /// shuffle, like the Samsung media widget. The three middle buttons stay
-/// in the collapsed notification.
+/// in the collapsed notification. Mode doux comes last: Android Auto shows
+/// it beside the others, phones with room for five buttons leave it out.
 const ongakuCompactActionIndices = [1, 2, 3];
 
 const _starAction = 'ongakuStar';
 const _shuffleAction = 'ongakuShuffle';
+const _crossfadeAction = 'ongakuCrossfade';
+
+/// The Mode doux setting to come back to when it is switched on again.
+CrossfadeMode _lastCrossfade = CrossfadeMode.auto;
 
 bool _isLiked(Map? song) {
   final id = song?['ytid']?.toString();
@@ -62,10 +69,17 @@ List<MediaControl> ongakuControls({
       label: 'Shuffle',
       name: _shuffleAction,
     ),
+    MediaControl.custom(
+      androidIcon: crossfadeMode.value == CrossfadeMode.off
+          ? 'drawable/ic_ongaku_crossfade_off'
+          : 'drawable/ic_ongaku_crossfade',
+      label: OngakuStrings.forLanguage(languageSetting.languageCode).crossfade,
+      name: _crossfadeAction,
+    ),
   ];
 }
 
-/// Handles the two custom buttons. Returns false for any other action.
+/// Handles the custom buttons. Returns false for any other action.
 Future<bool> ongakuCustomAction(String name) async {
   switch (name) {
     case _starAction:
@@ -90,6 +104,15 @@ Future<bool> ongakuCustomAction(String name) async {
             ? AudioServiceShuffleMode.none
             : AudioServiceShuffleMode.all,
       );
+      return true;
+    case _crossfadeAction:
+      final mode = crossfadeMode.value;
+      if (mode == CrossfadeMode.off) {
+        crossfadeMode.value = _lastCrossfade;
+      } else {
+        _lastCrossfade = mode;
+        crossfadeMode.value = CrossfadeMode.off;
+      }
       return true;
   }
   return false;
@@ -116,6 +139,7 @@ void ongakuWatchNotificationState() {
     userLikedSongsList,
     userLikedRadioStations,
     shuffleNotifier,
+    crossfadeMode,
   ]).addListener(refresh);
   audioHandler.mediaItem.listen((_) => refresh());
 }

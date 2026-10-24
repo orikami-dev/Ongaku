@@ -11,9 +11,10 @@
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:musify/ongaku/screens/ongaku_shell.dart';
+import 'package:musify/ongaku/widgets/ongaku_ui_scale.dart';
 
 /// Status and navigation bars that follow the app's theme, not the system's,
-/// and the app's soft fade-in when it opens.
+/// the app's soft fade-in when it opens, and its size fitted to the screen.
 ///
 /// The Android window takes its background from the system day/night theme,
 /// so a dark Ongaku on a phone in day mode showed a white navigation bar.
@@ -45,7 +46,7 @@ class OngakuSystemBars extends StatelessWidget {
         curve: Curves.easeOut,
         builder: (context, value, child) =>
             Opacity(opacity: value, child: child),
-        child: child,
+        child: OngakuUiScale(child: child),
       ),
     );
   }

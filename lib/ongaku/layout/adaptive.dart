@@ -40,7 +40,7 @@ WindowSize windowSizeForWidth(double width) {
 
 /// A fold or hinge that splits the screen in two usable halves.
 ///
-/// Flat foldables (e.g. an unfolded Galaxy Z Fold) report a zero-width fold
+/// Flat foldables (e.g. an unfolded book-style foldable) report a zero-width fold
 /// that content can safely cross, so it is ignored unless the device is half
 /// opened. Physical hinges (Surface Duo style) always split the screen.
 class FoldSplit {
