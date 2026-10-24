@@ -49,8 +49,7 @@ class _OngakuHearingTestPageState extends State<OngakuHearingTestPage> {
     super.dispose();
   }
 
-  bool get _stillOnHeadphones =>
-      OngakuSoundEngine.route.value.id == _route.id;
+  bool get _stillOnHeadphones => OngakuSoundEngine.route.value.id == _route.id;
 
   Future<void> _run() async {
     // The before/after sample must not play over the test.

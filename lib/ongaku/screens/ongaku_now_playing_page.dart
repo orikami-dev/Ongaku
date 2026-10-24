@@ -23,6 +23,7 @@ import 'package:musify/ongaku/sound/sound_settings.dart';
 import 'package:musify/ongaku/widgets/artwork_background.dart';
 import 'package:musify/ongaku/widgets/ongaku_mini_player.dart'
     show MiniPlayPauseButton;
+import 'package:musify/ongaku/widgets/ongaku_popover.dart';
 import 'package:musify/ongaku/widgets/synced_lyrics_view.dart';
 import 'package:musify/services/common_services.dart';
 import 'package:musify/services/data_manager.dart';
@@ -1451,43 +1452,26 @@ class _SleepSquare extends StatelessWidget {
   }
 }
 
-/// Mode doux: off, Auto or a chosen length.
+/// Mode doux: off, Auto or a chosen length, in a panel out of its button.
 void _showCrossfadeSheet(BuildContext context) {
   final strings = OngakuStrings.of(context);
-  final theme = Theme.of(context);
-  showModalBottomSheet<void>(
-    context: context,
-    useRootNavigator: true,
-    backgroundColor: const Color(0xFF1F1F1F),
-    showDragHandle: true,
-    builder: (sheet) => Theme(
-      data: theme.copyWith(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: theme.colorScheme.primary,
-          brightness: Brightness.dark,
-        ),
-      ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                strings.crossfade,
-                style: const TextStyle(
-                  color: _white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 14),
-              const CrossfadeControls(dark: true),
-            ],
+  showOngakuPopover<void>(
+    context,
+    builder: (popover) => Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          strings.crossfade,
+          style: const TextStyle(
+            color: _white,
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
           ),
         ),
-      ),
+        const SizedBox(height: 12),
+        const CrossfadeControls(dark: true),
+      ],
     ),
   );
 }
@@ -1497,52 +1481,47 @@ void _showSleepSheet(BuildContext context) {
   final strings = OngakuStrings.of(context);
   const minutes = [5, 10, 15, 30, 45, 60, 90];
 
-  showModalBottomSheet<void>(
-    context: context,
-    useRootNavigator: true,
-    backgroundColor: const Color(0xFF1F1F1F),
-    showDragHandle: true,
-    builder: (sheet) => SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              l10n.sleepTimer,
-              style: const TextStyle(
-                color: _white,
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-              ),
+  showOngakuPopover<void>(
+    context,
+    builder: (sheet) => Padding(
+      padding: EdgeInsets.zero,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            l10n.sleepTimer,
+            style: const TextStyle(
+              color: _white,
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
             ),
-            const SizedBox(height: 14),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: [
-                for (final m in minutes)
-                  _SleepChip(
-                    label: strings.minShort(m),
-                    onTap: () {
-                      audioHandler.setSleepTimer(Duration(minutes: m));
-                      Navigator.pop(sheet);
-                      showToast(context, l10n.sleepTimerSet);
-                    },
-                  ),
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              for (final m in minutes)
                 _SleepChip(
-                  label: strings.endOfSong,
+                  label: strings.minShort(m),
                   onTap: () {
-                    audioHandler.setSleepTimerEndOfSong();
+                    audioHandler.setSleepTimer(Duration(minutes: m));
                     Navigator.pop(sheet);
                     showToast(context, l10n.sleepTimerSet);
                   },
                 ),
-              ],
-            ),
-          ],
-        ),
+              _SleepChip(
+                label: strings.endOfSong,
+                onTap: () {
+                  audioHandler.setSleepTimerEndOfSong();
+                  Navigator.pop(sheet);
+                  showToast(context, l10n.sleepTimerSet);
+                },
+              ),
+            ],
+          ),
+        ],
       ),
     ),
   );

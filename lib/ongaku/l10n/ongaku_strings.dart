@@ -89,6 +89,14 @@ class OngakuStrings {
   String get importErrNetwork => _t('importErrNetwork');
   String get importErrFile => _t('importErrFile');
   String get recentlyPlayed => _t('recentlyPlayed');
+  String get importSoundCloud => _t('importSoundCloud');
+  String get importSoundCloudHelp => _t('importSoundCloudHelp');
+  String get importTitle => _t('importTitle');
+  String get checkUpdate => _t('checkUpdate');
+  String get updateChecking => _t('updateChecking');
+  String get updateFailed => _t('updateFailed');
+  String upToDate(String version) =>
+      _t('upToDate').replaceAll('{version}', version);
   String basedOnMusify(String version) =>
       _t('basedOnMusify').replaceAll('{version}', version);
   String get paletteTitle => _t('paletteTitle');
@@ -370,6 +378,13 @@ class OngakuStrings {
       'paletteHint': 'The app icon follows the theme once you leave the app.',
       'paletteOwnAccent': 'Your colour',
       'basedOnMusify': 'Based on Musify {version}',
+      'checkUpdate': 'Check for an update',
+      'updateChecking': 'Looking for an update…',
+      'updateFailed': 'Couldn\'t check for updates. Try again later.',
+      'upToDate': 'Ongaku is up to date (version {version}).',
+      'importSoundCloud': 'Import playlist from SoundCloud',
+      'importSoundCloudHelp': 'Paste the link of a public SoundCloud playlist or album (Share > Copy link). Ongaku then looks for each song on YouTube.',
+      'importTitle': 'Import a playlist',
       'recentlyPlayed': 'Recently Played',
       'moreBy': 'More by',
       'essentialAlbums': 'Essential Albums',
@@ -571,6 +586,14 @@ class OngakuStrings {
       'paletteHint': 'L’icône de l’app prend la couleur du thème dès que vous quittez l’app.',
       'paletteOwnAccent': 'Votre couleur',
       'basedOnMusify': 'Basé sur Musify {version}',
+      'checkUpdate': 'Rechercher une mise à jour',
+      'updateChecking': 'Recherche d\'une mise à jour…',
+      'updateFailed':
+          'Impossible de vérifier les mises à jour. Réessayez plus tard.',
+      'upToDate': 'Ongaku est à jour (version {version}).',
+      'importSoundCloud': 'Importer une playlist depuis SoundCloud',
+      'importSoundCloudHelp': 'Collez le lien d\'une playlist ou d\'un album SoundCloud public (Partager > Copier le lien). Ongaku cherche ensuite chaque titre sur YouTube.',
+      'importTitle': 'Importer une playlist',
       'recentlyPlayed': 'Écoutés récemment',
       'moreBy': 'Plus de :',
       'essentialAlbums': 'Albums incontournables',

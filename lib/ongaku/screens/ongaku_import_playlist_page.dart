@@ -24,7 +24,7 @@ import 'package:musify/utilities/flutter_toast.dart';
 import 'package:musify/widgets/mini_player.dart';
 
 /// Services a playlist can be imported from.
-enum ImportSource { spotify, deezer, appleMusic }
+enum ImportSource { spotify, deezer, appleMusic, soundCloud }
 
 /// Imports a Spotify, Deezer or Apple Music playlist with its name and
 /// cover: reads its songs from a link (or an exported file), then finds each
@@ -110,6 +110,7 @@ class _OngakuImportPlaylistPageState extends State<OngakuImportPlaylistPage> {
         ImportSource.spotify => fetchSpotifyPlaylist(link),
         ImportSource.deezer => fetchDeezerPlaylist(link),
         ImportSource.appleMusic => fetchAppleMusicPlaylist(link),
+        ImportSource.soundCloud => fetchSoundCloudPlaylist(link),
       },
     );
   }
@@ -222,6 +223,11 @@ class _OngakuImportPlaylistPageState extends State<OngakuImportPlaylistPage> {
         strings.importAppleHelp,
         'https://music.apple.com/…/playlist/…',
       ),
+      ImportSource.soundCloud => (
+        'SoundCloud',
+        strings.importSoundCloudHelp,
+        'https://soundcloud.com/…/sets/…',
+      ),
     };
     final playlist = _playlist;
 
@@ -272,7 +278,8 @@ class _OngakuImportPlaylistPageState extends State<OngakuImportPlaylistPage> {
                       : const Icon(FluentIcons.link_24_regular),
                   label: Text(strings.importRead),
                 ),
-                if (source != ImportSource.deezer) ...[
+                if (source != ImportSource.deezer &&
+                    source != ImportSource.soundCloud) ...[
                   const SizedBox(height: 12),
                   OutlinedButton.icon(
                     onPressed: _busy ? null : _chooseFile,

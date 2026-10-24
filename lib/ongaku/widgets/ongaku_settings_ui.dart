@@ -131,9 +131,10 @@ class OngakuSettingsRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    // A row's own colour (a brand logo) wins over its group's.
     final tile =
-        OngakuTint.maybeOf(context) ??
         iconColor ??
+        OngakuTint.maybeOf(context) ??
         _palette[icon.codePoint % _palette.length];
 
     return Material(
@@ -236,10 +237,7 @@ Widget ongakuAccentSheet(
       dynamicColor,
       const SizedBox(height: 12),
       Flexible(
-        child: Opacity(
-          opacity: useSystemColor.value ? 0.45 : 1,
-          child: colors,
-        ),
+        child: Opacity(opacity: useSystemColor.value ? 0.45 : 1, child: colors),
       ),
     ],
   );

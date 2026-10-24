@@ -29,6 +29,10 @@ small hooks marked `Ongaku:` or importing `package:musify/ongaku/...`:
 | `lib/screens/playlist_page.dart`, `artist_page.dart` | round buttons above Play / Shuffle |
 | `lib/services/router_service.dart` (settings) | `ongakuImportRoutes` |
 | `lib/services/router_service.dart` (license) | `applicationVersion: ongakuVersion` |
+| `lib/services/update_manager.dart` | update check compares with `ongakuVersion` (Ongaku's releases, not Musify's) |
+| `lib/utilities/flutter_toast.dart` | a toast replaces the one on screen; quicker `ongakuToastAnimation` |
+| `lib/widgets/playlist_page/like_button.dart` | liked star takes `onPrimary` (the theme's accent hid it) |
+| `lib/screens/settings_page.dart` (updates, imports) | "Rechercher une mise à jour" row (`ongakuCheckUpdatesNow`); brand logos on import rows; SoundCloud import |
 | `lib/services/router_service.dart` (home) | `ongakuLikedRoute` |
 | `lib/utilities/flutter_bottom_sheet.dart` | `isCustomBottomSheetOpen`; `showDragHandle: false` (one handle) |
 | `lib/widgets/confirmation_dialog.dart`, `rename_song_dialog.dart` | readable text on the coloured confirm button |

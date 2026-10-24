@@ -22,6 +22,7 @@
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:musify/main.dart';
+import 'package:musify/ongaku/theme/ongaku_motion.dart';
 import 'package:musify/widgets/mini_player.dart';
 
 void showToast(
@@ -35,6 +36,9 @@ void showToast(
   final bottomMargin =
       12.0 + (isMiniPlayerVisible ? MiniPlayer.playerHeight : 0.0);
 
+  // Ongaku: a new message replaces the one on screen instead of queuing
+  // behind it, and they come and go faster.
+  ScaffoldMessenger.of(context).clearSnackBars();
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(
       margin: EdgeInsets.fromLTRB(16, 12, 16, bottomMargin),
@@ -52,6 +56,7 @@ void showToast(
       ),
       duration: duration,
     ),
+    snackBarAnimationStyle: ongakuToastAnimation,
   );
 }
 
@@ -68,6 +73,9 @@ void showToastWithButton(
   final bottomMargin =
       12.0 + (isMiniPlayerVisible ? MiniPlayer.playerHeight : 0.0);
 
+  // Ongaku: a new message replaces the one on screen instead of queuing
+  // behind it, and they come and go faster.
+  ScaffoldMessenger.of(context).clearSnackBars();
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(
       margin: EdgeInsets.fromLTRB(16, 12, 16, bottomMargin),
@@ -90,5 +98,6 @@ void showToastWithButton(
       persist: false,
       duration: duration,
     ),
+    snackBarAnimationStyle: ongakuToastAnimation,
   );
 }

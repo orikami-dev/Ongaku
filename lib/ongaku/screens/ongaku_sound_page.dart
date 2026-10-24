@@ -115,9 +115,16 @@ class OngakuSoundPage extends StatelessWidget {
                           ),
                       ],
                     ),
-                    const _Layers(),
-                    const _Transitions(),
-                    const _SavedProfiles(),
+                    // Not const: they read the settings above, so they
+                    // rebuild with them (the layer chosen showed only after
+                    // leaving the page).
+                    _Layers(key: ValueKey(soundLayer.value)),
+                    _Transitions(
+                      key: ValueKey(
+                        '${crossfadeMode.value}${crossfadeSeconds.value}',
+                      ),
+                    ),
+                    _SavedProfiles(key: ValueKey(soundProfiles.value)),
                   ],
                 ),
               ),
@@ -263,7 +270,7 @@ class _OutputCard extends StatelessWidget {
 
 /// Sound layers as chips; Auto shows what it hears.
 class _Layers extends StatelessWidget {
-  const _Layers();
+  const _Layers({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -337,7 +344,7 @@ class _Layers extends StatelessWidget {
 
 /// Mode doux: off, automatic, or a fixed length.
 class _Transitions extends StatelessWidget {
-  const _Transitions();
+  const _Transitions({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -433,7 +440,7 @@ class CrossfadeControls extends StatelessWidget {
 
 /// Profiles of the other outputs, to delete one.
 class _SavedProfiles extends StatelessWidget {
-  const _SavedProfiles();
+  const _SavedProfiles({super.key});
 
   @override
   Widget build(BuildContext context) {

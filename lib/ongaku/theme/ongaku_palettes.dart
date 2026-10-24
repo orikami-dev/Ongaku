@@ -107,13 +107,7 @@ const _sumiNight = OngakuNeutrals(
 /// version and its own app icon.
 enum OngakuPalette {
   ongaku('Ongaku', _iosDay, _iosNight, null, null),
-  washi(
-    'Washi',
-    _washiDay,
-    _washiNight,
-    Color(0xFFE23B22),
-    Color(0xFFFF5A40),
-  ),
+  washi('Washi', _washiDay, _washiNight, Color(0xFFE23B22), Color(0xFFFF5A40)),
   sumi('Sumi', _sumiDay, _sumiNight, Color(0xFF6A4BC4), Color(0xFFA993F5)),
   ai('Ai', _washiDay, _washiNight, Color(0xFF2B57A6), Color(0xFF7A9DE8)),
   matcha(

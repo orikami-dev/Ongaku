@@ -23,10 +23,15 @@ import 'package:ongaku_sound/ongaku_sound.dart';
 
 /// "Mode doux": songs that end on their own fade into the next one.
 ///
-/// Musify's player and queue stay in charge. A few seconds before the end,
-/// a second player loads the ending song at the fade point; when the fade
-/// starts it carries on the ending song while Musify moves to the next one
-/// (already fetched in advance by Musify), and the two volumes cross.
+/// Musify's player and queue stay in charge. Near the end, a second player
+/// loads the ending song; a few seconds before the fade it carries on the
+/// ending song while Musify moves, muted, to the next one. The next song
+/// is thus loaded before the fade: at the fade point it goes back to its
+/// start and the two volumes cross, with no gap if the network is slow.
+
+/// Seconds the next song gets to load before the fade.
+const _lead = Duration(seconds: 5);
+
 class OngakuCrossfade {
   OngakuCrossfade._();
 
@@ -39,7 +44,11 @@ class OngakuCrossfade {
   /// Musify is switching to the next song: its player may stop briefly.
   static bool _switching = false;
   static double _base = 1;
-  static double _peakLoudness = -200;
+
+  /// Usual loudness of the current song, and since when it has been well
+  /// below it (Auto: the song is fading out on its own).
+  static double? _typicalLoudness;
+  static DateTime? _quietSince;
   static String? _loudnessFor;
 
   /// The fade in progress, 0 to 1, for the player's indicator.
@@ -118,18 +127,30 @@ class OngakuCrossfade {
       final level = OngakuSoundEngine.loudness.value;
       if (_loudnessFor != current.id) {
         _loudnessFor = current.id;
-        _peakLoudness = -200;
+        _typicalLoudness = null;
+        _quietSince = null;
       }
+      final typical = _typicalLoudness;
       if (level != null) {
         if (remaining > const Duration(seconds: 25)) {
-          _peakLoudness = math.max(_peakLoudness, level);
+          // The usual level, not the loudest moment: a single peak made
+          // every outro look quiet and the fade start too early.
+          _typicalLoudness = typical == null
+              ? level
+              : typical * 0.98 + level * 0.02;
         } else if (remaining > Duration(milliseconds: (fade * 1000).round()) &&
-            _peakLoudness > -150 &&
-            level < _peakLoudness - 14 &&
+            typical != null &&
+            level < typical - 12 &&
             _preparedFor == current.id) {
-          fade = math.min(10, remaining.inMilliseconds / 1000);
-          unawaited(_begin(fade, position));
-          return;
+          // Quiet for two seconds in a row, not a short break.
+          final since = _quietSince ??= DateTime.now();
+          if (DateTime.now().difference(since) >= const Duration(seconds: 2)) {
+            fade = math.min(10, remaining.inMilliseconds / 1000);
+            unawaited(_begin(fade, position));
+            return;
+          }
+        } else {
+          _quietSince = null;
         }
       }
     }
@@ -137,13 +158,16 @@ class OngakuCrossfade {
     // Load the ending song in the second player a bit before.
     final prepareFrom = crossfadeMode.value == CrossfadeMode.auto
         ? const Duration(seconds: 26)
-        : Duration(milliseconds: (fade * 1000).round() + 5000);
+        : Duration(milliseconds: (fade * 1000).round()) + _lead + _lead;
     if (remaining <= prepareFrom && _preparedFor != current.id) {
       _preparedFor = current.id;
-      unawaited(_prepare(fadeAt));
+      unawaited(_prepare(fadeAt - _lead));
     }
-    if (position >= fadeAt && _ghost != null && _preparedFor == current.id) {
-      unawaited(_begin(fade, position));
+    // The next song starts loading a few seconds before the fade.
+    if (position >= fadeAt - _lead &&
+        _ghost != null &&
+        _preparedFor == current.id) {
+      unawaited(_begin(fade, position, fadeAt: fadeAt));
     }
   }
 
@@ -174,7 +198,14 @@ class OngakuCrossfade {
     }
   }
 
-  static Future<void> _begin(double fadeSeconds, Duration position) async {
+  /// Hands the ending song to the second player and moves Musify to the
+  /// next song; the volumes cross from [fadeAt] (now when null), once the
+  /// next song is ready.
+  static Future<void> _begin(
+    double fadeSeconds,
+    Duration position, {
+    Duration? fadeAt,
+  }) async {
     final ghost = _ghost;
     if (ghost == null || _fading) return;
     _fading = true;
@@ -192,16 +223,23 @@ class OngakuCrossfade {
       await _main.setVolume(0);
       await _handler!.skipToNext();
 
-      // Equal-power crossfade, starting when the next song really plays.
+      // Equal-power crossfade, from the fade point and once the next song
+      // really plays; it waits muted until then and restarts from its top.
       final total = (fadeSeconds * 1000).round();
       final started = DateTime.now();
       DateTime? nextPlaying;
       progress.value = 0;
       while (_fading) {
         await Future<void>.delayed(const Duration(milliseconds: 50));
+        final atFade = fadeAt == null || ghost.position >= fadeAt;
+        final ghostDone = ghost.processingState == ProcessingState.completed;
         if (nextPlaying == null &&
+            (atFade || ghostDone) &&
             _main.playing &&
             _main.processingState == ProcessingState.ready) {
+          if (_main.position > const Duration(milliseconds: 300)) {
+            await _main.seek(Duration.zero);
+          }
           nextPlaying = DateTime.now();
           _switching = false;
         }
@@ -214,7 +252,7 @@ class OngakuCrossfade {
         await ghost.setVolume(base * math.cos(t * math.pi / 2));
         await _main.setVolume(base * math.sin(t * math.pi / 2));
         final waited = DateTime.now().difference(started).inMilliseconds;
-        if (t >= 1 || waited > total + 15000) break;
+        if (t >= 1 || waited > total + _lead.inMilliseconds + 15000) break;
       }
       await _main.setVolume(base);
     } catch (e) {

@@ -480,4 +480,77 @@ void main() {
       expect(playlist.tracks.single.toString(), 'T - S');
     });
   });
+
+  test(
+    'SoundCloud set: full songs from the page, the rest from the API',
+    () async {
+      final hydration = jsonEncode([
+        {'hydratable': 'anonymousId', 'data': 'x'},
+        {
+          'hydratable': 'playlist',
+          'data': {
+            'title': 'Night drive',
+            'artwork_url': 'https://i1.sndcdn.com/artworks-abc-large.jpg',
+            'tracks': [
+              {
+                'id': 1,
+                'title': 'Neon',
+                'user': {'username': 'uploader'},
+                'publisher_metadata': {'artist': 'Aki'},
+              },
+              {'id': 2, 'kind': 'track'},
+              {'id': 3, 'kind': 'track'},
+            ],
+          },
+        },
+      ]);
+      final page =
+          '<html><script>window.__sc_hydration = $hydration;</script>'
+          '<script crossorigin src="https://a-v2.sndcdn.com/assets/0-a.js"></script>'
+          '</html>';
+      final client = MockClient((request) async {
+        final url = request.url.toString();
+        if (url.contains('/sets/')) return http.Response(page, 200);
+        if (url.endsWith('0-a.js')) {
+          return http.Response(
+            'x={client_id:"AbCdEfGhIjKlMnOpQrStUvWx12"}',
+            200,
+          );
+        }
+        if (url.contains('api-v2.soundcloud.com/tracks')) {
+          expect(url, contains('ids=2,3'));
+          expect(url, contains('client_id=AbCdEfGhIjKlMnOpQrStUvWx12'));
+          return http.Response(
+            jsonEncode([
+              {
+                'id': 3,
+                'title': 'Rain',
+                'user': {'username': 'Mio'},
+              },
+              {
+                'id': 2,
+                'title': 'Tunnel',
+                'user': {'username': 'Ren'},
+              },
+            ]),
+            200,
+          );
+        }
+        return http.Response('', 404);
+      });
+      final playlist = await fetchSoundCloudPlaylist(
+        'https://m.soundcloud.com/someone/sets/night-drive',
+        client: client,
+      );
+      expect(playlist.name, 'Night drive');
+      expect(playlist.image, endsWith('-t500x500.jpg'));
+      expect(playlist.tracks.map((t) => t.toString()), [
+        'Neon - Aki',
+        'Tunnel - Ren',
+        'Rain - Mio',
+      ]);
+      expect(isSoundCloudLink('https://on.soundcloud.com/AbC12'), isTrue);
+      expect(isSoundCloudLink('https://soundcloud.com/someone/track'), isFalse);
+    },
+  );
 }

@@ -50,10 +50,7 @@ class OngakuMiniPlayer extends StatelessWidget {
           ),
           child: metadata == null
               ? const SizedBox.shrink(key: ValueKey('none'))
-              : _MiniPlayerBar(
-                  key: const ValueKey('bar'),
-                  metadata: metadata,
-                ),
+              : _MiniPlayerBar(key: const ValueKey('bar'), metadata: metadata),
         );
       },
     );

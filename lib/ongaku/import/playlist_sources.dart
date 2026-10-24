@@ -822,3 +822,189 @@ String _utf16(Uint8List bytes, int start, {required bool little}) {
   }
   return String.fromCharCodes(units);
 }
+
+// ---------------------------------------------------------------------------
+// SoundCloud: the public page of a set (playlist or album) carries its data;
+// the songs it only lists by id are read from the API the SoundCloud website
+// uses, with the public client id its scripts embed.
+// ---------------------------------------------------------------------------
+
+/// Whether [link] points at a SoundCloud set, or is a share link to one
+/// (`on.soundcloud.com/...`).
+bool isSoundCloudLink(String link) => RegExp(
+  r'((?:www\.|m\.)?soundcloud\.com/[^/\s]+/sets/[^\s?#]+|on\.soundcloud\.com/\w+)',
+  caseSensitive: false,
+).hasMatch(link);
+
+/// Reads a public SoundCloud set from its link.
+Future<ImportedPlaylist> fetchSoundCloudPlaylist(
+  String link, {
+  http.Client? client,
+}) async {
+  var target = link.trim();
+  if (!isSoundCloudLink(target)) {
+    throw const PlaylistImportException(ImportError.invalidLink);
+  }
+  target = target.replaceFirst('://m.soundcloud.com', '://soundcloud.com');
+  if (!target.startsWith('http')) target = 'https://$target';
+  final c = client ?? http.Client();
+  try {
+    final http.Response response;
+    try {
+      response = await c.get(
+        Uri.parse(target),
+        headers: {'User-Agent': _userAgent, 'Accept-Language': 'en'},
+      );
+    } catch (e) {
+      throw PlaylistImportException(ImportError.network, e);
+    }
+    if (response.statusCode == 404) {
+      throw const PlaylistImportException(ImportError.notFound);
+    }
+    if (response.statusCode != 200) {
+      throw PlaylistImportException(ImportError.network, response.statusCode);
+    }
+    final page = utf8.decode(response.bodyBytes);
+    final set = parseSoundCloudPage(page);
+    if (set == null) {
+      throw const PlaylistImportException(ImportError.notFound);
+    }
+    var tracks = set.tracks;
+    if (set.missingIds.isNotEmpty) {
+      final clientId = await _soundCloudClientId(c, page);
+      if (clientId != null) {
+        final more = await _soundCloudTracks(c, set.missingIds, clientId);
+        tracks = [
+          for (final entry in set.order)
+            if (entry.track != null)
+              entry.track!
+            else if (more[entry.id] != null)
+              more[entry.id]!,
+        ];
+      }
+    }
+    if (tracks.isEmpty) {
+      throw const PlaylistImportException(ImportError.privateOrEmpty);
+    }
+    return ImportedPlaylist(set.name, tracks, image: set.image);
+  } finally {
+    if (client == null) c.close();
+  }
+}
+
+/// The set described by a SoundCloud page (`window.__sc_hydration`): its
+/// name, cover, the songs given in full, and the ids of the others.
+({
+  String? name,
+  String? image,
+  List<ImportedTrack> tracks,
+  List<int> missingIds,
+  List<({int id, ImportedTrack? track})> order,
+})?
+parseSoundCloudPage(String page) {
+  final match = RegExp(
+    r'window\.__sc_hydration\s*=\s*(\[.*?\]);\s*</script>',
+    dotAll: true,
+  ).firstMatch(page);
+  if (match == null) return null;
+  final Object? hydration;
+  try {
+    hydration = jsonDecode(match.group(1)!);
+  } catch (_) {
+    return null;
+  }
+  if (hydration is! List) return null;
+  final playlist = hydration
+      .whereType<Map>()
+      .where((h) => h['hydratable'] == 'playlist')
+      .map((h) => h['data'])
+      .whereType<Map>()
+      .firstOrNull;
+  if (playlist == null) return null;
+
+  final order = <({int id, ImportedTrack? track})>[];
+  final missing = <int>[];
+  for (final item in (playlist['tracks'] as List? ?? const [])) {
+    if (item is! Map) continue;
+    final id = item['id'];
+    final track = soundCloudTrack(item);
+    if (id is int) order.add((id: id, track: track));
+    if (track == null && id is int) missing.add(id);
+  }
+  final art =
+      (playlist['artwork_url'] as String?) ??
+      ((playlist['user'] as Map?)?['avatar_url'] as String?);
+  return (
+    name: (playlist['title'] as String?)?.trim(),
+    image: art?.replaceFirst('-large.', '-t500x500.'),
+    tracks: [
+      for (final e in order)
+        if (e.track != null) e.track!,
+    ],
+    missingIds: missing,
+    order: order,
+  );
+}
+
+/// A SoundCloud track object as a song: the artist named by the label when
+/// there is one, else the uploader.
+ImportedTrack? soundCloudTrack(Map item) {
+  final title = (item['title'] as String?)?.trim() ?? '';
+  if (title.isEmpty) return null;
+  final meta = item['publisher_metadata'];
+  final artist =
+      (meta is Map ? meta['artist'] as String? : null)?.trim() ??
+      ((item['user'] as Map?)?['username'] as String?)?.trim() ??
+      '';
+  return ImportedTrack(title, artist);
+}
+
+Future<String?> _soundCloudClientId(http.Client c, String page) async {
+  final scripts = RegExp(
+    r'<script[^>]+src="(https://a-v2\.sndcdn\.com/assets/[^"]+\.js)"',
+  ).allMatches(page).map((m) => m.group(1)!).toList();
+  // The id is usually in the last scripts.
+  for (final src in scripts.reversed) {
+    try {
+      final response = await c.get(
+        Uri.parse(src),
+        headers: {'User-Agent': _userAgent},
+      );
+      if (response.statusCode != 200) continue;
+      final id = RegExp(r'client_id\s*[:=]\s*"?([A-Za-z0-9]{20,40})')
+          .firstMatch(response.body)
+          ?.group(1);
+      if (id != null) return id;
+    } catch (_) {}
+  }
+  return null;
+}
+
+Future<Map<int, ImportedTrack>> _soundCloudTracks(
+  http.Client c,
+  List<int> ids,
+  String clientId,
+) async {
+  final found = <int, ImportedTrack>{};
+  for (var i = 0; i < ids.length; i += 50) {
+    final batch = ids.sublist(i, (i + 50).clamp(0, ids.length));
+    try {
+      final response = await c.get(
+        Uri.parse(
+          'https://api-v2.soundcloud.com/tracks?ids=${batch.join(',')}'
+          '&client_id=$clientId',
+        ),
+        headers: {'User-Agent': _userAgent},
+      );
+      if (response.statusCode != 200) continue;
+      final list = jsonDecode(utf8.decode(response.bodyBytes));
+      if (list is! List) continue;
+      for (final item in list.whereType<Map>()) {
+        final id = item['id'];
+        final track = soundCloudTrack(item);
+        if (id is int && track != null) found[id] = track;
+      }
+    } catch (_) {}
+  }
+  return found;
+}

@@ -121,7 +121,8 @@ class _OngakuAcousticTestPageState extends State<OngakuAcousticTestPage> {
     final strings = OngakuStrings.of(context);
     final colorScheme = Theme.of(context).colorScheme;
     final margin = ongakuPageMargin(context);
-    final busy = _step == _Step.checking ||
+    final busy =
+        _step == _Step.checking ||
         _step == _Step.measuring ||
         _step == _Step.analysing;
 

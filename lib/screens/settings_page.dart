@@ -27,6 +27,7 @@ import 'package:musify/constants/app_constants.dart';
 import 'package:musify/extensions/l10n.dart';
 import 'package:musify/main.dart';
 import 'package:musify/ongaku/l10n/ongaku_strings.dart';
+import 'package:musify/ongaku/services/ongaku_updates.dart';
 import 'package:musify/ongaku/widgets/ongaku_credits.dart';
 import 'package:musify/ongaku/widgets/ongaku_page_parts.dart';
 import 'package:musify/ongaku/widgets/ongaku_palette_picker.dart';
@@ -39,7 +40,6 @@ import 'package:musify/services/playlist_download_service.dart';
 import 'package:musify/services/playlists_manager.dart';
 import 'package:musify/services/router_service.dart';
 import 'package:musify/services/settings_manager.dart';
-import 'package:musify/services/update_manager.dart';
 import 'package:musify/theme/app_colors.dart';
 import 'package:musify/theme/app_themes.dart';
 import 'package:musify/utilities/flutter_bottom_sheet.dart';
@@ -52,6 +52,7 @@ import 'package:musify/widgets/confirmation_dialog.dart';
 import 'package:musify/widgets/custom_bar.dart';
 import 'package:musify/widgets/mini_player_bottom_space.dart';
 import 'package:musify/widgets/section_header.dart';
+import 'package:simple_icons/simple_icons.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -241,23 +242,35 @@ class SettingsPage extends StatelessWidget {
           if (online)
             CustomBar(
               context.l10n!.importSpotifyPlaylist,
-              FluentIcons.arrow_upload_24_regular,
+              SimpleIcons.spotify,
+              iconColor: const Color(0xFF1DB954),
               // Ongaku: link import with name and cover (CSV still offered).
               onTap: () => context.push('/settings/import-spotify'),
             ),
-          // Ongaku: Deezer and Apple Music imports.
+          // Ongaku: Deezer, Apple Music and SoundCloud imports, each with
+          // its service's logo.
           if (online)
             CustomBar(
               strings.importDeezer,
-              FluentIcons.arrow_upload_24_regular,
+              SimpleIcons.deezer,
+              iconColor: SimpleIconColors.deezer,
               onTap: () => context.push('/settings/import-deezer-playlist'),
             ),
           if (online)
             CustomBar(
               strings.importApple,
-              FluentIcons.arrow_upload_24_regular,
+              SimpleIcons.applemusic,
+              iconColor: SimpleIconColors.applemusic,
               onTap: () =>
                   context.push('/settings/import-apple-music-playlist'),
+            ),
+          if (online)
+            CustomBar(
+              strings.importSoundCloud,
+              SimpleIcons.soundcloud,
+              iconColor: SimpleIconColors.soundcloud,
+              onTap: () =>
+                  context.push('/settings/import-soundcloud-playlist'),
             ),
           if (online)
             CustomBar(
@@ -430,11 +443,12 @@ class SettingsPage extends StatelessWidget {
               },
             ),
           if (online && !isFdroidBuild && isMobilePlatform)
+            // Ongaku: says whether there is an update or not.
             CustomBar(
-              context.l10n!.downloadAppUpdate,
-              FluentIcons.arrow_download_24_regular,
+              strings.checkUpdate,
+              FluentIcons.arrow_sync_24_regular,
               borderRadius: commonCustomBarRadiusLast,
-              onTap: checkAppUpdates,
+              onTap: () => ongakuCheckUpdatesNow(context),
             ),
         ]),
         _group(strings.catAbout, const Color(0xFF8E8E93), [

@@ -47,6 +47,19 @@ class OngakuSoundEngine {
   static List<double> _layerNow = List.filled(10, 0);
   static Timer? _blend;
 
+  /// Gains on the session now: the spectrum is captured after them, so
+  /// they are taken off before Auto judges the music.
+  static List<double> _applied = List.filled(10, 0);
+
+  // Auto: loudness moves and bass jumps, and the style the song's words
+  // suggest, all reset with each song.
+  static double? _loudMean;
+  static double _loudVar = 0;
+  static double? _lastBass;
+  static double _punch = 0;
+  static int _frames = 0;
+  static SoundLayer? _hint;
+
   /// Called once the audio handler exists (Android only).
   static Future<void> start(MusifyAudioHandler handler) async {
     if (_started || defaultTargetPlatform != TargetPlatform.android) return;
@@ -74,6 +87,15 @@ class OngakuSoundEngine {
       }
       preview.addListener(_push);
       handler.audioPlayer.playingStream.listen((_) => _updateSpectrum());
+      handler.mediaItem.distinct((a, b) => a?.id == b?.id).listen((item) {
+        _resetAuto();
+        _hint = item == null
+            ? null
+            : layerHintFromText(
+                '${item.title} ${item.artist ?? ''} ${item.album ?? ''} '
+                '${item.genre ?? ''}',
+              );
+      });
       _layerNow = _targetLayer();
       await _updateSpectrum();
     } catch (e, stackTrace) {
@@ -122,9 +144,10 @@ class OngakuSoundEngine {
         soundProfiles.value[route.value.id]?.gains ??
         List<double>.filled(10, 0);
     final comparing = preview.value;
+    _applied = comparing ?? combineGains(profile, _layerNow);
     try {
       await OngakuSound.setGains(
-        comparing ?? combineGains(profile, _layerNow),
+        _applied,
         enabled: comparing != null || soundEnabled.value,
       );
       await OngakuSound.setWidening(
@@ -156,9 +179,27 @@ class OngakuSoundEngine {
     }
   }
 
-  static void _onSpectrum(List<double> levels) {
-    // About 4 frames a second: a 5-second average.
-    const keep = 0.95;
+  static void _resetAuto() {
+    _average = null;
+    _loudMean = null;
+    _loudVar = 0;
+    _lastBass = null;
+    _punch = 0;
+    _frames = 0;
+    _candidate = null;
+    _candidateTicks = 0;
+  }
+
+  static void _onSpectrum(List<double> raw) {
+    final enabled = soundEnabled.value || preview.value != null;
+    final levels = [
+      for (var i = 0; i < raw.length; i++)
+        raw[i] - (enabled && i < _applied.length ? _applied[i] : 0),
+    ];
+    _frames++;
+    // About 4 frames a second: a 5-second average, quicker at the start
+    // of a song so Auto settles within a few seconds.
+    final keep = _frames < 20 ? 0.8 : 0.95;
     final average = _average;
     _average = average == null
         ? List<double>.from(levels)
@@ -175,16 +216,34 @@ class OngakuSoundEngine {
         ? db
         : loudness.value! * 0.7 + db * 0.3;
 
+    final mean = _loudMean;
+    _loudMean = mean == null ? db : mean * 0.95 + db * 0.05;
+    if (mean != null) {
+      _loudVar = _loudVar * 0.95 + math.pow(db - mean, 2) * 0.05;
+    }
+    final bassNow = levels.isEmpty ? 0.0 : levels[0];
+    if (_lastBass != null) {
+      _punch = _punch * 0.9 + (bassNow - _lastBass!).abs() * 0.1;
+    }
+    _lastBass = bassNow;
+
     if (soundLayer.value != SoundLayer.auto) return;
-    final heard = classifySpectrum(_average!);
+    final heard = classifySpectrum(
+      _average!,
+      dynamics: _frames > 12 ? math.sqrt(_loudVar) : null,
+      punch: _frames > 12 ? _punch : null,
+      hint: _hint,
+    );
     if (heard == _candidate) {
       _candidateTicks++;
     } else {
       _candidate = heard;
       _candidateTicks = 0;
     }
-    // A new style must hold for about 8 seconds before the layer changes.
-    if (_candidateTicks == 32 && autoLayer.value != heard) {
+    // A new style must hold before the layer changes: 3 seconds at the
+    // start of a song, then 8 seconds, so it does not flicker.
+    final hold = _frames < 40 ? 12 : 32;
+    if (_candidateTicks == hold && autoLayer.value != heard) {
       autoLayer.value = heard;
       _blendTo(_targetLayer());
     }

@@ -38,7 +38,8 @@ class SoundCurve extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final muted = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5);
+    final muted = Theme.of(context).colorScheme.onSurface
+        .withValues(alpha: 0.5);
     return Column(
       children: [
         SizedBox(
@@ -93,7 +94,8 @@ class _CurvePainter extends CustomPainter {
         for (var i = 0; i < bandCentres.length; i++)
           Offset(
             size.width * i / (bandCentres.length - 1),
-            mid - (i < s.values.length ? s.values[i] : 0).clamp(-range, range) /
+            mid -
+                (i < s.values.length ? s.values[i] : 0).clamp(-range, range) /
                     range *
                     (size.height / 2 - 4),
           ),

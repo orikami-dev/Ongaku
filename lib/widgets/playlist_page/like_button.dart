@@ -95,6 +95,9 @@ class _PlaylistLikeButtonState extends State<PlaylistLikeButton> {
       builder: (context, isLiked, __) {
         final icon = Icon(
           isLiked ? FluentIcons.star_24_filled : FluentIcons.star_24_regular,
+          // Ongaku: the theme tints icon buttons with the accent, which hid
+          // the star on the filled (liked) button: it takes onPrimary.
+          color: isLiked ? Theme.of(context).colorScheme.onPrimary : null,
         );
 
         return isLiked

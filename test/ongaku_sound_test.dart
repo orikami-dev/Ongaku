@@ -133,4 +133,21 @@ void main() {
     final layer = classifySpectrum([30, 30, 28, 18, 15, 14, 13, 10, 5, 0]);
     expect([SoundLayer.hipHop, SoundLayer.electro], contains(layer));
   });
+
+  test('song words guide Auto', () {
+    expect(layerHintFromText('Piano Concerto No. 2'), SoundLayer.classical);
+    expect(layerHintFromText('Midnight (Extended Mix)'), SoundLayer.electro);
+    expect(layerHintFromText('Trapeze artist'), isNull);
+    final flat = List<double>.filled(10, 20);
+    expect(classifySpectrum(flat, hint: SoundLayer.jazz), SoundLayer.jazz);
+  });
+
+  test('a quiet, lively and beatless sound is classical', () {
+    final layer = classifySpectrum(
+      [12, 13, 15, 18, 20, 20, 19, 12, 8, 4],
+      dynamics: 8,
+      punch: 0.5,
+    );
+    expect(layer, SoundLayer.classical);
+  });
 }

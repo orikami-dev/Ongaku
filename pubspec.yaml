@@ -47,6 +47,7 @@ dependencies:
     path: ./packages/receive_sharing_intent
   rxdart: ^0.28.0
   share_plus: ^13.3.1
+  simple_icons: ^16.23.0 # Ongaku: brand logos for playlist import
   url_launcher: ^6.3.3
   youtube_explode_dart:
     path: ./packages/youtube_explode_dart

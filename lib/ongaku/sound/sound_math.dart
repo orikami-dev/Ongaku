@@ -266,19 +266,124 @@ class ToneStaircase {
 
 /// Picks the layer that suits the music from its live band levels
 /// (averaged over a few seconds).
-SoundLayer classifySpectrum(List<double> levels) {
-  if (levels.length < _bands) return SoundLayer.pop;
+///
+/// [dynamics] is how much the loudness moves (dB, standard deviation over
+/// a few seconds): orchestras and jazz breathe, electronic music is flat.
+/// [punch] is how much the bass jumps from frame to frame (dB): a strong
+/// beat. [hint] is a style guessed from the song's title, artist or album,
+/// which wins when the sound itself is not clear-cut.
+SoundLayer classifySpectrum(
+  List<double> levels, {
+  double? dynamics,
+  double? punch,
+  SoundLayer? hint,
+}) {
+  if (levels.length < _bands) return hint ?? SoundLayer.pop;
   final mids = _mean(levels.sublist(4, 7));
   final bass = _mean(levels.sublist(0, 3)) - mids;
   final highs = _mean(levels.sublist(7, 10)) - mids;
   final voice = _mean(levels.sublist(5, 7)) - _mean(levels.sublist(3, 5));
+  final sub = levels[0] - levels[2];
 
-  if (bass > 9) return highs > -6 ? SoundLayer.electro : SoundLayer.hipHop;
-  if (voice > 3 && bass < 3) return SoundLayer.vocal;
-  if (highs > -2 && bass > 0) return SoundLayer.rock;
-  if (bass < -3 && highs < -8) return SoundLayer.classical;
-  if (bass < 2 && highs < -4) return SoundLayer.jazz;
-  return SoundLayer.pop;
+  // Each style scores how well the sound fits it; the best one wins.
+  final scores = <SoundLayer, double>{
+    SoundLayer.electro:
+        _near(bass, 11, 6) + _near(highs, -3, 5) + _near(sub, 2, 4),
+    SoundLayer.hipHop:
+        _near(bass, 12, 6) + _near(highs, -9, 5) + _near(voice, 2, 4),
+    SoundLayer.rock:
+        _near(bass, 3, 5) + _near(highs, -2, 4) + _near(voice, 0, 4),
+    SoundLayer.pop:
+        _near(bass, 5, 6) + _near(highs, -5, 5) + _near(voice, 2, 4),
+    SoundLayer.vocal:
+        _near(bass, 0, 4) + _near(highs, -7, 5) + _near(voice, 5, 3),
+    SoundLayer.classical:
+        _near(bass, -3, 5) + _near(highs, -10, 5) + _near(voice, -1, 4),
+    SoundLayer.jazz:
+        _near(bass, 1, 5) + _near(highs, -7, 4) + _near(voice, 0, 4),
+  };
+  if (dynamics != null) {
+    // Lively dynamics for acoustic styles, flat ones for produced music.
+    final lively = ((dynamics - 3) / 4).clamp(-1.0, 1.0);
+    scores[SoundLayer.classical] = scores[SoundLayer.classical]! + lively;
+    scores[SoundLayer.jazz] = scores[SoundLayer.jazz]! + lively * 0.6;
+    scores[SoundLayer.electro] = scores[SoundLayer.electro]! - lively * 0.8;
+  }
+  if (punch != null) {
+    final beat = ((punch - 2) / 3).clamp(-1.0, 1.0);
+    scores[SoundLayer.hipHop] = scores[SoundLayer.hipHop]! + beat * 0.8;
+    scores[SoundLayer.electro] = scores[SoundLayer.electro]! + beat * 0.6;
+    scores[SoundLayer.classical] = scores[SoundLayer.classical]! - beat;
+  }
+  if (hint != null && scores.containsKey(hint)) {
+    scores[hint] = scores[hint]! + 1.2;
+  }
+  return scores.entries.reduce((a, b) => b.value > a.value ? b : a).key;
+}
+
+/// 1 when [value] is at [centre], falling to 0 at [width] away.
+double _near(double value, double centre, double width) =>
+    math.max(0, 1 - ((value - centre) / width).abs());
+
+/// A style guessed from words in the title, artist or album, if any.
+SoundLayer? layerHintFromText(String text) {
+  final t = text.toLowerCase();
+  // Whole words only: "rap" must not match "trapeze".
+  // A word ending in "~" is a stem ("symphon~": symphony, symphonic...).
+  bool any(List<String> words) => words.any((w) {
+    final stem = w.endsWith('~');
+    final word = RegExp.escape(stem ? w.substring(0, w.length - 1) : w);
+    return RegExp('(^|[^a-z])$word${stem ? '' : r'($|[^a-z])'}').hasMatch(t);
+  });
+  if (any([
+    'symphon~',
+    'concerto',
+    'sonata',
+    'orchestr~',
+    'quartet',
+    'opus',
+    'mozart',
+    'beethoven',
+    'bach',
+    'chopin',
+    'vivaldi',
+    'debussy',
+    'requiem',
+    'piano solo',
+    'classical',
+    'classique',
+  ])) {
+    return SoundLayer.classical;
+  }
+  if (any(['jazz', 'swing', 'bossa', 'blues', 'lofi', 'lo-fi'])) {
+    return SoundLayer.jazz;
+  }
+  if (any([
+    'remix',
+    'edm',
+    'techno',
+    'house',
+    'trance',
+    'dubstep',
+    'drum and bass',
+    'dnb',
+    'synthwave',
+    'electro~',
+    'club mix',
+    'extended mix',
+  ])) {
+    return SoundLayer.electro;
+  }
+  if (any(['rap', 'hip hop', 'hip-hop', 'trap', 'drill'])) {
+    return SoundLayer.hipHop;
+  }
+  if (any(['rock', 'metal', 'punk', 'grunge', 'live at'])) {
+    return SoundLayer.rock;
+  }
+  if (any(['acoustic', 'acapella', 'a cappella', 'unplugged', 'ballad'])) {
+    return SoundLayer.vocal;
+  }
+  return null;
 }
 
 // --- Helpers ------------------------------------------------------------

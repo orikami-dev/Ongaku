@@ -26,7 +26,6 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:material_ui/material_ui.dart';
-import 'package:musify/constants/version.dart';
 import 'package:musify/extensions/l10n.dart';
 import 'package:musify/main.dart';
 import 'package:musify/ongaku/brand.dart';
@@ -62,7 +61,8 @@ Future<void> checkAppUpdates() async {
     announcementURL.value = map['announcementurl'];
     final latestVersion = map['version'].toString();
 
-    if (!isLatestVersionHigher(appVersion, latestVersion)) {
+    // Ongaku: compared with Ongaku's own version, not Musify's.
+    if (!isLatestVersionHigher(ongakuVersion, latestVersion)) {
       return;
     }
 

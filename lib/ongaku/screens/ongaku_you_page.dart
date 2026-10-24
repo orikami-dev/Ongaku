@@ -53,9 +53,10 @@ class _OngakuYouPageState extends State<OngakuYouPage> {
         valueListenable: wrappedEnabled,
         builder: (context, enabled, _) {
           final current = listeningStatsMonthKey(DateTime.now());
-          final keys = {current, ...listeningStatsService.availableMonthKeys}
-              .toList()
-            ..sort((a, b) => b.compareTo(a));
+          final keys = {
+            current,
+            ...listeningStatsService.availableMonthKeys,
+          }.toList()..sort((a, b) => b.compareTo(a));
           if (!keys.contains(_monthKey)) _monthKey = current;
           final month = _month(_monthKey);
 
@@ -289,7 +290,10 @@ class _ReplayCard extends StatelessWidget {
                 const SizedBox(height: 18),
                 Row(
                   children: [
-                    _Figure(number.format(month.songs.length), strings.statSongs),
+                    _Figure(
+                      number.format(month.songs.length),
+                      strings.statSongs,
+                    ),
                     const SizedBox(width: 10),
                     _Figure(
                       number.format(month.artists.length),
@@ -625,9 +629,8 @@ class _Message extends StatelessWidget {
           Text(
             text,
             style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurface.withValues(
-                alpha: 0.6,
-              ),
+              color: Theme.of(context).colorScheme.onSurface
+                  .withValues(alpha: 0.6),
               fontSize: 15,
             ),
           ),

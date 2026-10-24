@@ -77,9 +77,10 @@ class _OngakuHomePageState extends State<OngakuHomePage> {
     final picks = topRecentArtists(userRecentlyPlayed.value, count: 2);
     final profiles = await Future.wait(
       picks.map(
-        (pick) => getArtistProfile(pick.id, preferredName: pick.name).catchError(
-          (_) => null,
-        ),
+        (pick) => getArtistProfile(
+          pick.id,
+          preferredName: pick.name,
+        ).catchError((_) => null),
       ),
     );
     return [
@@ -435,7 +436,9 @@ class _OngakuHomePageState extends State<OngakuHomePage> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            OngakuSectionTitle(title: OngakuStrings.of(context).essentialAlbums),
+            OngakuSectionTitle(
+              title: OngakuStrings.of(context).essentialAlbums,
+            ),
             OngakuShelf(
               height: width + 48,
               itemWidth: width,
@@ -489,7 +492,10 @@ class _OngakuHomePageState extends State<OngakuHomePage> {
                     color: Colors.white,
                     child: Padding(
                       padding: EdgeInsets.all(width * 0.12),
-                      child: OngakuCoverImage(station.image, fit: BoxFit.contain),
+                      child: OngakuCoverImage(
+                        station.image,
+                        fit: BoxFit.contain,
+                      ),
                     ),
                   ),
                   title: station.name,
@@ -705,7 +711,8 @@ class _TopBar extends StatelessWidget {
           decoration: BoxDecoration(
             color: isScrolled
                 ? Theme.of(context).scaffoldBackgroundColor
-                : Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0),
+                : Theme.of(context).scaffoldBackgroundColor
+                      .withValues(alpha: 0),
           ),
           child: Row(
             children: [
@@ -772,7 +779,10 @@ class _HomeMenu extends StatelessWidget {
       itemBuilder: (context) => [
         PopupMenuItem(
           value: _MenuAction.refresh,
-          child: _MenuRow(Icons.refresh_rounded, strings.refreshRecommendations),
+          child: _MenuRow(
+            Icons.refresh_rounded,
+            strings.refreshRecommendations,
+          ),
         ),
         PopupMenuItem(
           value: _MenuAction.history,
