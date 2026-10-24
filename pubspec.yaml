@@ -5,7 +5,7 @@ repository: https://github.com/gokadzev/Musify
 issue_tracker: https://github.com/gokadzev/Musify/issues
 
 publish_to: 'none'
-version: 1.0.0+1300 # Ongaku: own version (see lib/ongaku/brand.dart), code only goes up
+version: 1.1.0+1310 # Ongaku: own version (see lib/ongaku/brand.dart), code only goes up
 
 environment:
   sdk: '>=3.13.0 <4.0.0'

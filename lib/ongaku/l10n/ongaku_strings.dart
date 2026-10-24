@@ -89,6 +89,16 @@ class OngakuStrings {
   String get importErrNetwork => _t('importErrNetwork');
   String get importErrFile => _t('importErrFile');
   String get recentlyPlayed => _t('recentlyPlayed');
+  String get libEdit => _t('libEdit');
+  String get libDone => _t('libDone');
+  String get libSongs => _t('libSongs');
+  String get libLiked => _t('libLiked');
+  String get libDownloaded => _t('libDownloaded');
+  String get libRecentlyAdded => _t('libRecentlyAdded');
+  String get libPinHint => _t('libPinHint');
+  String get libNoArtists => _t('libNoArtists');
+  String get libNoAlbums => _t('libNoAlbums');
+  String get libRadio => _t('libRadio');
   String get autoHome => _t('autoHome');
   String get autoShuffle => _t('autoShuffle');
   String get allSongs => _t('allSongs');
@@ -393,6 +403,17 @@ class OngakuStrings {
       'allSongsEmpty': 'Songs you like, download, add to a playlist or import from the device show up here.',
       'autoHome': 'Home',
       'autoShuffle': 'Shuffle',
+      'libEdit': 'Edit',
+      'libRadio': 'Radio',
+      'libDone': 'Done',
+      'libSongs': 'Songs',
+      'libLiked': 'Favourite Songs',
+      'libDownloaded': 'Downloaded',
+      'libRecentlyAdded': 'Recently Added',
+      'libPinHint':
+          'Pin a playlist, album or artist from its ⋯ menu to keep it here.',
+      'libNoArtists': 'Artists you like show up here.',
+      'libNoAlbums': 'Albums you like show up here.',
       'recentlyPlayed': 'Recently Played',
       'moreBy': 'More by',
       'essentialAlbums': 'Essential Albums',
@@ -606,6 +627,16 @@ class OngakuStrings {
       'allSongsEmpty': 'Les titres que vous aimez, téléchargez, ajoutez à une playlist ou importez depuis l\'appareil apparaissent ici.',
       'autoHome': 'Accueil',
       'autoShuffle': 'Lecture aléatoire',
+      'libEdit': 'Modifier',
+      'libRadio': 'Radio',
+      'libDone': 'OK',
+      'libSongs': 'Morceaux',
+      'libLiked': 'Morceaux préférés',
+      'libDownloaded': 'Téléchargés',
+      'libRecentlyAdded': 'Ajouts récents',
+      'libPinHint': 'Épinglez une playlist, un album ou un artiste depuis son menu ⋯ pour le retrouver ici.',
+      'libNoArtists': 'Les artistes que vous aimez apparaissent ici.',
+      'libNoAlbums': 'Les albums que vous aimez apparaissent ici.',
       'recentlyPlayed': 'Écoutés récemment',
       'moreBy': 'Plus de :',
       'essentialAlbums': 'Albums incontournables',

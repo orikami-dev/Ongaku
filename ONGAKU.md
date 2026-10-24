@@ -52,6 +52,7 @@ small hooks marked `Ongaku:` or importing `package:musify/ongaku/...`:
 | `lib/screens/playlist_page.dart`, `artist_page.dart` (header) | round buttons passed to `PlaylistHeader.actions` |
 | `lib/services/audio_service.dart` (Android Auto) | `OngakuAutoBrowser`: Accueil, Bibliothèque (Tous les titres, fichiers locaux), Lecture aléatoire rows |
 | `lib/services/router_service.dart`, `lib/screens/library_page.dart` | "Tous les titres": `ongakuAllSongsRoute`, `ongakuAllSongsBar` |
+| `lib/services/router_service.dart`, `lib/screens/library_page.dart` | Apple Music Library tab: `OngakuLibraryPage` as tab root, `ongakuLibraryRoutes`; `ongakuPlaylistsOnly` turns the upstream page into Library > Playlists |
 
 Everything else (playback, YouTube extraction, library, playlists, stats, proxy,
 equalizer, downloads...) is untouched Musify code, so upstream bug fixes and API
