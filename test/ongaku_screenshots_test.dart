@@ -212,6 +212,8 @@ void main() {
         '/home/you',
         '/library/localFiles',
         '/library/userSongs/liked',
+        '/library/allSongs',
+        '/home/playlist/customId-1',
         '/settings/import-deezer-playlist',
         '/settings/import-apple-music-playlist',
       ],

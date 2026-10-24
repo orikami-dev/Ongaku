@@ -285,6 +285,8 @@ class _LibraryPageState extends State<LibraryPage> {
                 ),
                 // Ongaku: songs imported from the device.
                 ongakuLocalFilesBar(context),
+                // Ongaku: every song of the library, A to Z.
+                ongakuAllSongsBar(context),
                 PlaylistBar(
                   context.l10n!.radioStations,
                   onPressed: () =>

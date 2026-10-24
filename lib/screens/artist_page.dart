@@ -314,12 +314,9 @@ class _ArtistPageState extends State<ArtistPage> {
           showTitle: false,
           monthlyListeners: _artist!['monthlyListeners']?.toString(),
           description: _artist!['description']?.toString(),
-        ),
-        // Ongaku: the round buttons sit above Play / Shuffle.
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          spacing: 5,
-          children: [
+          // Ongaku: the round buttons sit above Play / Shuffle, between the
+          // chips.
+          actions: [
             PlaylistLikeButton(
               playlistId: _resolvedArtistId,
               playlistData: () => artistPlaylistData(_artist!, songs: const []),
@@ -340,7 +337,6 @@ class _ArtistPageState extends State<ArtistPage> {
             ),
           ],
         ),
-        const SizedBox(height: 12),
         _buildPlaybackButtons(),
       ],
     );

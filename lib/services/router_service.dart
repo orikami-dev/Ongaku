@@ -256,6 +256,8 @@ class NavigationManager {
                     _pushPage(child: const RadioStationsPage(), state: state),
               ),
               ongakuLocalFilesRoute(_pushPage),
+              // Ongaku: every song of the library, A to Z.
+              ongakuAllSongsRoute(_pushPage),
             ],
           ),
         ],

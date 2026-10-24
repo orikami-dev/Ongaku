@@ -89,6 +89,8 @@ class OngakuStrings {
   String get importErrNetwork => _t('importErrNetwork');
   String get importErrFile => _t('importErrFile');
   String get recentlyPlayed => _t('recentlyPlayed');
+  String get allSongs => _t('allSongs');
+  String get allSongsEmpty => _t('allSongsEmpty');
   String get importSoundCloud => _t('importSoundCloud');
   String get importSoundCloudHelp => _t('importSoundCloudHelp');
   String get importTitle => _t('importTitle');
@@ -385,6 +387,9 @@ class OngakuStrings {
       'importSoundCloud': 'Import playlist from SoundCloud',
       'importSoundCloudHelp': 'Paste the link of a public SoundCloud playlist or album (Share > Copy link). Ongaku then looks for each song on YouTube.',
       'importTitle': 'Import a playlist',
+      'allSongs': 'All Songs',
+      'allSongsEmpty':
+          'Songs you like, download, add to a playlist or import from the device show up here.',
       'recentlyPlayed': 'Recently Played',
       'moreBy': 'More by',
       'essentialAlbums': 'Essential Albums',
@@ -594,6 +599,9 @@ class OngakuStrings {
       'importSoundCloud': 'Importer une playlist depuis SoundCloud',
       'importSoundCloudHelp': 'Collez le lien d\'une playlist ou d\'un album SoundCloud public (Partager > Copier le lien). Ongaku cherche ensuite chaque titre sur YouTube.',
       'importTitle': 'Importer une playlist',
+      'allSongs': 'Tous les titres',
+      'allSongsEmpty':
+          'Les titres que vous aimez, téléchargez, ajoutez à une playlist ou importez depuis l\'appareil apparaissent ici.',
       'recentlyPlayed': 'Écoutés récemment',
       'moreBy': 'Plus de :',
       'essentialAlbums': 'Albums incontournables',

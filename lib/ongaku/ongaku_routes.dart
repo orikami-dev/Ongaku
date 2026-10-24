@@ -13,6 +13,7 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:musify/ongaku/screens/local_files_page.dart';
 import 'package:musify/ongaku/screens/ongaku_acoustic_test_page.dart';
+import 'package:musify/ongaku/screens/ongaku_all_songs_page.dart';
 import 'package:musify/ongaku/screens/ongaku_hearing_test_page.dart';
 import 'package:musify/ongaku/screens/ongaku_import_playlist_page.dart';
 import 'package:musify/ongaku/screens/ongaku_sound_page.dart';
@@ -32,6 +33,16 @@ Page<void> ongakuPushPage({
   required Widget child,
   required GoRouterState state,
 }) => CupertinoPage<void>(key: state.pageKey, child: child);
+
+/// Path of the A to Z list of every song, under the Library tab.
+const allSongsPath = '/library/allSongs';
+
+/// Library > All Songs.
+GoRoute ongakuAllSongsRoute(PushPageBuilder pushPage) => GoRoute(
+  path: 'allSongs',
+  pageBuilder: (context, state) =>
+      pushPage(child: const OngakuAllSongsPage(), state: state),
+);
 
 /// Library > Local Files.
 GoRoute ongakuLocalFilesRoute(PushPageBuilder pushPage) => GoRoute(

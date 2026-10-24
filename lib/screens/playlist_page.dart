@@ -331,13 +331,10 @@ class _PlaylistPageState extends State<PlaylistPage> {
           isAlbum: _playlist['isAlbum'] == true,
           isArtist: widget.isArtist,
           showTitle: false,
-        ),
-        // Ongaku: the round buttons sit above Play / Shuffle.
-        if (hasSecondaryActions) ...[
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            spacing: 5,
-            children: [
+          // Ongaku: the round buttons sit above Play / Shuffle, between the
+          // chips.
+          actions: [
+            if (hasSecondaryActions) ...[
               if (widget.playlistId != null &&
                   !isUserCreated &&
                   !offlineMode.value)
@@ -354,9 +351,8 @@ class _PlaylistPageState extends State<PlaylistPage> {
               if (songsLength > 0) _buildDownloadButton(),
               if (isUserCreated) ...[_buildShareButton(), _buildEditButton()],
             ],
-          ),
-          const SizedBox(height: 12),
-        ],
+          ],
+        ),
         if (songsLength > 0)
           PlaylistActionButtons(
             onPlay: () => audioHandler.playPlaylistSong(

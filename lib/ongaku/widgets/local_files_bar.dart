@@ -28,3 +28,13 @@ Widget ongakuLocalFilesBar(
     showBuildActions: false,
   );
 }
+
+/// The "All Songs" row of the Library tab.
+Widget ongakuAllSongsBar(BuildContext context) {
+  return PlaylistBar(
+    OngakuStrings.of(context).allSongs,
+    onPressed: () => NavigationManager.router.go(allSongsPath),
+    cubeIcon: FluentIcons.music_note_2_24_regular,
+    showBuildActions: false,
+  );
+}

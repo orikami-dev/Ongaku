@@ -16,6 +16,7 @@
  */
 
 import 'package:material_ui/material_ui.dart';
+import 'package:musify/ongaku/widgets/ongaku_playlist_hero.dart';
 
 class PlaylistSliverAppBar extends StatelessWidget {
   const PlaylistSliverAppBar({
@@ -37,29 +38,9 @@ class PlaylistSliverAppBar extends StatelessWidget {
       leading: leading,
       pinned: true,
       expandedHeight: screenSize.width > screenSize.height ? 380 : 340,
-      flexibleSpace: FlexibleSpaceBar(
-        centerTitle: true,
-        expandedTitleScale: 1.35,
-        titlePadding: const EdgeInsetsDirectional.only(
-          start: 64,
-          end: 64,
-          bottom: 16,
-        ),
-        title: Text(
-          title,
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w700,
-            color: Theme.of(context).colorScheme.onSurface,
-            letterSpacing: 0,
-          ),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        background: Padding(
-          padding: const EdgeInsets.only(top: 56, bottom: 64),
-          child: Center(child: artwork),
-        ),
-      ),
+      // Ongaku: the title stays fixed under the cover and a small one fades
+      // into the bar once the cover has scrolled away.
+      flexibleSpace: OngakuPlaylistSpace(title: title, artwork: artwork),
     );
   }
 }

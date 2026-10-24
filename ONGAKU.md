@@ -47,6 +47,10 @@ small hooks marked `Ongaku:` or importing `package:musify/ongaku/...`:
 | `lib/screens/settings_page.dart` (Apparence) | `OngakuPalettePicker` (the Thème row, unfolding its cards) first; no Couleur row |
 | `lib/services/router_service.dart` (settings) | `ongakuSoundRoutes` |
 | `lib/screens/settings_page.dart` (Lecture) | Musify's Égaliseur row removed, "Son calibré" row in its place (Android) |
+| `lib/widgets/playlist_page/playlist_sliver_app_bar.dart` | `OngakuPlaylistSpace`: title fixed under the cover, small title in the bar once collapsed |
+| `lib/widgets/playlist_page/playlist_header.dart` | `actions`: type and count chips left and right of the round buttons (`OngakuChipRow`) |
+| `lib/screens/playlist_page.dart`, `artist_page.dart` (header) | round buttons passed to `PlaylistHeader.actions` |
+| `lib/services/router_service.dart`, `lib/screens/library_page.dart` | "Tous les titres": `ongakuAllSongsRoute`, `ongakuAllSongsBar` |
 
 Everything else (playback, YouTube extraction, library, playlists, stats, proxy,
 equalizer, downloads...) is untouched Musify code, so upstream bug fixes and API

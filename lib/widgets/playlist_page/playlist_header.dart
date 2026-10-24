@@ -22,6 +22,7 @@
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:musify/extensions/l10n.dart';
+import 'package:musify/ongaku/widgets/ongaku_playlist_hero.dart';
 
 /// The metadata and actions below a playlist, album or artist hero.
 class PlaylistHeader extends StatelessWidget {
@@ -34,6 +35,7 @@ class PlaylistHeader extends StatelessWidget {
     this.showTitle = true,
     this.monthlyListeners,
     this.description,
+    this.actions,
   });
 
   final String title;
@@ -49,6 +51,9 @@ class PlaylistHeader extends StatelessWidget {
 
   /// Artist biography, collapsed until tapped.
   final String? description;
+
+  /// Ongaku: round buttons framed by the chips, on one row.
+  final List<Widget>? actions;
 
   @override
   Widget build(BuildContext context) {
@@ -75,49 +80,88 @@ class PlaylistHeader extends StatelessWidget {
             const SizedBox(height: 10),
           ] else
             const SizedBox(height: 12),
-          Wrap(
-            alignment: WrapAlignment.center,
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              if (isArtist)
-                _Chip(
-                  icon: FluentIcons.person_16_regular,
-                  label: context.l10n!.artist,
-                  color: colorScheme.primaryContainer,
-                  onColor: colorScheme.onPrimaryContainer,
-                  theme: theme,
-                )
-              else if (isAlbum != null)
-                _Chip(
-                  icon: isAlbum!
-                      ? FluentIcons.cd_16_regular
-                      : FluentIcons.apps_list_24_regular,
-                  label: isAlbum!
-                      ? context.l10n!.album
-                      : context.l10n!.playlist,
-                  color: colorScheme.primaryContainer,
-                  onColor: colorScheme.onPrimaryContainer,
-                  theme: theme,
-                ),
-              if (songsLength != null)
-                _Chip(
-                  icon: FluentIcons.text_bullet_list_24_filled,
-                  label: '$songsLength ${context.l10n!.songs}',
-                  color: colorScheme.secondaryContainer,
-                  onColor: colorScheme.onSecondaryContainer,
-                  theme: theme,
-                ),
-              if (monthlyListeners != null)
-                _Chip(
-                  icon: FluentIcons.headphones_20_filled,
-                  label: '$monthlyListeners ${context.l10n!.monthlyListeners}',
-                  color: colorScheme.secondaryContainer,
-                  onColor: colorScheme.onSecondaryContainer,
-                  theme: theme,
-                ),
-            ],
-          ),
+          // Ongaku: the type and count chips sit left and right of the
+          // round buttons.
+          if (actions != null)
+            OngakuChipRow(
+              actions: actions!,
+              start: isArtist
+                  ? (
+                      icon: FluentIcons.person_16_regular,
+                      label: context.l10n!.artist,
+                      short: null,
+                    )
+                  : isAlbum == null
+                  ? null
+                  : (
+                      icon: isAlbum!
+                          ? FluentIcons.cd_16_regular
+                          : FluentIcons.apps_list_24_regular,
+                      label: isAlbum!
+                          ? context.l10n!.album
+                          : context.l10n!.playlist,
+                      short: null,
+                    ),
+              end: songsLength != null
+                  ? (
+                      icon: FluentIcons.text_bullet_list_24_filled,
+                      label: '$songsLength ${context.l10n!.songs}',
+                      short: '$songsLength',
+                    )
+                  : monthlyListeners != null
+                  ? (
+                      icon: FluentIcons.headphones_20_filled,
+                      label:
+                          '$monthlyListeners ${context.l10n!.monthlyListeners}',
+                      short: monthlyListeners,
+                    )
+                  : null,
+            )
+          else
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                if (isArtist)
+                  _Chip(
+                    icon: FluentIcons.person_16_regular,
+                    label: context.l10n!.artist,
+                    color: colorScheme.primaryContainer,
+                    onColor: colorScheme.onPrimaryContainer,
+                    theme: theme,
+                  )
+                else if (isAlbum != null)
+                  _Chip(
+                    icon: isAlbum!
+                        ? FluentIcons.cd_16_regular
+                        : FluentIcons.apps_list_24_regular,
+                    label: isAlbum!
+                        ? context.l10n!.album
+                        : context.l10n!.playlist,
+                    color: colorScheme.primaryContainer,
+                    onColor: colorScheme.onPrimaryContainer,
+                    theme: theme,
+                  ),
+                if (songsLength != null)
+                  _Chip(
+                    icon: FluentIcons.text_bullet_list_24_filled,
+                    label: '$songsLength ${context.l10n!.songs}',
+                    color: colorScheme.secondaryContainer,
+                    onColor: colorScheme.onSecondaryContainer,
+                    theme: theme,
+                  ),
+                if (monthlyListeners != null)
+                  _Chip(
+                    icon: FluentIcons.headphones_20_filled,
+                    label:
+                        '$monthlyListeners ${context.l10n!.monthlyListeners}',
+                    color: colorScheme.secondaryContainer,
+                    onColor: colorScheme.onSecondaryContainer,
+                    theme: theme,
+                  ),
+              ],
+            ),
           if (description != null && description!.trim().isNotEmpty)
             _Description(description!.trim()),
           const SizedBox(height: 20),
