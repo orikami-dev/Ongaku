@@ -14,6 +14,7 @@ import 'package:musify/extensions/l10n.dart';
 import 'package:musify/main.dart' show audioHandler;
 import 'package:musify/ongaku/l10n/ongaku_strings.dart';
 import 'package:musify/ongaku/local/local_library.dart';
+import 'package:musify/ongaku/theme/ongaku_motion.dart';
 import 'package:musify/services/common_services.dart'
     show userLikedSongsList, userOfflineSongs;
 import 'package:musify/services/playlists_manager.dart'
@@ -249,7 +250,7 @@ class _OngakuAllSongsPageState extends State<OngakuAllSongsPage> {
                   child: Center(
                     child: AnimatedOpacity(
                       opacity: value == null ? 0 : 1,
-                      duration: const Duration(milliseconds: 120),
+                      duration: OngakuMotion.fast,
                       child: Container(
                         width: 84,
                         height: 84,

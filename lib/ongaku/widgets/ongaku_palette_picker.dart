@@ -12,6 +12,7 @@ import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:musify/main.dart';
 import 'package:musify/ongaku/l10n/ongaku_strings.dart';
+import 'package:musify/ongaku/theme/ongaku_motion.dart';
 import 'package:musify/ongaku/theme/ongaku_palettes.dart';
 import 'package:musify/ongaku/widgets/ongaku_settings_ui.dart';
 import 'package:musify/services/settings_manager.dart';
@@ -63,7 +64,7 @@ class _OngakuPalettePickerState extends State<OngakuPalettePicker> {
                   const SizedBox(width: 4),
                   AnimatedRotation(
                     turns: _open ? 0.25 : 0,
-                    duration: const Duration(milliseconds: 260),
+                    duration: OngakuMotion.medium,
                     curve: Curves.easeOutCubic,
                     child: Icon(
                       Icons.chevron_right_rounded,
@@ -75,7 +76,7 @@ class _OngakuPalettePickerState extends State<OngakuPalettePicker> {
               ),
             ),
             AnimatedSize(
-              duration: const Duration(milliseconds: 320),
+              duration: OngakuMotion.medium,
               curve: Curves.easeOutCubic,
               alignment: Alignment.topCenter,
               child: _open
@@ -172,7 +173,7 @@ class _PaletteCard extends StatelessWidget {
       child: GestureDetector(
         onTap: onTap,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
+          duration: OngakuMotion.quick,
           width: _cardWidth,
           padding: const EdgeInsets.all(3),
           decoration: ShapeDecoration(

@@ -11,6 +11,7 @@
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:musify/ongaku/theme/artwork_palette.dart';
+import 'package:musify/ongaku/theme/ongaku_motion.dart';
 import 'package:musify/utilities/artwork_provider.dart';
 
 /// Side margin of Apple Music pages, wider on open screens.
@@ -363,7 +364,7 @@ class _OngakuPressableState extends State<OngakuPressable> {
       onTapCancel: () => _set(false),
       child: AnimatedScale(
         scale: _pressed ? 0.97 : 1,
-        duration: const Duration(milliseconds: 160),
+        duration: OngakuMotion.fast,
         curve: Curves.easeOut,
         child: widget.child,
       ),
@@ -415,7 +416,7 @@ class OngakuTallCard extends StatelessWidget {
                     ),
                     Positioned.fill(
                       child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 400),
+                        duration: OngakuMotion.slow,
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             begin: Alignment.topCenter,

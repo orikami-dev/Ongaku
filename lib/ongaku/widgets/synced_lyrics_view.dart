@@ -17,6 +17,7 @@ import 'package:musify/main.dart';
 import 'package:musify/models/position_data.dart';
 import 'package:musify/ongaku/l10n/ongaku_strings.dart';
 import 'package:musify/ongaku/lyrics/synced_lyrics.dart';
+import 'package:musify/ongaku/theme/ongaku_motion.dart';
 import 'package:musify/widgets/spinner.dart';
 
 /// Apple Music style lyrics: the line being sung is bright and kept in view,
@@ -103,10 +104,7 @@ class _LyricsLoaderState extends State<_LyricsLoader> {
             padding: widget.padding,
           );
         }
-        return AnimatedSwitcher(
-          duration: const Duration(milliseconds: 350),
-          child: child,
-        );
+        return AnimatedSwitcher(duration: OngakuMotion.medium, child: child);
       },
     );
   }
@@ -308,10 +306,10 @@ class _LyricLineTile extends StatelessWidget {
         child: AnimatedScale(
           scale: active ? 1 : 0.96,
           alignment: Alignment.centerLeft,
-          duration: const Duration(milliseconds: 450),
+          duration: OngakuMotion.slow,
           curve: Curves.easeOutCubic,
           child: AnimatedDefaultTextStyle(
-            duration: const Duration(milliseconds: 450),
+            duration: OngakuMotion.slow,
             curve: Curves.easeOutCubic,
             style: TextStyle(
               fontFamily: 'Inter',

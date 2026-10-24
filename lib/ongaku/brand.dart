@@ -30,10 +30,11 @@ const latestReleaseApiUrl =
     'https://api.github.com/repos/$releaseRepoOwner/$releaseRepoName/releases/latest';
 const apkDownloadFilename = '$appName.apk';
 
-/// Ongaku's own version: the number of the build (v12, v13...), not
-/// Musify's. Raise it with `version:` in pubspec.yaml (12.0.0+1200: the
-/// version code is the build number times 100).
-const ongakuVersion = '12.0';
+/// Ongaku's own version, not Musify's, from 1.0 on: 1.0.x for upstream
+/// fixes only, 1.x.0 for a visible feature, x.0 for a redesign. Keep it in
+/// step with `version:` in pubspec.yaml, whose version code only goes up
+/// (1.0.0+1300 follows the test builds v1 to v12, codes 100 to 1200).
+const ongakuVersion = '1.0';
 
 /// Ongaku's author, credited first on the About and sponsor sections.
 const ongakuAuthor = 'Orikami';

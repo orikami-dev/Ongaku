@@ -40,9 +40,9 @@ WindowSize windowSizeForWidth(double width) {
 
 /// A fold or hinge that splits the screen in two usable halves.
 ///
-/// Flat foldables (e.g. an unfolded book-style foldable) report a zero-width fold
-/// that content can safely cross, so it is ignored unless the device is half
-/// opened. Physical hinges (Surface Duo style) always split the screen.
+/// Flat foldables (e.g. an unfolded book-style foldable) report a zero-width
+/// fold that content can safely cross, so it is ignored unless the device is
+/// half opened. Physical hinges (two-screen devices) always split the screen.
 class FoldSplit {
   const FoldSplit({required this.axis, required this.bounds});
 

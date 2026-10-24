@@ -13,6 +13,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:musify/extensions/l10n.dart';
 import 'package:musify/main.dart';
 import 'package:musify/ongaku/screens/ongaku_now_playing_page.dart';
+import 'package:musify/ongaku/theme/ongaku_motion.dart';
 import 'package:musify/widgets/marquee.dart';
 import 'package:musify/widgets/song_artwork.dart';
 
@@ -35,7 +36,7 @@ class OngakuMiniPlayer extends StatelessWidget {
         final metadata = snapshot.data;
         // Rises into place when a song starts, sinks when there is none.
         return AnimatedSwitcher(
-          duration: const Duration(milliseconds: 360),
+          duration: OngakuMotion.medium,
           switchInCurve: Curves.easeOutCubic,
           switchOutCurve: Curves.easeInCubic,
           transitionBuilder: (child, a) => FadeTransition(
@@ -101,7 +102,7 @@ class _MiniPlayerBarState extends State<_MiniPlayerBar> {
           }
         },
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
+          duration: OngakuMotion.fast,
           height: OngakuMiniPlayer.height,
           color: _pressed
               ? colorScheme.onSurface.withValues(alpha: 0.06)
@@ -126,7 +127,7 @@ class _MiniPlayerBarState extends State<_MiniPlayerBar> {
               const SizedBox(width: 14),
               Expanded(
                 child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 280),
+                  duration: OngakuMotion.medium,
                   layoutBuilder: (current, previous) => Stack(
                     alignment: Alignment.centerLeft,
                     children: [...previous, ?current],
@@ -256,7 +257,7 @@ class MiniPlayPauseButton extends StatelessWidget {
               ? audioHandler.playAgain
               : (playing ? audioHandler.pause : audioHandler.play),
           icon: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 180),
+            duration: OngakuMotion.quick,
             transitionBuilder: (child, animation) => ScaleTransition(
               scale: Tween<double>(begin: 0.6, end: 1).animate(animation),
               child: FadeTransition(opacity: animation, child: child),

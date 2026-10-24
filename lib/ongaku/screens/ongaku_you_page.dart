@@ -14,6 +14,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:musify/main.dart';
 import 'package:musify/ongaku/home/you_stats.dart';
 import 'package:musify/ongaku/l10n/ongaku_strings.dart';
+import 'package:musify/ongaku/theme/ongaku_motion.dart';
 import 'package:musify/ongaku/widgets/ongaku_page_parts.dart';
 import 'package:musify/services/listening_stats_service.dart';
 import 'package:musify/services/settings_manager.dart';
@@ -176,7 +177,7 @@ class _MonthChips extends StatelessWidget {
           return GestureDetector(
             onTap: () => onSelected(key),
             child: AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
+              duration: OngakuMotion.quick,
               padding: const EdgeInsets.symmetric(horizontal: 14),
               alignment: Alignment.center,
               decoration: BoxDecoration(
@@ -579,7 +580,7 @@ class _MonthBars extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       AnimatedContainer(
-                        duration: const Duration(milliseconds: 250),
+                        duration: OngakuMotion.quick,
                         height: 6 + (barArea - 6) * entry.value / top,
                         decoration: BoxDecoration(
                           color: entry.key == selected

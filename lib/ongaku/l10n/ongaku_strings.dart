@@ -390,8 +390,7 @@ class OngakuStrings {
       'importSoundCloudHelp': 'Paste the link of a public SoundCloud playlist or album (Share > Copy link). Ongaku then looks for each song on YouTube.',
       'importTitle': 'Import a playlist',
       'allSongs': 'All Songs',
-      'allSongsEmpty':
-          'Songs you like, download, add to a playlist or import from the device show up here.',
+      'allSongsEmpty': 'Songs you like, download, add to a playlist or import from the device show up here.',
       'autoHome': 'Home',
       'autoShuffle': 'Shuffle',
       'recentlyPlayed': 'Recently Played',
@@ -604,8 +603,7 @@ class OngakuStrings {
       'importSoundCloudHelp': 'Collez le lien d\'une playlist ou d\'un album SoundCloud public (Partager > Copier le lien). Ongaku cherche ensuite chaque titre sur YouTube.',
       'importTitle': 'Importer une playlist',
       'allSongs': 'Tous les titres',
-      'allSongsEmpty':
-          'Les titres que vous aimez, téléchargez, ajoutez à une playlist ou importez depuis l\'appareil apparaissent ici.',
+      'allSongsEmpty': 'Les titres que vous aimez, téléchargez, ajoutez à une playlist ou importez depuis l\'appareil apparaissent ici.',
       'autoHome': 'Accueil',
       'autoShuffle': 'Lecture aléatoire',
       'recentlyPlayed': 'Écoutés récemment',

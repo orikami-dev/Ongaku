@@ -69,7 +69,7 @@ class _PopoverRoute<T> extends PopupRoute<T> {
   String? get barrierLabel => 'close';
 
   @override
-  Duration get transitionDuration => const Duration(milliseconds: 260);
+  Duration get transitionDuration => OngakuMotion.medium;
 
   @override
   Duration get reverseTransitionDuration => OngakuMotion.quick;

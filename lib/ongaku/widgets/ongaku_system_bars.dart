@@ -11,6 +11,7 @@
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:musify/ongaku/screens/ongaku_shell.dart';
+import 'package:musify/ongaku/theme/ongaku_motion.dart';
 import 'package:musify/ongaku/widgets/ongaku_ui_scale.dart';
 
 /// Status and navigation bars that follow the app's theme, not the system's,
@@ -42,7 +43,7 @@ class OngakuSystemBars extends StatelessWidget {
       // The app fades in over the plain opening screen, once.
       child: TweenAnimationBuilder<double>(
         tween: Tween(begin: 0, end: 1),
-        duration: const Duration(milliseconds: 220),
+        duration: OngakuMotion.quick,
         curve: Curves.easeOut,
         builder: (context, value, child) =>
             Opacity(opacity: value, child: child),

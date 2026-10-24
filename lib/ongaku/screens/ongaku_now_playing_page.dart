@@ -9,7 +9,6 @@
  */
 
 import 'dart:async';
-import 'dart:ui' show DisplayFeatureState, DisplayFeatureType;
 
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/services.dart';
@@ -18,10 +17,12 @@ import 'package:musify/extensions/l10n.dart';
 import 'package:musify/main.dart';
 import 'package:musify/models/position_data.dart';
 import 'package:musify/ongaku/l10n/ongaku_strings.dart';
+import 'package:musify/ongaku/layout/adaptive.dart' show foldSplitFrom;
 import 'package:musify/ongaku/lyrics/synced_lyrics.dart' show fetchTimedLyrics;
 import 'package:musify/ongaku/screens/ongaku_sound_page.dart'
     show CrossfadeControls;
 import 'package:musify/ongaku/sound/sound_settings.dart';
+import 'package:musify/ongaku/theme/ongaku_motion.dart';
 import 'package:musify/ongaku/widgets/artwork_background.dart';
 import 'package:musify/ongaku/widgets/ongaku_mini_player.dart'
     show MiniPlayPauseButton;
@@ -46,7 +47,6 @@ Future<void> openOngakuNowPlaying(BuildContext context) {
     PageRouteBuilder<void>(
       opaque: false,
       transitionDuration: Duration(milliseconds: panel ? 420 : 480),
-      reverseTransitionDuration: const Duration(milliseconds: 320),
       pageBuilder: (context, animation, _) => const OngakuNowPlayingPage(),
     ),
   );
@@ -56,16 +56,11 @@ Future<void> openOngakuNowPlaying(BuildContext context) {
 bool usesPlayerPanel(Size size) => size.width >= 600 && size.height >= 480;
 
 /// The fold of a foldable half opened like a laptop or standing on a table
-/// (flex or tabletop posture): a horizontal hinge across the screen. Null
-/// when the screen is flat or the fold is vertical.
+/// (flex or tabletop posture), or a physical hinge: a horizontal line across
+/// the screen. Null when the screen is flat or the fold is vertical.
 Rect? tabletopHinge(MediaQueryData media) {
-  for (final feature in media.displayFeatures) {
-    if (feature.type == DisplayFeatureType.cutout) continue;
-    if (feature.state != DisplayFeatureState.postureHalfOpened) continue;
-    final bounds = feature.bounds;
-    if (bounds.width > bounds.height && bounds.top > 0) return bounds;
-  }
-  return null;
+  final split = foldSplitFrom(media.displayFeatures, media.size);
+  return split == null || split.isSideBySide ? null : split.bounds;
 }
 
 const _white = Colors.white;
@@ -179,7 +174,7 @@ class _OngakuNowPlayingPageState extends State<OngakuNowPlayingPage>
         const _Grabber(),
         Expanded(
           child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 380),
+            duration: OngakuMotion.slow,
             switchInCurve: Curves.easeOutCubic,
             switchOutCurve: Curves.easeInCubic,
             // Lyrics and queue rise out of the controls, inside the
@@ -294,7 +289,7 @@ class _OngakuNowPlayingPageState extends State<OngakuNowPlayingPage>
           } else {
             _drag.animateTo(
               0,
-              duration: const Duration(milliseconds: 300),
+              duration: OngakuMotion.medium,
               curve: Curves.easeOutCubic,
             );
           }
@@ -326,7 +321,7 @@ class _OngakuNowPlayingPageState extends State<OngakuNowPlayingPage>
     final wide = size.width >= 600;
 
     final top = AnimatedSwitcher(
-      duration: const Duration(milliseconds: 380),
+      duration: OngakuMotion.slow,
       switchInCurve: Curves.easeOutCubic,
       switchOutCurve: Curves.easeInCubic,
       child: _panelLyrics
@@ -368,7 +363,7 @@ class _OngakuNowPlayingPageState extends State<OngakuNowPlayingPage>
     );
 
     final queue = AnimatedSwitcher(
-      duration: const Duration(milliseconds: 320),
+      duration: OngakuMotion.medium,
       transitionBuilder: (child, a) => FadeTransition(opacity: a, child: child),
       child: _panelQueue
           ? const _UpNext(key: ValueKey('queue'), dense: true)
@@ -472,7 +467,7 @@ class _OngakuNowPlayingPageState extends State<OngakuNowPlayingPage>
               // Header and modes come with the queue; with the big artwork
               // the title goes under it, so the artwork shows once.
               AnimatedSize(
-                duration: const Duration(milliseconds: 320),
+                duration: OngakuMotion.medium,
                 curve: Curves.easeOutCubic,
                 alignment: Alignment.topCenter,
                 child: _panelQueue
@@ -488,7 +483,7 @@ class _OngakuNowPlayingPageState extends State<OngakuNowPlayingPage>
               ),
               Expanded(
                 child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 320),
+                  duration: OngakuMotion.medium,
                   transitionBuilder: (child, a) =>
                       FadeTransition(opacity: a, child: child),
                   child: _panelQueue
@@ -580,15 +575,15 @@ class _OngakuNowPlayingPageState extends State<OngakuNowPlayingPage>
                   ignoring: !_panelLyrics,
                   child: AnimatedSlide(
                     offset: _panelLyrics ? Offset.zero : const Offset(0.6, 0),
-                    duration: const Duration(milliseconds: 460),
+                    duration: OngakuMotion.slow,
                     curve: Curves.easeOutCubic,
                     child: AnimatedOpacity(
                       opacity: _panelLyrics ? 1 : 0,
-                      duration: const Duration(milliseconds: 320),
+                      duration: OngakuMotion.medium,
                       child: AnimatedScale(
                         scale: _panelLyrics ? 1 : 0.9,
                         alignment: Alignment.centerRight,
-                        duration: const Duration(milliseconds: 460),
+                        duration: OngakuMotion.slow,
                         curve: Curves.easeOutCubic,
                         child: ClipRSuperellipse(
                           borderRadius: BorderRadius.circular(26),
@@ -629,7 +624,7 @@ class _OngakuNowPlayingPageState extends State<OngakuNowPlayingPage>
                     } else {
                       _drag.animateTo(
                         0,
-                        duration: const Duration(milliseconds: 300),
+                        duration: OngakuMotion.medium,
                         curve: Curves.easeOutCubic,
                       );
                     }
@@ -680,10 +675,10 @@ class _BigArtwork extends StatelessWidget {
             final playing = snapshot.data ?? false;
             return AnimatedScale(
               scale: playing ? 1 : 0.82,
-              duration: const Duration(milliseconds: 520),
+              duration: OngakuMotion.slow,
               curve: playing ? Curves.easeOutBack : Curves.easeOutCubic,
               child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 380),
+                duration: OngakuMotion.slow,
                 child: DecoratedBox(
                   key: ValueKey(metadata.id),
                   decoration: BoxDecoration(
@@ -754,7 +749,7 @@ class _TitleArtist extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 300),
+      duration: OngakuMotion.medium,
       layoutBuilder: (current, previous) => Stack(
         alignment: Alignment.centerLeft,
         children: [...previous, ?current],
@@ -910,7 +905,7 @@ class _CircleButton extends StatelessWidget {
       child: GestureDetector(
         onTap: onPressed,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
+          duration: OngakuMotion.quick,
           width: 34,
           height: 34,
           decoration: BoxDecoration(
@@ -918,7 +913,7 @@ class _CircleButton extends StatelessWidget {
             color: filled ? _white : _whiteA(0.16),
           ),
           child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 220),
+            duration: OngakuMotion.quick,
             transitionBuilder: (child, a) =>
                 ScaleTransition(scale: a, child: child),
             child: Icon(
@@ -1045,7 +1040,7 @@ class _Chip extends StatelessWidget {
           onTap();
         },
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 240),
+          duration: OngakuMotion.quick,
           curve: Curves.easeOutCubic,
           height: 40,
           decoration: ShapeDecoration(
@@ -1301,7 +1296,7 @@ class _ProgressBarState extends State<_ProgressBar> {
                 child: Column(
                   children: [
                     AnimatedContainer(
-                      duration: const Duration(milliseconds: 180),
+                      duration: OngakuMotion.quick,
                       height: _dragValue != null ? 11 : 7,
                       decoration: BoxDecoration(
                         color: _whiteA(0.22),
@@ -1417,7 +1412,7 @@ class _PressIconState extends State<_PressIcon> {
           widget.onTap();
         },
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
+          duration: OngakuMotion.fast,
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
             shape: BoxShape.circle,
@@ -1425,7 +1420,7 @@ class _PressIconState extends State<_PressIcon> {
           ),
           child: AnimatedScale(
             scale: _down ? 0.86 : 1,
-            duration: const Duration(milliseconds: 160),
+            duration: OngakuMotion.fast,
             child: Icon(widget.icon, size: widget.size, color: _white),
           ),
         ),
@@ -1756,7 +1751,7 @@ class _ToggleSquare extends StatelessWidget {
               }
             : null,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 240),
+          duration: OngakuMotion.quick,
           curve: Curves.easeOutCubic,
           width: 44,
           height: 40,

@@ -12,11 +12,17 @@ import 'package:flutter/animation.dart';
 
 /// Shared timings, so every part of the app moves at the same pace.
 abstract final class OngakuMotion {
+  /// Press feedback and highlights.
+  static const fast = Duration(milliseconds: 120);
+
   /// Small things: a toast, a chip, a switch.
   static const quick = Duration(milliseconds: 180);
 
   /// Panels and sheets.
   static const medium = Duration(milliseconds: 300);
+
+  /// The players: artwork, lyrics and queue moving in and out.
+  static const slow = Duration(milliseconds: 420);
 
   static const curve = Curves.easeOutCubic;
   static const curveIn = Curves.easeInCubic;

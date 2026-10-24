@@ -14,6 +14,7 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:musify/extensions/l10n.dart';
 import 'package:musify/main.dart';
+import 'package:musify/ongaku/theme/ongaku_motion.dart';
 import 'package:musify/ongaku/widgets/ongaku_mini_player.dart';
 import 'package:musify/services/settings_manager.dart';
 import 'package:musify/utilities/flutter_bottom_sheet.dart'
@@ -234,7 +235,7 @@ class _PhoneBar extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           AnimatedSize(
-            duration: const Duration(milliseconds: 320),
+            duration: OngakuMotion.medium,
             curve: Curves.easeOutCubic,
             alignment: Alignment.bottomCenter,
             child: hasMiniPlayer
@@ -302,7 +303,7 @@ class _WideBar extends StatelessWidget {
               return Row(
                 children: [
                   AnimatedContainer(
-                    duration: const Duration(milliseconds: 320),
+                    duration: OngakuMotion.medium,
                     curve: Curves.easeOutCubic,
                     width: tabsWidth,
                     child: _TabRow(
@@ -376,7 +377,7 @@ class _TabButtonState extends State<_TabButton>
     with SingleTickerProviderStateMixin {
   late final _bounce = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 420),
+    duration: OngakuMotion.slow,
     value: 1,
   );
   bool _pressed = false;
@@ -419,7 +420,7 @@ class _TabButtonState extends State<_TabButton>
         onTapCancel: () => _setPressed(false),
         child: AnimatedOpacity(
           opacity: _pressed ? 0.55 : 1,
-          duration: const Duration(milliseconds: 120),
+          duration: OngakuMotion.fast,
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -439,14 +440,14 @@ class _TabButtonState extends State<_TabButton>
                 ]).animate(_bounce),
                 child: TweenAnimationBuilder<Color?>(
                   tween: ColorTween(end: color),
-                  duration: const Duration(milliseconds: 200),
+                  duration: OngakuMotion.quick,
                   builder: (context, value, _) =>
                       Icon(tab.icon, color: value, size: 27),
                 ),
               ),
               const SizedBox(height: 3),
               AnimatedDefaultTextStyle(
-                duration: const Duration(milliseconds: 200),
+                duration: OngakuMotion.quick,
                 style: TextStyle(
                   fontFamily: 'Inter',
                   color: color,

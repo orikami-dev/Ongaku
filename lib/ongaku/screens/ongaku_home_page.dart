@@ -20,6 +20,7 @@ import 'package:musify/ongaku/brand.dart' show appName;
 import 'package:musify/ongaku/home/home_shelves.dart';
 import 'package:musify/ongaku/l10n/ongaku_strings.dart';
 import 'package:musify/ongaku/local/local_library.dart';
+import 'package:musify/ongaku/theme/ongaku_motion.dart';
 import 'package:musify/ongaku/theme/ongaku_palettes.dart';
 import 'package:musify/ongaku/widgets/ongaku_page_parts.dart';
 import 'package:musify/services/artist_service.dart';
@@ -710,7 +711,7 @@ class _TopBar extends StatelessWidget {
               child: ValueListenableBuilder<bool>(
                 valueListenable: scrolled,
                 builder: (context, isScrolled, _) => AnimatedOpacity(
-                  duration: const Duration(milliseconds: 260),
+                  duration: OngakuMotion.medium,
                   opacity: isScrolled ? 1 : 0,
                   child: DecoratedBox(
                     decoration: BoxDecoration(
