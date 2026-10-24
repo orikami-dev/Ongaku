@@ -16,9 +16,11 @@ import 'package:musify/database/playlists.db.dart';
 import 'package:musify/database/radio_stations.db.dart';
 import 'package:musify/extensions/l10n.dart';
 import 'package:musify/main.dart';
+import 'package:musify/ongaku/brand.dart' show appName;
 import 'package:musify/ongaku/home/home_shelves.dart';
 import 'package:musify/ongaku/l10n/ongaku_strings.dart';
 import 'package:musify/ongaku/local/local_library.dart';
+import 'package:musify/ongaku/theme/ongaku_palettes.dart';
 import 'package:musify/ongaku/widgets/ongaku_page_parts.dart';
 import 'package:musify/services/artist_service.dart';
 import 'package:musify/services/common_services.dart';
@@ -102,7 +104,7 @@ class _OngakuHomePageState extends State<OngakuHomePage> {
         children: [
           NotificationListener<ScrollUpdateNotification>(
             onNotification: (n) {
-              if (n.depth == 0) _scrolled.value = n.metrics.pixels > 64;
+              if (n.depth == 0) _scrolled.value = n.metrics.pixels > 8;
               return false;
             },
             child: CustomScrollView(
@@ -111,7 +113,7 @@ class _OngakuHomePageState extends State<OngakuHomePage> {
               ),
               slivers: [
                 SliverToBoxAdapter(
-                  child: SizedBox(height: topInset + barHeight - 12),
+                  child: SizedBox(height: topInset + barHeight - 20),
                 ),
                 SliverToBoxAdapter(
                   child: OngakuLargeTitle(
@@ -159,7 +161,6 @@ class _OngakuHomePageState extends State<OngakuHomePage> {
             ),
           ),
           _TopBar(
-            title: l10n.home,
             scrolled: _scrolled,
             height: topInset + barHeight,
             onRefresh: () {
@@ -680,15 +681,16 @@ class _OngakuHomePageState extends State<OngakuHomePage> {
 
 /// Top bar: transparent with the menu button at first, then the small page
 /// title on the page colour once the large title has scrolled away.
+/// The home page's top bar: the app's logo (in the theme's colours) and
+/// name, and the ⋮ menu. It stays put; the page fades out under it as it
+/// scrolls, instead of a solid bar following the scroll.
 class _TopBar extends StatelessWidget {
   const _TopBar({
-    required this.title,
     required this.scrolled,
     required this.height,
     required this.onRefresh,
   });
 
-  final String title;
   final ValueNotifier<bool> scrolled;
   final double height;
   final VoidCallback onRefresh;
@@ -696,47 +698,78 @@ class _TopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final background = Theme.of(context).scaffoldBackgroundColor;
     final margin = ongakuPageMargin(context);
-    return ValueListenableBuilder<bool>(
-      valueListenable: scrolled,
-      builder: (context, isScrolled, _) {
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          height: height,
-          padding: EdgeInsets.only(
-            top: MediaQuery.paddingOf(context).top,
-            left: margin,
-            right: margin - 12,
-          ),
-          decoration: BoxDecoration(
-            color: isScrolled
-                ? Theme.of(context).scaffoldBackgroundColor
-                : Theme.of(context).scaffoldBackgroundColor
-                      .withValues(alpha: 0),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: AnimatedOpacity(
-                  duration: const Duration(milliseconds: 200),
+    return SizedBox(
+      height: height + 18,
+      child: Stack(
+        children: [
+          // The fade: solid at the top, clear at the bottom.
+          Positioned.fill(
+            child: IgnorePointer(
+              child: ValueListenableBuilder<bool>(
+                valueListenable: scrolled,
+                builder: (context, isScrolled, _) => AnimatedOpacity(
+                  duration: const Duration(milliseconds: 260),
                   opacity: isScrolled ? 1 : 0,
-                  child: Text(
-                    title,
-                    maxLines: 1,
-                    style: TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 20,
-                      fontWeight: FontWeight.w600,
-                      color: colorScheme.onSurface,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          background,
+                          background.withValues(alpha: 0.92),
+                          background.withValues(alpha: 0),
+                        ],
+                        stops: const [0, 0.6, 1],
+                      ),
                     ),
                   ),
                 ),
               ),
-              _HomeMenu(onRefresh: onRefresh),
-            ],
+            ),
           ),
-        );
-      },
+          Container(
+            height: height,
+            padding: EdgeInsets.only(
+              top: MediaQuery.paddingOf(context).top,
+              left: margin,
+              right: margin - 12,
+            ),
+            child: Row(
+              children: [
+                ValueListenableBuilder<OngakuPalette>(
+                  valueListenable: ongakuPalette,
+                  builder: (context, palette, _) => ClipRSuperellipse(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.asset(
+                      'assets/icons/palettes/${palette.name}.png',
+                      width: 30,
+                      height: 30,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    appName,
+                    maxLines: 1,
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.3,
+                      color: colorScheme.onSurface,
+                    ),
+                  ),
+                ),
+                _HomeMenu(onRefresh: onRefresh),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

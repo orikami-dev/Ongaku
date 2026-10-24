@@ -53,6 +53,11 @@ class TimedLyrics {
 final _memory = <String, TimedLyrics?>{};
 const _cacheCategory = 'cache';
 
+/// The lyrics of [id] if already found in this session (null: not yet
+/// looked up, or none), so they show without waiting.
+({TimedLyrics? lyrics})? timedLyricsInMemory(String id) =>
+    _memory.containsKey(id) ? (lyrics: _memory[id]) : null;
+
 /// Finds lyrics for [item], best source first:
 /// 1. a .lrc file next to a local audio file,
 /// 2. LRCLIB, a free database of time-synced lyrics,

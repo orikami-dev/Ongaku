@@ -69,13 +69,19 @@ class _LyricsLoader extends StatefulWidget {
 class _LyricsLoaderState extends State<_LyricsLoader> {
   late final Future<TimedLyrics?> _future = fetchTimedLyrics(widget.item);
 
+  // Lyrics found earlier show at once, without a spinner in between.
+  late final _known = timedLyricsInMemory(widget.item.id);
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<TimedLyrics?>(
       future: _future,
+      initialData: _known?.lyrics,
       builder: (context, snapshot) {
+        final ready =
+            _known != null || snapshot.connectionState == ConnectionState.done;
         final Widget child;
-        if (snapshot.connectionState != ConnectionState.done) {
+        if (!ready) {
           child = const Center(key: ValueKey('wait'), child: Spinner());
         } else if (snapshot.data == null || snapshot.data!.lines.isEmpty) {
           child = Center(

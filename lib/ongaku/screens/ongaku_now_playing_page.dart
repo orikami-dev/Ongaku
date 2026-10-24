@@ -17,6 +17,7 @@ import 'package:musify/extensions/l10n.dart';
 import 'package:musify/main.dart';
 import 'package:musify/models/position_data.dart';
 import 'package:musify/ongaku/l10n/ongaku_strings.dart';
+import 'package:musify/ongaku/lyrics/synced_lyrics.dart' show fetchTimedLyrics;
 import 'package:musify/ongaku/screens/ongaku_sound_page.dart'
     show CrossfadeControls;
 import 'package:musify/ongaku/sound/sound_settings.dart';
@@ -74,8 +75,22 @@ class _OngakuNowPlayingPageState extends State<OngakuNowPlayingPage>
   // Drag down to close on phones.
   late final _drag = AnimationController(vsync: this, upperBound: 2000);
 
+  // The lyrics card stays built once opened, so it reopens at once.
+  bool _lyricsBuilt = false;
+  StreamSubscription<MediaItem?>? _prefetch;
+
+  @override
+  void initState() {
+    super.initState();
+    // Lyrics are looked up as soon as a song plays, before they are asked.
+    _prefetch = audioHandler.mediaItem.listen((item) {
+      if (item != null) fetchTimedLyrics(item).ignore();
+    });
+  }
+
   @override
   void dispose() {
+    _prefetch?.cancel();
     _drag.dispose();
     super.dispose();
   }
@@ -83,6 +98,7 @@ class _OngakuNowPlayingPageState extends State<OngakuNowPlayingPage>
   void _toggleLyrics(bool panel) => setState(() {
     if (panel) {
       _panelLyrics = !_panelLyrics;
+      _lyricsBuilt = true;
     } else {
       _phoneView = _phoneView == _View.lyrics ? _View.artwork : _View.lyrics;
     }
@@ -256,6 +272,7 @@ class _OngakuNowPlayingPageState extends State<OngakuNowPlayingPage>
         child: Material(
           type: MaterialType.transparency,
           child: ArtworkBackground(
+            translucent: true,
             child: DefaultTextStyle.merge(
               style: const TextStyle(color: _white),
               child: content,
@@ -287,6 +304,7 @@ class _OngakuNowPlayingPageState extends State<OngakuNowPlayingPage>
           : const BorderRadius.only(topLeft: Radius.circular(26)),
       child: ArtworkBackground(
         dim: 0.35,
+        translucent: true,
         child: Padding(
           padding: EdgeInsets.fromLTRB(
             22,
@@ -420,7 +438,8 @@ class _OngakuNowPlayingPageState extends State<OngakuNowPlayingPage>
                         child: ClipRSuperellipse(
                           borderRadius: BorderRadius.circular(26),
                           child: ArtworkBackground(
-                            child: _panelLyrics
+                            translucent: true,
+                            child: _lyricsBuilt
                                 ? SyncedLyricsView(
                                     fontSize: w - panelWidth > 600 ? 30 : 25,
                                     padding: const EdgeInsets.fromLTRB(

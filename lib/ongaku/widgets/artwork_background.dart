@@ -9,6 +9,7 @@
  */
 
 import 'dart:math' as math;
+import 'dart:ui' show ImageFilter;
 
 import 'package:material_ui/material_ui.dart';
 import 'package:musify/ongaku/theme/artwork_palette.dart';
@@ -17,10 +18,18 @@ import 'package:musify/ongaku/theme/artwork_palette.dart';
 /// Apple Music player and lyrics backgrounds. Only gradients are painted
 /// (no blur), so it stays smooth on any phone.
 class ArtworkBackground extends StatefulWidget {
-  const ArtworkBackground({super.key, this.dim = 0, this.child});
+  const ArtworkBackground({
+    super.key,
+    this.dim = 0,
+    this.translucent = false,
+    this.child,
+  });
 
   /// Extra darkening, 0 to 1, for panels that sit on top of the background.
   final double dim;
+
+  /// Lets the page behind show through, blurred, like Apple Music's panels.
+  final bool translucent;
   final Widget? child;
 
   @override
@@ -69,7 +78,7 @@ class _ArtworkBackgroundState extends State<ArtworkBackground>
 
   @override
   Widget build(BuildContext context) {
-    return RepaintBoundary(
+    final fields = RepaintBoundary(
       child: CustomPaint(
         painter: _FieldsPainter(
           drift: _drift,
@@ -80,9 +89,15 @@ class _ArtworkBackgroundState extends State<ArtworkBackground>
             Curves.easeInOut.transform(_fade.value),
           ),
           dim: widget.dim,
+          translucent: widget.translucent,
         ),
         child: widget.child,
       ),
+    );
+    if (!widget.translucent) return fields;
+    return BackdropFilter(
+      filter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+      child: fields,
     );
   }
 }
@@ -93,17 +108,24 @@ class _FieldsPainter extends CustomPainter {
     required Animation<double> fade,
     required this.palette,
     required this.dim,
+    required this.translucent,
   }) : super(repaint: Listenable.merge([drift, fade]));
 
   final Animation<double> drift;
   final ArtworkPalette Function() palette;
   final double dim;
+  final bool translucent;
 
   @override
   void paint(Canvas canvas, Size size) {
     final colors = palette().colors;
     final rect = Offset.zero & size;
-    canvas.drawRect(rect, Paint()..color = colors[0]);
+    // Translucent: the colours tint the blurred page instead of hiding it.
+    final strength = translucent ? 0.62 : 1.0;
+    canvas.drawRect(
+      rect,
+      Paint()..color = colors[0].withValues(alpha: strength),
+    );
 
     final t = drift.value * 2 * math.pi;
     final extent = math.max(size.width, size.height);
@@ -139,8 +161,8 @@ class _FieldsPainter extends CustomPainter {
         Paint()
           ..shader = RadialGradient(
             colors: [
-              color.withValues(alpha: 0.9),
-              color.withValues(alpha: 0.35),
+              color.withValues(alpha: 0.9 * strength),
+              color.withValues(alpha: 0.35 * strength),
               color.withValues(alpha: 0),
             ],
             stops: const [0, 0.45, 1],
@@ -156,5 +178,6 @@ class _FieldsPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_FieldsPainter oldDelegate) => oldDelegate.dim != dim;
+  bool shouldRepaint(_FieldsPainter oldDelegate) =>
+      oldDelegate.dim != dim || oldDelegate.translucent != translucent;
 }
