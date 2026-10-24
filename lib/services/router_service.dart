@@ -297,6 +297,7 @@ class NavigationManager {
                   state: state,
                 ),
               ),
+              ...ongakuImportRoutes(_pushPage),
             ],
           ),
         ],

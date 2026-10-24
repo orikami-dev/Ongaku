@@ -279,6 +279,20 @@ class SettingsPage extends StatelessWidget {
               FluentIcons.arrow_upload_24_regular,
               onTap: () => context.push('/settings/import-spotify-playlist'),
             ),
+          // Ongaku: Deezer and Apple Music imports.
+          if (online)
+            CustomBar(
+              strings.importDeezer,
+              FluentIcons.arrow_upload_24_regular,
+              onTap: () => context.push('/settings/import-deezer-playlist'),
+            ),
+          if (online)
+            CustomBar(
+              strings.importApple,
+              FluentIcons.arrow_upload_24_regular,
+              onTap: () =>
+                  context.push('/settings/import-apple-music-playlist'),
+            ),
           if (online)
             CustomBar(
               context.l10n!.backupUserData,

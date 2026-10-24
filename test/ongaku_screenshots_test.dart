@@ -151,6 +151,8 @@ void main() {
         '/home/you',
         '/library/localFiles',
         '/library/userSongs/liked',
+        '/settings/import-deezer-playlist',
+        '/settings/import-apple-music-playlist',
       ],
     );
   }, skip: !_enabled);
@@ -162,7 +164,12 @@ void main() {
       size: const Size(390, 844),
       padding: const EdgeInsets.only(top: 44, bottom: 24),
       mode: ThemeMode.light,
-      routes: ['/home', '/library', '/settings'],
+      routes: [
+        '/home',
+        '/library',
+        '/settings',
+        '/settings/import-apple-music-playlist',
+      ],
       player: false,
     );
   }, skip: !_enabled);

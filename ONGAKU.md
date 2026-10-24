@@ -24,7 +24,8 @@ small hooks marked `Ongaku:` or importing `package:musify/ongaku/...`:
 | `lib/services/settings_manager.dart`, `lib/theme/app_colors.dart` | default accent (Apple red), system colors off |
 | `lib/widgets/shapes/*` | squircle instead of cookie shapes |
 | `lib/widgets/playlist_hero_artwork.dart` | square cover instead of the star clip |
-| `lib/screens/settings_page.dart` | pickers close with `ongakuClosePicker` |
+| `lib/screens/settings_page.dart` | pickers close with `ongakuClosePicker`; Deezer / Apple Music import rows |
+| `lib/services/router_service.dart` (settings) | `ongakuImportRoutes` |
 | `lib/utilities/flutter_bottom_sheet.dart` | `isCustomBottomSheetOpen` |
 | `lib/widgets/confirmation_dialog.dart`, `rename_song_dialog.dart` | readable text on the coloured confirm button |
 | `lib/screens/{home,about}_page.dart`, `listening_recap_card.dart`, `linux_media_controls.dart` | app name |
@@ -90,6 +91,13 @@ the Android label, and the Linux/Windows titles.
   (upstream clipped them to an eight-pointed star).
 * Texts say "Ongaku" instead of "Musify" (update question, offline mode,
   recap, Spotify import...), except the Crowdin translation link.
+* Playlist import from Deezer and Apple Music (Settings), next to Musify's
+  Spotify import, in `lib/ongaku/import/`. Deezer: public API from a share
+  link (short links followed). Apple Music: the public page of a shared
+  playlist (its `serialized-server-data`, then schema.org data), or a file
+  exported from the Music app / iTunes (UTF-16 text) or a CSV. Songs are
+  then found on YouTube Music like the Spotify import. Private playlists
+  cannot be read. Tests: `test/ongaku_import_test.dart`.
 * The confirm button of confirmation and rename dialogs had primary text on a
   primary or error background (invisible): its text now uses onPrimary/onError.
 

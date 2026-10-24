@@ -12,6 +12,7 @@ import 'package:cupertino_ui/cupertino_ui.dart' show CupertinoPage;
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:musify/ongaku/screens/local_files_page.dart';
+import 'package:musify/ongaku/screens/ongaku_import_playlist_page.dart';
 import 'package:musify/ongaku/screens/ongaku_you_page.dart';
 import 'package:musify/screens/user_songs_page.dart';
 
@@ -51,3 +52,18 @@ GoRoute ongakuRecentsRoute(PushPageBuilder pushPage) => GoRoute(
     state: state,
   ),
 );
+
+/// Settings > Import from Deezer / Apple Music.
+List<GoRoute> ongakuImportRoutes(PushPageBuilder pushPage) => [
+  for (final (path, source) in [
+    ('import-deezer-playlist', ImportSource.deezer),
+    ('import-apple-music-playlist', ImportSource.appleMusic),
+  ])
+    GoRoute(
+      path: path,
+      pageBuilder: (context, state) => pushPage(
+        child: OngakuImportPlaylistPage(source: source),
+        state: state,
+      ),
+    ),
+];

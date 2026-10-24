@@ -75,6 +75,20 @@ class OngakuStrings {
   String get endOfSong => _t('endOfSong');
   String get cancelTimer => _t('cancelTimer');
   String get resetOffset => _t('resetOffset');
+  String get importDeezer => _t('importDeezer');
+  String get importApple => _t('importApple');
+  String get importDeezerHelp => _t('importDeezerHelp');
+  String get importAppleHelp => _t('importAppleHelp');
+  String get importLink => _t('importLink');
+  String get importRead => _t('importRead');
+  String get importFile => _t('importFile');
+  String get importErrLink => _t('importErrLink');
+  String get importErrNotFound => _t('importErrNotFound');
+  String get importErrPrivate => _t('importErrPrivate');
+  String get importErrNetwork => _t('importErrNetwork');
+  String get importErrFile => _t('importErrFile');
+  String importTracksRead(int n) =>
+      _t('importTracksRead').replaceAll('{n}', '$n');
   String minShort(int n) => _t('minShort').replaceAll('{n}', '$n');
   String songsAdded(int n) => _t('songsAdded').replaceAll('{n}', '$n');
   String songCount(int n) =>
@@ -136,6 +150,26 @@ class OngakuStrings {
       'nowPlaying': 'Now Playing',
       'notPlaying': 'Not Playing',
       'stats': 'Listening Stats',
+      'importDeezer': 'Import playlist from Deezer',
+      'importApple': 'Import playlist from Apple Music',
+      'importDeezerHelp':
+          'Paste the link of a public Deezer playlist or album '
+          '(Share > Copy link). Ongaku then looks for each song on YouTube.',
+      'importAppleHelp':
+          'Paste the link of a public Apple Music playlist or album '
+          '(Share > Copy link), or choose a file exported from the Music app '
+          'on Mac or iTunes on Windows (File > Library > Export Playlist, '
+          'Text format). Ongaku then looks for each song on YouTube.',
+      'importLink': 'Playlist link',
+      'importRead': 'Read playlist',
+      'importFile': 'Choose an exported file',
+      'importTracksRead': '{n} songs read',
+      'importErrLink': 'This is not a playlist or album link',
+      'importErrNotFound': 'Playlist not found',
+      'importErrPrivate': 'No songs could be read. Is the playlist public?',
+      'importErrNetwork': 'The service did not answer, try again later',
+      'importErrFile':
+          'This file has no song list. Export the playlist in Text format.',
     },
     'fr': {
       'localFiles': 'Fichiers locaux',
@@ -195,6 +229,30 @@ class OngakuStrings {
       'nowPlaying': 'À l\'écoute',
       'notPlaying': 'Aucune lecture',
       'stats': 'Statistiques d\'écoute',
+      'importDeezer': 'Importer une playlist depuis Deezer',
+      'importApple': 'Importer une playlist depuis Apple Music',
+      'importDeezerHelp':
+          "Collez le lien d'une playlist ou d'un album Deezer public "
+          '(Partager > Copier le lien). Ongaku cherche ensuite chaque titre '
+          'sur YouTube.',
+      'importAppleHelp':
+          "Collez le lien d'une playlist ou d'un album Apple Music public "
+          '(Partager > Copier le lien), ou choisissez un fichier exporté '
+          "depuis l'app Musique sur Mac ou iTunes sur Windows (Fichier > "
+          'Bibliothèque > Exporter la playlist, format Texte). Ongaku '
+          'cherche ensuite chaque titre sur YouTube.',
+      'importLink': 'Lien de la playlist',
+      'importRead': 'Lire la playlist',
+      'importFile': 'Choisir un fichier exporté',
+      'importTracksRead': '{n} titres lus',
+      'importErrLink': "Ce n'est pas un lien de playlist ou d'album",
+      'importErrNotFound': 'Playlist introuvable',
+      'importErrPrivate':
+          "Aucun titre n'a pu être lu. La playlist est-elle publique ?",
+      'importErrNetwork': "Le service n'a pas répondu, réessayez plus tard",
+      'importErrFile':
+          'Ce fichier ne contient pas de liste de titres. Exportez la '
+          'playlist au format Texte.',
     },
   };
 }
