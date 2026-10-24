@@ -84,6 +84,9 @@ PersistentBottomSheetController? showCustomBottomSheet(
   return controller;
 }
 
+/// Ongaku: whether a sheet opened by [showCustomBottomSheet] is showing.
+bool get isCustomBottomSheetOpen => _currentBottomSheetController != null;
+
 void closeCurrentBottomSheet() {
   try {
     _currentBottomSheetController?.close();

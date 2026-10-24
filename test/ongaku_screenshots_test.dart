@@ -30,6 +30,9 @@ import 'package:musify/services/router_service.dart';
 import 'package:musify/services/settings_manager.dart';
 import 'package:musify/theme/app_themes.dart' as themes;
 import 'package:musify/utilities/mediaitem.dart';
+import 'package:musify/widgets/bottom_sheet_bar.dart';
+import 'package:musify/widgets/confirmation_dialog.dart';
+import 'package:musify/widgets/custom_bar.dart';
 
 const _enabled = bool.fromEnvironment('ONGAKU_SHOTS');
 const _outDir = String.fromEnvironment(
@@ -173,6 +176,69 @@ void main() {
       mode: ThemeMode.dark,
       routes: ['/home', '/library', '/settings'],
     );
+  }, skip: !_enabled);
+
+  testWidgets('theme mode picker (real app widget)', (tester) async {
+    tester.view.physicalSize = const Size(390, 844) * 3;
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    final errors = <FlutterErrorDetails>[];
+    final old = FlutterError.onError;
+    FlutterError.onError = errors.add;
+    await tester.runAsync(() async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockStreamHandler(
+            const EventChannel('receive_sharing_intent/events-text'),
+            _NoEvents(),
+          );
+      shouldWeCheckUpdates.value = false;
+      await tester.pumpWidget(const RepaintBoundary(child: Musify()));
+      await _settle(tester);
+      NavigationManager.router.go('/settings');
+      await _settle(tester);
+      await _capture(tester, 'theme-start');
+      for (final mode in ['Clair', 'Système', 'Sombre']) {
+        tester
+            .widgetList<CustomBar>(find.byType(CustomBar))
+            .firstWhere((b) => b.tileName == 'Mode de thème')
+            .onTap!();
+        await _settle(tester);
+        await _capture(tester, 'theme-sheet-$mode');
+        tester
+            .widgetList<BottomSheetBar>(find.byType(BottomSheetBar))
+            .firstWhere((b) => b.title == mode)
+            .onTap();
+        await _settle(tester);
+        await _capture(tester, 'theme-$mode');
+      }
+      for (final dangerous in [true, false]) {
+        final context = tester.element(find.byType(CustomBar).first);
+        // ignore: unawaited_futures
+        showDialog<void>(
+          context: context,
+          builder: (_) => ConfirmationDialog(
+            confirmationMessage:
+                "Êtes-vous sûr de vouloir effacer l'historique de recherche ?",
+            submitMessage: 'Confirmer',
+            isDangerous: dangerous,
+            onCancel: () {},
+            onSubmit: () {},
+          ),
+        );
+        await _settle(tester);
+        await _capture(tester, 'confirm-${dangerous ? 'danger' : 'normal'}');
+        Navigator.of(context, rootNavigator: true).pop();
+        await _settle(tester);
+      }
+      await tester.pumpWidget(const SizedBox.shrink());
+      await _settle(tester, frames: 3);
+    });
+    FlutterError.onError = old;
+    for (final e in errors) {
+      // ignore: avoid_print
+      print('ERROR: ${e.exceptionAsString()}\n${e.stack}');
+    }
+    expect(errors, isEmpty);
   }, skip: !_enabled);
 }
 

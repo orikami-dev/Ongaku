@@ -9,6 +9,7 @@
  */
 
 import 'package:material_ui/material_ui.dart';
+import 'package:musify/utilities/flutter_bottom_sheet.dart';
 
 /// Colours of the rounded icon tiles, as in the iOS Settings app.
 const _palette = [
@@ -203,4 +204,19 @@ class OngakuSettingsRow extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Closes a settings picker after a choice.
+///
+/// The pickers open as a sheet of the app shell, above the tab's own
+/// navigator, so `Navigator.pop(context)` from the settings page popped the
+/// settings page itself instead (the last page of the tab: crash). The sheet
+/// is closed through its controller; on desktop the picker is a dialog on
+/// the root navigator.
+void ongakuClosePicker(BuildContext context) {
+  if (isCustomBottomSheetOpen) {
+    closeCurrentBottomSheet();
+    return;
+  }
+  Navigator.of(context, rootNavigator: true).maybePop();
 }

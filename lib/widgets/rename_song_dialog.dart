@@ -150,6 +150,8 @@ class _RenameSongDialogState extends State<RenameSongDialog> {
           onPressed: _handleRename,
           style: FilledButton.styleFrom(
             backgroundColor: colorScheme.primary,
+            // Ongaku: readable text on the primary background.
+            foregroundColor: colorScheme.onPrimary,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),

@@ -653,7 +653,7 @@ class SettingsPage extends StatelessWidget {
       useSystemColor: false,
     );
     showToast(context, context.l10n!.accentChangeMsg);
-    Navigator.pop(context);
+    ongakuClosePicker(context);
   }
 
   void _showThemeModePicker(BuildContext context) {
@@ -680,7 +680,7 @@ class SettingsPage extends StatelessWidget {
         () {
           addOrUpdateData<int>('settings', 'themeIndex', mode.index);
           Musify.updateAppState(context, newThemeMode: mode);
-          Navigator.pop(context);
+          ongakuClosePicker(context);
         },
         themeMode == mode,
         icon: modeIcons[index],
@@ -733,7 +733,7 @@ class SettingsPage extends StatelessWidget {
         addOrUpdateData<String>('settings', 'languageCode', newLocaleFullCode);
         Musify.updateAppState(context, newLocale: newLocale);
         showToast(context, context.l10n!.languageMsg);
-        Navigator.pop(context);
+        ongakuClosePicker(context);
       }, activeLanguageFullCode == newLocaleFullCode);
     }
 
@@ -785,7 +785,7 @@ class SettingsPage extends StatelessWidget {
           addOrUpdateData<String>('settings', 'audioQuality', quality);
           audioQualitySetting.value = quality;
           showToast(context, context.l10n!.audioQualityMsg);
-          Navigator.pop(context);
+          ongakuClosePicker(context);
         },
         audioQualitySetting.value == quality,
         icon: qualityIcons[index],

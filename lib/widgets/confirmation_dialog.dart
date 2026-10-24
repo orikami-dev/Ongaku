@@ -82,6 +82,11 @@ class ConfirmationDialog extends StatelessWidget {
             backgroundColor: isDangerous
                 ? colorScheme.error
                 : colorScheme.primary,
+            // Ongaku: the theme's filled buttons use primary text, which
+            // vanished on this coloured background.
+            foregroundColor: isDangerous
+                ? colorScheme.onError
+                : colorScheme.onPrimary,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),

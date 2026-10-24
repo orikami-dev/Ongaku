@@ -23,6 +23,10 @@ small hooks marked `Ongaku:` or importing `package:musify/ongaku/...`:
 | `lib/services/update_manager.dart` | update URLs point at Ongaku, not Musify |
 | `lib/services/settings_manager.dart`, `lib/theme/app_colors.dart` | default accent (Apple red), system colors off |
 | `lib/widgets/shapes/*` | squircle instead of cookie shapes |
+| `lib/widgets/playlist_hero_artwork.dart` | square cover instead of the star clip |
+| `lib/screens/settings_page.dart` | pickers close with `ongakuClosePicker` |
+| `lib/utilities/flutter_bottom_sheet.dart` | `isCustomBottomSheetOpen` |
+| `lib/widgets/confirmation_dialog.dart`, `rename_song_dialog.dart` | readable text on the coloured confirm button |
 | `lib/screens/{home,about}_page.dart`, `listening_recap_card.dart`, `linux_media_controls.dart` | app name |
 | `android/`, `linux/`, `windows/` | app id `com.orikami.ongaku`, labels |
 | `pubspec.yaml` | 3 dependencies (`# Ongaku`), Inter font |
@@ -73,6 +77,18 @@ the Android label, and the Linux/Windows titles.
 * Settings are grouped by category (`settings_page.dart` `_buildCategories`); `CustomBar` and `SectionHeader` delegate to `widgets/ongaku_settings_ui.dart` and `ongaku_page_parts.dart`, so every list in the app shares the iOS look.
 * Player: the old ⋯ menu is gone; its actions sit in the bottom row. The heart icon became a star everywhere (`FluentIcons.star_*`).
 * Lyrics: wider LRCLIB search and a per-session timing nudge (± 0.5 s).
+
+## v7
+
+* Choosing a theme mode (or a language, accent colour or audio quality) in
+  Settings crashed the app: the picker is a sheet of the app shell, and
+  `Navigator.pop(context)` from the settings page popped the settings page,
+  the last page of its tab. `ongakuClosePicker` closes the sheet itself.
+  Covered by the "theme mode picker" test of the screenshot harness.
+* Playlist, album and artist covers are square with lightly rounded corners
+  (upstream clipped them to an eight-pointed star).
+* The confirm button of confirmation and rename dialogs had primary text on a
+  primary or error background (invisible): its text now uses onPrimary/onError.
 
 ## v6
 

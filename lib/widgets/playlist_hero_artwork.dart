@@ -43,23 +43,14 @@ class PlaylistHeroArtwork extends StatelessWidget {
         final size = preferredSize
             .clamp(0.0, min(constraints.maxWidth, constraints.maxHeight))
             .toDouble();
-        final artwork = PlaylistCube(
+        // Ongaku: a square cover with lightly rounded corners, like Apple
+        // Music, instead of Material's star-shaped clip.
+        return PlaylistCube(
           playlist,
           size: size,
           cubeIcon: cubeIcon,
           showTypeLabel: false,
-        );
-
-        return ClipPath(
-          clipper: const ShapeBorderClipper(
-            shape: StarBorder(
-              points: 8,
-              pointRounding: 0.8,
-              valleyRounding: 0.2,
-              innerRadiusRatio: 0.6,
-            ),
-          ),
-          child: artwork,
+          borderRadius: size * 0.04,
         );
       },
     );
