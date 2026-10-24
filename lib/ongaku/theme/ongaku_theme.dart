@@ -11,6 +11,7 @@
 import 'package:cupertino_ui/cupertino_ui.dart'
     show CupertinoPageTransitionsBuilder;
 import 'package:material_ui/material_ui.dart';
+import 'package:musify/ongaku/theme/ongaku_palettes.dart';
 import 'package:musify/services/settings_manager.dart';
 import 'package:musify/theme/app_themes.dart';
 
@@ -20,50 +21,23 @@ const ongakuAccent = Color(0xFFFA2D48);
 /// Font bundled in assets/fonts/inter (SIL OFL), close to Apple's SF Pro.
 const ongakuFontFamily = 'Inter';
 
-/// iOS system grays, so surfaces stay neutral instead of tinted by the accent.
-class _IosGrays {
-  const _IosGrays.light()
-    : background = const Color(0xFFFFFFFF),
-      grouped = const Color(0xFFF2F2F7),
-      elevated = const Color(0xFFFFFFFF),
-      fill = const Color(0xFFE5E5EA),
-      fillStrong = const Color(0xFFD1D1D6),
-      label = const Color(0xFF000000),
-      secondaryLabel = const Color(0xFF6C6C70),
-      separator = const Color(0xFFC6C6C8);
-
-  const _IosGrays.dark()
-    : background = const Color(0xFF000000),
-      grouped = const Color(0xFF1C1C1E),
-      elevated = const Color(0xFF1C1C1E),
-      fill = const Color(0xFF2C2C2E),
-      fillStrong = const Color(0xFF3A3A3C),
-      label = const Color(0xFFFFFFFF),
-      secondaryLabel = const Color(0xFF98989F),
-      separator = const Color(0xFF38383A);
-
-  final Color background;
-  final Color grouped;
-  final Color elevated;
-  final Color fill;
-  final Color fillStrong;
-  final Color label;
-  final Color secondaryLabel;
-  final Color separator;
-}
-
 /// Builds the app color scheme with upstream's logic (system colors, accent
-/// setting), then swaps tinted Material surfaces for neutral iOS grays.
+/// setting), then swaps tinted Material surfaces for the theme's neutrals
+/// (iOS grays for Ongaku, washi or sumi for the ORIKAMI palettes).
 ColorScheme getOngakuColorScheme(
   ColorScheme? lightColorScheme,
   ColorScheme? darkColorScheme,
 ) {
   final scheme = getAppColorScheme(lightColorScheme, darkColorScheme);
   final isDark = scheme.brightness == Brightness.dark;
-  final grays = isDark ? const _IosGrays.dark() : const _IosGrays.light();
+  final palette = ongakuPalette.value;
+  final grays = palette.neutrals(isDark);
   // Without system colors, use the accent exactly as picked instead of the
-  // darker tone Material derives from it.
-  final accent = useSystemColor.value ? scheme.primary : primaryColorSetting;
+  // darker tone Material derives from it. The ORIKAMI palettes bring their
+  // own accent.
+  final accent =
+      palette.accent(isDark) ??
+      (useSystemColor.value ? scheme.primary : primaryColorSetting);
   final onAccent = accent.computeLuminance() > 0.5
       ? Colors.black
       : Colors.white;

@@ -5,6 +5,7 @@ from PIL import Image, ImageDraw, ImageFilter
 S = 1024
 INK = (18, 12, 20)
 GOLD = (255, 210, 63)
+GLOW = (250, 45, 72)
 # pink -> violet, light to dark
 P1, P2, P3, P4, P5 = (255, 120, 150), (250, 45, 72), (214, 30, 96), (160, 60, 200), (112, 70, 235)
 
@@ -63,7 +64,7 @@ def tile(size_px, radius=0.225):
     bg = Image.new('RGBA', (S, S), INK + (255,))
     # subtle pink glow from the top-left
     glow = Image.new('RGBA', (S, S), (0, 0, 0, 0))
-    ImageDraw.Draw(glow).ellipse((-S * 0.3, -S * 0.3, S * 0.8, S * 0.8), fill=(250, 45, 72, 46))
+    ImageDraw.Draw(glow).ellipse((-S * 0.3, -S * 0.3, S * 0.8, S * 0.8), fill=GLOW + (46,))
     bg.alpha_composite(glow.filter(ImageFilter.GaussianBlur(S * 0.12)))
     img.paste(bg, (0, 0), m)
     draw_note(img, (S * 0.26, S * 0.26, S * 0.48))
@@ -76,7 +77,7 @@ def foreground(size_px, mono=False):
     draw_note(img, ((S - inner) / 2, (S - inner) / 2, inner), mono=mono, shadow=not mono)
     return img.resize((size_px, size_px), Image.LANCZOS)
 
-if __name__ == '__main__':
+if __name__ == '__main__' and sys.argv[1] != '--palettes':
     res, out = sys.argv[1], sys.argv[2]
     import os
     dens = {'mdpi': 1, 'hdpi': 1.5, 'xhdpi': 2, 'xxhdpi': 3, 'xxxhdpi': 4}
@@ -88,3 +89,86 @@ if __name__ == '__main__':
         foreground(int(108 * f), mono=True).save(os.path.join(dd, 'ic_launcher_monochrome.png'))
     tile(1024).save(os.path.join(out, 'ongaku-icon-1024.png'))
     tile(512).save(os.path.join(out, 'ongaku-icon-512.png'))
+
+
+# --- Palette icons (themes shared with Kamishibai) -------------------------
+# One launcher icon per palette: the same folded note in shades of the
+# palette's accent, the gold corner kept, on an ink tile tinted by it.
+#
+#   python3 scripts/make_ongaku_icon.py --palettes android/app/src/main/res assets/icons/palettes
+
+PALETTES = {
+    'washi': (255, 90, 64),
+    'sumi': (255, 90, 64),
+    'ai': (122, 157, 232),
+    'matcha': (141, 194, 106),
+    'sakura': (242, 141, 171),
+    'kin': (232, 185, 49),
+}
+
+
+def _mix(a, b, t):
+    return tuple(int(a[i] + (b[i] - a[i]) * t) for i in range(3))
+
+
+def palette_tile_ink(name, accent):
+    if name == 'sumi':
+        return (0, 0, 0)
+    return _mix((15, 15, 19), accent, 0.07)
+
+
+def with_palette(name, accent, fn):
+    """Runs fn with the module colours swapped for the palette's."""
+    global INK, GLOW, facets
+    saved_ink, saved_glow, saved_facets = INK, GLOW, facets
+    shades = {
+        P1: _mix(accent, (255, 255, 255), 0.35),
+        P2: accent,
+        P3: _mix(accent, (0, 0, 0), 0.22),
+        P4: _mix(accent, (0, 0, 0), 0.42),
+        P5: _mix(accent, (0, 0, 0), 0.30),
+    }
+    # Kin is gold already: its folded corner turns to cream.
+    shades[GOLD] = (255, 244, 214) if name == 'kin' else GOLD
+    INK = palette_tile_ink(name, accent)
+    GLOW = accent
+    facets = [(poly, shades.get(col, col)) for poly, col in saved_facets]
+    try:
+        return fn()
+    finally:
+        INK, GLOW, facets = saved_ink, saved_glow, saved_facets
+
+
+def write_palette_icons(res, assets):
+    import os
+    dens = {'mdpi': 1, 'hdpi': 1.5, 'xhdpi': 2, 'xxhdpi': 3, 'xxxhdpi': 4}
+    os.makedirs(assets, exist_ok=True)
+    os.makedirs(os.path.join(res, 'mipmap-anydpi-v26'), exist_ok=True)
+    colors = []
+    for name, accent in PALETTES.items():
+        for k, f in dens.items():
+            dd = os.path.join(res, f'mipmap-{k}')
+            with_palette(name, accent, lambda: tile(int(48 * f))).save(
+                os.path.join(dd, f'ic_launcher_{name}.png'))
+            with_palette(name, accent, lambda: foreground(int(108 * f))).save(
+                os.path.join(dd, f'ic_launcher_{name}_fore.png'))
+        with open(os.path.join(res, 'mipmap-anydpi-v26', f'ic_launcher_{name}.xml'), 'w') as x:
+            x.write(
+                '<?xml version="1.0" encoding="utf-8"?>\n'
+                '<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\n'
+                f'  <background android:drawable="@color/ic_launcher_background_{name}"/>\n'
+                f'  <foreground android:drawable="@mipmap/ic_launcher_{name}_fore"/>\n'
+                '  <monochrome android:drawable="@mipmap/ic_launcher_monochrome"/>\n'
+                '</adaptive-icon>\n')
+        ink = palette_tile_ink(name, accent)
+        colors.append(f'    <color name="ic_launcher_background_{name}">#{ink[0]:02X}{ink[1]:02X}{ink[2]:02X}</color>\n')
+        with_palette(name, accent, lambda: tile(192)).save(os.path.join(assets, f'{name}.png'))
+    tile(192).save(os.path.join(assets, 'ongaku.png'))
+    with open(os.path.join(res, 'values', 'ongaku_palette_icons.xml'), 'w') as x:
+        x.write('<?xml version="1.0" encoding="utf-8"?>\n<resources>\n'
+                '    <!-- Made by scripts/make_ongaku_icon.py with palettes. -->\n'
+                + ''.join(colors) + '</resources>\n')
+
+
+if __name__ == '__main__' and sys.argv[1] == '--palettes':
+    write_palette_icons(sys.argv[2], sys.argv[3])

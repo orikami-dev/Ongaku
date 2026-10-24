@@ -13,9 +13,19 @@ import 'dart:async';
 import 'package:musify/ongaku/sound/crossfade.dart';
 import 'package:musify/ongaku/sound/sound_engine.dart';
 import 'package:musify/services/audio_service.dart';
+import 'package:musify/services/data_manager.dart';
+import 'package:musify/services/settings_manager.dart';
 
 /// Starts the calibrated sound and the smooth transitions (mobile).
 void ongakuStartSound(MusifyAudioHandler handler) {
+  // Musify's own equalizer is hidden in Ongaku: keep it off so it never
+  // stacks with the calibrated sound.
+  // Musify reads this value when it sets its equalizer up.
+  if (equalizerEnabled.value) {
+    equalizerEnabled.value = false;
+    unawaited(addOrUpdateData<bool>('settings', 'equalizerEnabled', false));
+    unawaited(handler.setEqualizerEnabled(false));
+  }
   unawaited(OngakuSoundEngine.start(handler));
   OngakuCrossfade.start(handler);
 }

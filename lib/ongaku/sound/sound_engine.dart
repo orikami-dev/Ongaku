@@ -32,6 +32,10 @@ class OngakuSoundEngine {
   /// What the Auto layer currently hears.
   static final autoLayer = ValueNotifier<SoundLayer?>(null);
 
+  /// Gains heard while comparing before / after a correction; null the
+  /// rest of the time.
+  static final preview = ValueNotifier<List<double>?>(null);
+
   /// Loudness of the music (dB, smoothed), for the automatic crossfade.
   static final loudness = ValueNotifier<double?>(null);
 
@@ -68,6 +72,7 @@ class OngakuSoundEngine {
       ]) {
         notifier.addListener(_settingsChanged);
       }
+      preview.addListener(_push);
       handler.audioPlayer.playingStream.listen((_) => _updateSpectrum());
       _layerNow = _targetLayer();
       await _updateSpectrum();
@@ -116,13 +121,14 @@ class OngakuSoundEngine {
     final profile =
         soundProfiles.value[route.value.id]?.gains ??
         List<double>.filled(10, 0);
+    final comparing = preview.value;
     try {
       await OngakuSound.setGains(
-        combineGains(profile, _layerNow),
-        enabled: soundEnabled.value,
+        comparing ?? combineGains(profile, _layerNow),
+        enabled: comparing != null || soundEnabled.value,
       );
       await OngakuSound.setWidening(
-        soundEnabled.value && route.value.isHeadphones
+        comparing == null && soundEnabled.value && route.value.isHeadphones
             ? soundWidening.value
             : 0,
       );

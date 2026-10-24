@@ -12,9 +12,11 @@ package com.orikami.ongaku.sound
 
 import android.app.UiModeManager
 import android.content.BroadcastReceiver
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.media.AudioAttributes
 import android.media.AudioDeviceCallback
@@ -55,6 +57,9 @@ class OngakuSoundPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         /** Band centres in Hz, shared with the Dart side. */
         val CENTRES = floatArrayOf(31f, 62f, 125f, 250f, 500f, 1000f, 2000f, 4000f, 8000f, 16000f)
         const val RATE = 48000
+
+        /** Launcher aliases in the app manifest, one per theme. */
+        const val PALETTE_ALIAS = "com.orikami.ongaku.palette."
     }
 
     private lateinit var context: Context
@@ -197,6 +202,11 @@ class OngakuSoundPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                     tone = null
                     result.success(true)
                 }
+                // Not sound, but the same small native bridge: the app icon
+                // of the chosen theme (one launcher alias per palette).
+                "setLauncherIcon" -> result.success(
+                    setLauncherIcon(call.argument<String>("palette") ?: "ongaku"),
+                )
                 else -> result.notImplemented()
             }
         } catch (e: Exception) {
@@ -541,4 +551,31 @@ class OngakuSoundPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         }
         return DoubleArray(CENTRES.size) { 10 * log10(max(energy[it], 1e-9)) }
     }
+
+    /** Enables the launcher alias of [palette] and disables the others. */
+    private fun setLauncherIcon(palette: String): Boolean {
+        val pm = context.packageManager
+        val wanted = "$PALETTE_ALIAS$palette"
+        @Suppress("DEPRECATION")
+        val activities = pm.getPackageInfo(
+            context.packageName,
+            PackageManager.GET_ACTIVITIES or PackageManager.MATCH_DISABLED_COMPONENTS,
+        ).activities ?: return false
+        val aliases = activities.map { it.name }.filter { it.startsWith(PALETTE_ALIAS) }
+        if (wanted !in aliases) return false
+        // Enable the new icon first, so the app always keeps one.
+        for (name in listOf(wanted) + aliases.filter { it != wanted }) {
+            val state = if (name == wanted) {
+                PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+            } else {
+                PackageManager.COMPONENT_ENABLED_STATE_DISABLED
+            }
+            val component = ComponentName(context.packageName, name)
+            if (pm.getComponentEnabledSetting(component) != state) {
+                pm.setComponentEnabledSetting(component, state, PackageManager.DONT_KILL_APP)
+            }
+        }
+        return true
+    }
+
 }

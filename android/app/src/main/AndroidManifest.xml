@@ -61,11 +61,7 @@
 
             <meta-data android:name="flutter_deeplinking_enabled" android:value="false" />
 
-            <!-- Main activity intent filter -->
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
+            <!-- Ongaku: the launcher entry is one alias per theme, below. -->
 
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
@@ -99,6 +95,86 @@
             </intent-filter>
 
         </activity>
+
+        <!-- Ongaku: app icon of each theme (scripts/make_ongaku_icon.py);
+             the app enables the one of the chosen theme. -->
+        <activity-alias
+            android:name="com.orikami.ongaku.palette.ongaku"
+            android:targetActivity="com.ryanheise.audioservice.AudioServiceActivity"
+            android:icon="@mipmap/ic_launcher"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name="com.orikami.ongaku.palette.washi"
+            android:targetActivity="com.ryanheise.audioservice.AudioServiceActivity"
+            android:icon="@mipmap/ic_launcher_washi"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name="com.orikami.ongaku.palette.sumi"
+            android:targetActivity="com.ryanheise.audioservice.AudioServiceActivity"
+            android:icon="@mipmap/ic_launcher_sumi"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name="com.orikami.ongaku.palette.ai"
+            android:targetActivity="com.ryanheise.audioservice.AudioServiceActivity"
+            android:icon="@mipmap/ic_launcher_ai"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name="com.orikami.ongaku.palette.matcha"
+            android:targetActivity="com.ryanheise.audioservice.AudioServiceActivity"
+            android:icon="@mipmap/ic_launcher_matcha"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name="com.orikami.ongaku.palette.sakura"
+            android:targetActivity="com.ryanheise.audioservice.AudioServiceActivity"
+            android:icon="@mipmap/ic_launcher_sakura"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name="com.orikami.ongaku.palette.kin"
+            android:targetActivity="com.ryanheise.audioservice.AudioServiceActivity"
+            android:icon="@mipmap/ic_launcher_kin"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
 
         <!-- Flutter embedding meta-data -->
         <meta-data

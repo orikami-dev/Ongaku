@@ -35,7 +35,11 @@ check android/app/build.gradle.kts "com.orikami.ongaku"
 check lib/main.dart "ongakuStartSound"
 check lib/services/router_service.dart "ongakuSoundRoutes"
 check lib/screens/settings_page.dart "/settings/sound"
+check lib/screens/settings_page.dart "equalizer is replaced by Son calibré"
 check pubspec.yaml "ongaku_sound"
+check lib/main.dart "ongakuWatchPaletteIcon"
+check lib/screens/settings_page.dart "OngakuPalettePicker"
+check android/app/src/main/AndroidManifest.xml "com.orikami.ongaku.palette.ongaku"
 python3 scripts/brand_strings.py --check || missing=1
 [ "$missing" = 0 ] || { echo "An upstream change removed an Ongaku hook: re-apply it (see ONGAKU.md)."; exit 1; }
 echo "OK"

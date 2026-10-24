@@ -27,8 +27,10 @@ import 'package:musify/constants/app_constants.dart';
 import 'package:musify/extensions/l10n.dart';
 import 'package:musify/main.dart';
 import 'package:musify/ongaku/l10n/ongaku_strings.dart';
+import 'package:musify/ongaku/theme/ongaku_palettes.dart';
 import 'package:musify/ongaku/widgets/ongaku_credits.dart';
 import 'package:musify/ongaku/widgets/ongaku_page_parts.dart';
+import 'package:musify/ongaku/widgets/ongaku_palette_picker.dart';
 import 'package:musify/ongaku/widgets/ongaku_settings_ui.dart';
 import 'package:musify/screens/search_page.dart';
 import 'package:musify/services/common_services.dart';
@@ -98,27 +100,30 @@ class SettingsPage extends StatelessWidget {
     return Column(
       children: [
         _group(strings.catAppearance, const Color(0xFFAF52DE), [
-          CustomBar(
-            context.l10n!.accentColor,
-            FluentIcons.color_24_regular,
-            borderRadius: commonCustomBarRadiusFirst,
-            // Ongaku: the current colour shows on every platform, the
-            // system's when the dynamic colour is on.
-            trailing: Container(
-              width: 26,
-              height: 26,
-              decoration: BoxDecoration(
-                color: isAndroidPlatform && useSystemColor.value
-                    ? Theme.of(context).colorScheme.primary
-                    : primaryColorSetting,
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: Theme.of(context).colorScheme.outlineVariant,
+          // Ongaku: themes shared with Kamishibai; Couleur only for Ongaku's.
+          const OngakuPalettePicker(),
+          if (ongakuPalette.value == OngakuPalette.ongaku)
+            CustomBar(
+              context.l10n!.accentColor,
+              FluentIcons.color_24_regular,
+              borderRadius: commonCustomBarRadiusFirst,
+              // Ongaku: the current colour shows on every platform, the
+              // system's when the dynamic colour is on.
+              trailing: Container(
+                width: 26,
+                height: 26,
+                decoration: BoxDecoration(
+                  color: isAndroidPlatform && useSystemColor.value
+                      ? Theme.of(context).colorScheme.primary
+                      : primaryColorSetting,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                  ),
                 ),
               ),
+              onTap: () => _showAccentColorPicker(context),
             ),
-            onTap: () => _showAccentColorPicker(context),
-          ),
           CustomBar(
             context.l10n!.themeMode,
             FluentIcons.weather_sunny_28_regular,
@@ -148,12 +153,7 @@ class SettingsPage extends StatelessWidget {
             onTap: () => _showAudioQualityPicker(context),
           ),
           // Ongaku: no audio quality badge row.
-          if (isAndroidPlatform)
-            CustomBar(
-              context.l10n!.equalizer,
-              FluentIcons.data_histogram_24_regular,
-              onTap: () => context.push('/settings/equalizer'),
-            ),
+          // Ongaku: Musify's equalizer is replaced by Son calibré.
           // Ongaku: calibrated sound (profiles per output, layers, mode doux).
           if (isAndroidPlatform)
             CustomBar(

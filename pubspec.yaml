@@ -72,6 +72,9 @@ flutter:
     # Ongaku: About page artwork.
     - assets/icons/ongaku_banner.png
     - assets/icons/musify_banner.png
+    # Ongaku: theme icons, demo loop to compare a sound correction.
+    - assets/icons/palettes/
+    - assets/sounds/ongaku_demo.ogg
 
   fonts:
     - family: paytoneOne

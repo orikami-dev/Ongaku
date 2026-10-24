@@ -18,6 +18,7 @@ import 'package:musify/extensions/l10n.dart';
 import 'package:musify/main.dart';
 import 'package:musify/ongaku/home/home_shelves.dart';
 import 'package:musify/ongaku/l10n/ongaku_strings.dart';
+import 'package:musify/ongaku/local/local_library.dart';
 import 'package:musify/ongaku/widgets/ongaku_page_parts.dart';
 import 'package:musify/services/artist_service.dart';
 import 'package:musify/services/common_services.dart';
@@ -160,6 +161,10 @@ class _OngakuHomePageState extends State<OngakuHomePage> {
             title: l10n.home,
             scrolled: _scrolled,
             height: topInset + barHeight,
+            onRefresh: () {
+              _refreshRecommendedSongs();
+              showToast(context, OngakuStrings.of(context).refreshed);
+            },
           ),
         ],
       ),
@@ -674,11 +679,13 @@ class _TopBar extends StatelessWidget {
     required this.title,
     required this.scrolled,
     required this.height,
+    required this.onRefresh,
   });
 
   final String title;
   final ValueNotifier<bool> scrolled;
   final double height;
+  final VoidCallback onRefresh;
 
   @override
   Widget build(BuildContext context) {
@@ -718,7 +725,7 @@ class _TopBar extends StatelessWidget {
                   ),
                 ),
               ),
-              const _HomeMenu(),
+              _HomeMenu(onRefresh: onRefresh),
             ],
           ),
         );
@@ -727,29 +734,72 @@ class _TopBar extends StatelessWidget {
   }
 }
 
-/// The "⋮" menu of the home page.
+enum _MenuAction { refresh, history, mix }
+
+/// The "⋮" menu of the home page: fresh recommendations, the listening
+/// history and a shuffled mix of the liked songs and local files.
 class _HomeMenu extends StatelessWidget {
-  const _HomeMenu();
+  const _HomeMenu({required this.onRefresh});
+
+  final VoidCallback onRefresh;
+
+  Future<void> _playMix(BuildContext context) async {
+    final seen = <String>{};
+    final songs = <Map>[
+      for (final song in [...userLikedSongsList.value, ...localSongs.value])
+        if (song is Map && seen.add(song['ytid']?.toString() ?? '')) song,
+    ]..shuffle();
+    if (songs.isEmpty) {
+      showToast(context, OngakuStrings.of(context).nothingToMix);
+      return;
+    }
+    await audioHandler.addPlaylistToQueue(songs, replace: true, startIndex: 0);
+  }
 
   @override
   Widget build(BuildContext context) {
     final strings = OngakuStrings.of(context);
-    final l10n = context.l10n!;
-    return PopupMenuButton<String>(
+    return PopupMenuButton<_MenuAction>(
       icon: Icon(
         Icons.more_vert_rounded,
         color: Theme.of(context).colorScheme.primary,
       ),
-      onSelected: (route) => route.startsWith('/settings')
-          ? context.go(route)
-          : context.push(route),
+      onSelected: (action) => switch (action) {
+        _MenuAction.refresh => onRefresh(),
+        _MenuAction.history => context.push('/home/recents'),
+        _MenuAction.mix => _playMix(context),
+      },
       itemBuilder: (context) => [
-        PopupMenuItem(value: '/home/you', child: Text(strings.you)),
         PopupMenuItem(
-          value: '/home/recents',
-          child: Text(strings.listeningHistory),
+          value: _MenuAction.refresh,
+          child: _MenuRow(Icons.refresh_rounded, strings.refreshRecommendations),
         ),
-        PopupMenuItem(value: '/settings', child: Text(l10n.settings)),
+        PopupMenuItem(
+          value: _MenuAction.history,
+          child: _MenuRow(Icons.history_rounded, strings.listeningHistory),
+        ),
+        PopupMenuItem(
+          value: _MenuAction.mix,
+          child: _MenuRow(Icons.shuffle_rounded, strings.shuffleMix),
+        ),
+      ],
+    );
+  }
+}
+
+class _MenuRow extends StatelessWidget {
+  const _MenuRow(this.icon, this.label);
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 20, color: Theme.of(context).colorScheme.primary),
+        const SizedBox(width: 12),
+        Text(label),
       ],
     );
   }

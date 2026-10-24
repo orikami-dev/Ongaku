@@ -35,9 +35,11 @@ small hooks marked `Ongaku:` or importing `package:musify/ongaku/...`:
 | `android/`, `linux/`, `windows/` | app id `com.orikami.ongaku`, labels |
 | `lib/localization/app_*.arb` | "Ongaku" instead of "Musify" in texts, rewritten by `scripts/brand_strings.py` after each merge |
 | `pubspec.yaml` | 4 dependencies (`# Ongaku`, including the local `packages/ongaku_sound` plugin), Inter font, About page artwork |
-| `lib/main.dart` (start) | `ongakuStartSound(audioHandler)`: calibrated sound and Mode doux |
+| `lib/main.dart` (start) | `ongakuStartSound(audioHandler)`: calibrated sound and Mode doux; `ongakuWatchPaletteIcon()`: app icon of the theme |
+| `android/app/src/main/AndroidManifest.xml` | launcher filter moved to one `activity-alias` per theme |
+| `lib/screens/settings_page.dart` (Apparence) | `OngakuPalettePicker` first; Couleur row only for the Ongaku theme |
 | `lib/services/router_service.dart` (settings) | `ongakuSoundRoutes` |
-| `lib/screens/settings_page.dart` (Lecture) | "Son calibré" row under Égaliseur (Android) |
+| `lib/screens/settings_page.dart` (Lecture) | Musify's Égaliseur row removed, "Son calibré" row in its place (Android) |
 
 Everything else (playback, YouTube extraction, library, playlists, stats, proxy,
 equalizer, downloads...) is untouched Musify code, so upstream bug fixes and API
@@ -111,7 +113,27 @@ the Android label, and the Linux/Windows titles.
 * Code: `packages/ongaku_sound` (Kotlin plugin), `lib/ongaku/sound/`
   (maths, settings, engine, crossfade), pages in `lib/ongaku/screens/`.
   The maths is tested on simulated signals (`test/ongaku_sound_test.dart`).
-  Musify's own equalizer stays and stacks with this one.
+  Musify's own equalizer is hidden and kept off (v10.1).
+
+## v10.1
+
+* Sound layers are accent pills (the chips could not be chosen on the
+  phone).
+* "Écouter la différence" on the test results and on the output card:
+  play the demo loop (`assets/sounds/ongaku_demo.ogg`, made by
+  `scripts/make_demo_sample.py`) or the current song, switching between
+  Avant (flat) and Après (the correction), via `OngakuSoundEngine.preview`.
+* Musify's equalizer is gone from the settings and switched off at start,
+  so it never stacks with the calibrated sound.
+* Home ⋮ menu: Rafraîchir les recommandations, Historique d'écoute, Mix
+  aléatoire (liked songs + local files, shuffled).
+* Themes shared with Kamishibai (`lib/ongaku/theme/ongaku_palettes.dart`):
+  Ongaku (iOS grays, Couleur of your choice), Washi, Sumi, Ai, Matcha,
+  Sakura, Kin, each with day and night neutrals and its accent. Picked from
+  cards at the top of Apparence (Couleur shows only for Ongaku). Each theme
+  has its app icon (`scripts/make_ongaku_icon.py --palettes`): one launcher
+  `activity-alias` per theme in the manifest, switched when the app goes
+  to the background (`setLauncherIcon` in the `ongaku_sound` plugin).
 
 ## v9
 

@@ -8,6 +8,7 @@
  *     (at your option) any later version. See <https://www.gnu.org/licenses/>.
  */
 
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:material_ui/material_ui.dart';
@@ -15,6 +16,7 @@ import 'package:musify/ongaku/l10n/ongaku_strings.dart';
 import 'package:musify/ongaku/sound/sound_engine.dart';
 import 'package:musify/ongaku/sound/sound_math.dart';
 import 'package:musify/ongaku/sound/sound_settings.dart';
+import 'package:musify/ongaku/widgets/correction_compare.dart';
 import 'package:musify/ongaku/widgets/ongaku_page_parts.dart';
 import 'package:musify/ongaku/widgets/ongaku_settings_ui.dart';
 import 'package:musify/ongaku/widgets/sound_curve.dart';
@@ -226,6 +228,8 @@ class _OutputCard extends StatelessWidget {
                   ],
                   height: 110,
                 ),
+                const SizedBox(height: 14),
+                CorrectionCompare(gains: profile.gains),
               ],
               const SizedBox(height: 16),
               SizedBox(
@@ -276,14 +280,13 @@ class _Layers extends StatelessWidget {
             runSpacing: 8,
             children: [
               for (final l in SoundLayer.values)
-                ChoiceChip(
-                  label: Text(strings.layerName(l)),
-                  avatar: l == SoundLayer.auto
-                      ? const Icon(Icons.auto_awesome_rounded, size: 18)
+                _LayerPill(
+                  label: strings.layerName(l),
+                  icon: l == SoundLayer.auto
+                      ? Icons.auto_awesome_rounded
                       : null,
                   selected: l == layer,
-                  showCheckmark: false,
-                  onSelected: (_) => soundLayer.value = l,
+                  onTap: () => soundLayer.value = l,
                 ),
             ],
           ),
@@ -454,6 +457,64 @@ class _SavedProfiles extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+/// One sound layer: a pill that fills with the accent colour when chosen.
+class _LayerPill extends StatelessWidget {
+  const _LayerPill({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    this.icon,
+  });
+
+  final String label;
+  final IconData? icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final foreground = selected ? colorScheme.onPrimary : colorScheme.onSurface;
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: Material(
+        color: selected
+            ? colorScheme.primary
+            : colorScheme.surfaceContainerHigh,
+        shape: const StadiumBorder(),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () {
+            HapticFeedback.selectionClick();
+            onTap();
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (icon != null) ...[
+                  Icon(icon, size: 17, color: foreground),
+                  const SizedBox(width: 6),
+                ],
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: foreground,
+                    fontSize: 15,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

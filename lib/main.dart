@@ -35,6 +35,7 @@ import 'package:musify/localization/app_localizations.dart';
 import 'package:musify/ongaku/brand.dart';
 import 'package:musify/ongaku/services/ongaku_notification.dart';
 import 'package:musify/ongaku/sound/sound_start.dart';
+import 'package:musify/ongaku/theme/ongaku_palettes.dart';
 import 'package:musify/ongaku/theme/ongaku_theme.dart';
 import 'package:musify/services/audio_service.dart';
 import 'package:musify/services/data_manager.dart';
@@ -330,6 +331,8 @@ Future<void> initialisation() async {
       ongakuWatchNotificationState();
       // Ongaku: calibrated sound and smooth transitions.
       ongakuStartSound(audioHandler);
+      // Ongaku: the app icon follows the theme.
+      ongakuWatchPaletteIcon();
     } else {
       // Use the desktop audio backend without mobile service plugins.
       JustAudioMediaKit.title = appName;

@@ -26,6 +26,7 @@ import 'package:musify/ongaku/screens/ongaku_shell.dart';
 import 'package:musify/ongaku/sound/sound_engine.dart';
 import 'package:musify/ongaku/sound/sound_math.dart';
 import 'package:musify/ongaku/sound/sound_settings.dart';
+import 'package:musify/ongaku/theme/ongaku_palettes.dart';
 import 'package:musify/ongaku/theme/ongaku_theme.dart';
 import 'package:musify/screens/search_page.dart' show searchHistoryNotifier;
 import 'package:musify/services/audio_service.dart';
@@ -265,6 +266,27 @@ void main() {
       routes: ['/settings/sound', '/settings/sound/acoustic'],
       player: false,
     );
+  }, skip: !_enabled);
+
+  testWidgets('themes', (tester) async {
+    for (final (palette, mode) in [
+      (OngakuPalette.washi, ThemeMode.light),
+      (OngakuPalette.sakura, ThemeMode.dark),
+      (OngakuPalette.matcha, ThemeMode.light),
+      (OngakuPalette.sumi, ThemeMode.dark),
+    ]) {
+      setOngakuPalette(palette);
+      await shots(
+        tester,
+        prefix: 'theme-${palette.name}-${mode.name}',
+        size: const Size(390, 844),
+        padding: const EdgeInsets.only(top: 44, bottom: 24),
+        mode: mode,
+        routes: ['/settings', '/home'],
+        player: false,
+      );
+    }
+    setOngakuPalette(OngakuPalette.ongaku);
   }, skip: !_enabled);
 
   testWidgets('phone, light', (tester) async {

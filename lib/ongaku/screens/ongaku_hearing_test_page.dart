@@ -17,6 +17,7 @@ import 'package:musify/ongaku/screens/ongaku_sound_page.dart';
 import 'package:musify/ongaku/sound/sound_engine.dart';
 import 'package:musify/ongaku/sound/sound_math.dart';
 import 'package:musify/ongaku/sound/sound_settings.dart';
+import 'package:musify/ongaku/widgets/correction_compare.dart';
 import 'package:musify/ongaku/widgets/ongaku_page_parts.dart';
 import 'package:musify/ongaku/widgets/sound_curve.dart';
 import 'package:ongaku_sound/ongaku_sound.dart';
@@ -189,6 +190,8 @@ class _OngakuHearingTestPageState extends State<OngakuHearingTestPage> {
                       CurveSeries(_gains, colorScheme.primary, fill: true),
                     ],
                   ),
+                  const SizedBox(height: 20),
+                  CorrectionCompare(gains: _gains),
                 ],
                 const SizedBox(height: 28),
                 if (_step != _Step.testing && onHeadphones)

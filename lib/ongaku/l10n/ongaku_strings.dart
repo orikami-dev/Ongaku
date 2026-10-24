@@ -89,6 +89,18 @@ class OngakuStrings {
   String get importErrNetwork => _t('importErrNetwork');
   String get importErrFile => _t('importErrFile');
   String get recentlyPlayed => _t('recentlyPlayed');
+  String get paletteTitle => _t('paletteTitle');
+  String get paletteHint => _t('paletteHint');
+  String get paletteOwnAccent => _t('paletteOwnAccent');
+  String get compareTitle => _t('compareTitle');
+  String get compareBefore => _t('compareBefore');
+  String get compareAfter => _t('compareAfter');
+  String get compareDemo => _t('compareDemo');
+  String get compareSong => _t('compareSong');
+  String get refreshRecommendations => _t('refreshRecommendations');
+  String get shuffleMix => _t('shuffleMix');
+  String get refreshed => _t('refreshed');
+  String get nothingToMix => _t('nothingToMix');
   String get soundTitle => _t('soundTitle');
   String get soundRowDesc => _t('soundRowDesc');
   String get soundUnsupported => _t('soundUnsupported');
@@ -343,6 +355,18 @@ class OngakuStrings {
       'htHeard': 'I hear it',
       'htBand': 'Tone {n} of {total}',
       'htDone': 'Your profile for {output} is ready.',
+      'compareTitle': 'Hear the difference',
+      'compareBefore': 'Before',
+      'compareAfter': 'After',
+      'compareDemo': 'Ongaku sample',
+      'compareSong': 'Current song',
+      'refreshRecommendations': 'Refresh recommendations',
+      'shuffleMix': 'Shuffle mix',
+      'refreshed': 'Recommendations refreshed',
+      'nothingToMix': 'Like songs or add local files to make a mix.',
+      'paletteTitle': 'Theme',
+      'paletteHint': 'The app icon follows the theme once you leave the app.',
+      'paletteOwnAccent': 'Your colour',
       'recentlyPlayed': 'Recently Played',
       'moreBy': 'More by',
       'essentialAlbums': 'Essential Albums',
@@ -530,6 +554,20 @@ class OngakuStrings {
       'htHeard': 'J’entends',
       'htBand': 'Bip {n} sur {total}',
       'htDone': 'Votre profil pour {output} est prêt.',
+      'compareTitle': 'Écouter la différence',
+      'compareBefore': 'Avant',
+      'compareAfter': 'Après',
+      'compareDemo': 'Extrait Ongaku',
+      'compareSong': 'Titre en cours',
+      'refreshRecommendations': 'Rafraîchir les recommandations',
+      'shuffleMix': 'Mix aléatoire',
+      'refreshed': 'Recommandations rafraîchies',
+      'nothingToMix':
+          'Aimez des titres ou ajoutez des fichiers locaux pour créer un mix.',
+      'paletteTitle': 'Thème',
+      'paletteHint':
+          'L’icône de l’app prend la couleur du thème dès que vous quittez l’app.',
+      'paletteOwnAccent': 'Votre couleur',
       'recentlyPlayed': 'Écoutés récemment',
       'moreBy': 'Plus de :',
       'essentialAlbums': 'Albums incontournables',
