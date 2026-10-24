@@ -28,4 +28,5 @@ git merge --no-edit "upstream/$BRANCH" || {
   exit 1
 }
 
+python3 scripts/brand_strings.py
 scripts/verify.sh

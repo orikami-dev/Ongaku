@@ -25,5 +25,6 @@ check lib/screens/settings_page.dart "ongakuClosePicker"
 check lib/widgets/playlist_hero_artwork.dart "Ongaku"
 check lib/widgets/confirmation_dialog.dart "onError"
 check android/app/build.gradle.kts "com.orikami.ongaku"
+python3 scripts/brand_strings.py --check || missing=1
 [ "$missing" = 0 ] || { echo "An upstream change removed an Ongaku hook: re-apply it (see ONGAKU.md)."; exit 1; }
 echo "OK"

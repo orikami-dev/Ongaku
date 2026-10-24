@@ -29,6 +29,7 @@ import 'package:just_audio/just_audio.dart';
 import 'package:musify/constants/clients.dart';
 import 'package:musify/main.dart';
 import 'package:musify/models/position_data.dart';
+import 'package:musify/ongaku/brand.dart';
 import 'package:musify/ongaku/services/ongaku_notification.dart';
 import 'package:musify/services/audio_service_android_auto.dart';
 import 'package:musify/services/common_services.dart';
@@ -1601,7 +1602,7 @@ class MusifyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
 
     await playPlaylistSong(
       playlist: {
-        'title': 'Musify',
+        'title': appName, // Ongaku
         'source': 'system-recent',
         'list': [normalisedSong],
       },
