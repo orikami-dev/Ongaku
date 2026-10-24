@@ -23,7 +23,6 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:musify/constants/version.dart';
 import 'package:musify/ongaku/brand.dart';
 import 'package:musify/ongaku/ongaku_routes.dart';
 import 'package:musify/ongaku/screens/ongaku_home_page.dart';
@@ -276,7 +275,8 @@ class NavigationManager {
                 pageBuilder: (context, state) => _pushPage(
                   child: const LicensePage(
                     applicationName: appName,
-                    applicationVersion: appVersion,
+                    // Ongaku: the version of Ongaku's build, not Musify's.
+                    applicationVersion: ongakuVersion,
                   ),
                   state: state,
                 ),

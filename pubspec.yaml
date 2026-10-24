@@ -5,7 +5,7 @@ repository: https://github.com/gokadzev/Musify
 issue_tracker: https://github.com/gokadzev/Musify/issues
 
 publish_to: 'none'
-version: 10.5.3+185 # run update.sh after changing the version
+version: 12.0.0+1200 # Ongaku: build number (v12), code = build x 100
 
 environment:
   sdk: '>=3.13.0 <4.0.0'

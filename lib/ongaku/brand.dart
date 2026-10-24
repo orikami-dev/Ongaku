@@ -30,6 +30,11 @@ const latestReleaseApiUrl =
     'https://api.github.com/repos/$releaseRepoOwner/$releaseRepoName/releases/latest';
 const apkDownloadFilename = '$appName.apk';
 
+/// Ongaku's own version: the number of the build (v12, v13...), not
+/// Musify's. Raise it with `version:` in pubspec.yaml (12.0.0+1200: the
+/// version code is the build number times 100).
+const ongakuVersion = '12.0';
+
 /// Ongaku's author, credited first on the About and sponsor sections.
 const ongakuAuthor = 'Orikami';
 

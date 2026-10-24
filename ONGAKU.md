@@ -28,6 +28,7 @@ small hooks marked `Ongaku:` or importing `package:musify/ongaku/...`:
 | `lib/screens/about_page.dart` | `OngakuAboutHeader`, `OngakuUpstreamHeader`, `OngakuUpstreamAuthorCard` |
 | `lib/screens/playlist_page.dart`, `artist_page.dart` | round buttons above Play / Shuffle |
 | `lib/services/router_service.dart` (settings) | `ongakuImportRoutes` |
+| `lib/services/router_service.dart` (license) | `applicationVersion: ongakuVersion` |
 | `lib/services/router_service.dart` (home) | `ongakuLikedRoute` |
 | `lib/utilities/flutter_bottom_sheet.dart` | `isCustomBottomSheetOpen`; `showDragHandle: false` (one handle) |
 | `lib/widgets/confirmation_dialog.dart`, `rename_song_dialog.dart` | readable text on the coloured confirm button |
@@ -131,6 +132,7 @@ the Android label, and the Linux/Windows titles.
 - `OngakuSystemBars`: the navigation bar takes the tab bar colour and the
   app's contrast (it was white on a dark app with the phone in day mode).
 - Sumi accent is violet (#6A4BC4 day, #A993F5 night), as in Kamishibai.
+- Version: Ongaku's own build number (`ongakuVersion` in brand.dart, pubspec 12.0.0+1200), shown in About with "Basé sur Musify 10.5.3" under it.
 - `stopCorrectionCompare()`: the before/after sample stops when a test
   starts.
 

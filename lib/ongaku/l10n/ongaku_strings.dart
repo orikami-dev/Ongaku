@@ -89,6 +89,8 @@ class OngakuStrings {
   String get importErrNetwork => _t('importErrNetwork');
   String get importErrFile => _t('importErrFile');
   String get recentlyPlayed => _t('recentlyPlayed');
+  String basedOnMusify(String version) =>
+      _t('basedOnMusify').replaceAll('{version}', version);
   String get paletteTitle => _t('paletteTitle');
   String get paletteHint => _t('paletteHint');
   String get paletteOwnAccent => _t('paletteOwnAccent');
@@ -367,6 +369,7 @@ class OngakuStrings {
       'paletteTitle': 'Theme',
       'paletteHint': 'The app icon follows the theme once you leave the app.',
       'paletteOwnAccent': 'Your colour',
+      'basedOnMusify': 'Based on Musify {version}',
       'recentlyPlayed': 'Recently Played',
       'moreBy': 'More by',
       'essentialAlbums': 'Essential Albums',
@@ -565,9 +568,9 @@ class OngakuStrings {
       'nothingToMix':
           'Aimez des titres ou ajoutez des fichiers locaux pour créer un mix.',
       'paletteTitle': 'Thème',
-      'paletteHint':
-          'L’icône de l’app prend la couleur du thème dès que vous quittez l’app.',
+      'paletteHint': 'L’icône de l’app prend la couleur du thème dès que vous quittez l’app.',
       'paletteOwnAccent': 'Votre couleur',
+      'basedOnMusify': 'Basé sur Musify {version}',
       'recentlyPlayed': 'Écoutés récemment',
       'moreBy': 'Plus de :',
       'essentialAlbums': 'Albums incontournables',

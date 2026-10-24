@@ -31,6 +31,14 @@ class OngakuAboutHeader extends StatelessWidget {
         const _Banner('assets/icons/ongaku_banner.png'),
         const SizedBox(height: 14),
         _VersionChip(),
+        const SizedBox(height: 6),
+        Text(
+          strings.basedOnMusify(appVersion),
+          style: TextStyle(
+            fontSize: 12.5,
+            color: colorScheme.onSurface.withValues(alpha: 0.5),
+          ),
+        ),
         const SizedBox(height: 24),
         OngakuCreditCard(
           leading: Text(
@@ -159,7 +167,7 @@ class _VersionChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(24),
       ),
       child: Text(
-        'v$appVersion',
+        'v$ongakuVersion',
         style: TextStyle(
           color: colorScheme.onSecondaryContainer,
           fontSize: 15,
@@ -232,10 +240,7 @@ class OngakuCreditCard extends StatelessWidget {
                 ],
               ),
             ),
-            for (final action in actions) ...[
-              const SizedBox(width: 8),
-              action,
-            ],
+            for (final action in actions) ...[const SizedBox(width: 8), action],
           ],
         ),
       ),
