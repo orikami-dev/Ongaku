@@ -27,7 +27,6 @@ import 'package:musify/constants/app_constants.dart';
 import 'package:musify/extensions/l10n.dart';
 import 'package:musify/main.dart';
 import 'package:musify/ongaku/l10n/ongaku_strings.dart';
-import 'package:musify/ongaku/theme/ongaku_palettes.dart';
 import 'package:musify/ongaku/widgets/ongaku_credits.dart';
 import 'package:musify/ongaku/widgets/ongaku_page_parts.dart';
 import 'package:musify/ongaku/widgets/ongaku_palette_picker.dart';
@@ -100,30 +99,8 @@ class SettingsPage extends StatelessWidget {
     return Column(
       children: [
         _group(strings.catAppearance, const Color(0xFFAF52DE), [
-          // Ongaku: themes shared with Kamishibai; Couleur only for Ongaku's.
-          const OngakuPalettePicker(),
-          if (ongakuPalette.value == OngakuPalette.ongaku)
-            CustomBar(
-              context.l10n!.accentColor,
-              FluentIcons.color_24_regular,
-              borderRadius: commonCustomBarRadiusFirst,
-              // Ongaku: the current colour shows on every platform, the
-              // system's when the dynamic colour is on.
-              trailing: Container(
-                width: 26,
-                height: 26,
-                decoration: BoxDecoration(
-                  color: isAndroidPlatform && useSystemColor.value
-                      ? Theme.of(context).colorScheme.primary
-                      : primaryColorSetting,
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: Theme.of(context).colorScheme.outlineVariant,
-                  ),
-                ),
-              ),
-              onTap: () => _showAccentColorPicker(context),
-            ),
+          // Ongaku: the Thème row (shared with Kamishibai) replaces Couleur.
+          const OngakuPalettePicker(borderRadius: commonCustomBarRadiusFirst),
           CustomBar(
             context.l10n!.themeMode,
             FluentIcons.weather_sunny_28_regular,
@@ -139,7 +116,7 @@ class SettingsPage extends StatelessWidget {
                 onChanged: (value) => _togglePureBlack(context, value),
               ),
             ),
-          // Ongaku: the dynamic colour switch is in the Couleur picker.
+          // Ongaku: no dynamic colour switch, the themes set the colours.
           CustomBar(
             context.l10n!.language,
             FluentIcons.translate_24_regular,
@@ -512,6 +489,8 @@ class SettingsPage extends StatelessWidget {
     );
   }
 
+  // Ongaku: kept from Musify, the Thème row replaces its Couleur row.
+  // ignore: unused_element
   void _showAccentColorPicker(BuildContext context) {
     if (isDesktopPlatform) {
       _showPickerDialog(

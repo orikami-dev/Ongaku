@@ -53,6 +53,8 @@ class _OngakuHearingTestPageState extends State<OngakuHearingTestPage> {
       OngakuSoundEngine.route.value.id == _route.id;
 
   Future<void> _run() async {
+    // The before/after sample must not play over the test.
+    stopCorrectionCompare();
     if (audioHandler.audioPlayer.playing) await audioHandler.pause();
     setState(() {
       _step = _Step.testing;

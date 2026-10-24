@@ -11,8 +11,6 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' as ui;
 
-import 'package:flutter/foundation.dart'
-    show TargetPlatform, debugDefaultTargetPlatformOverride;
 import 'package:flutter/rendering.dart' show RenderRepaintBoundary;
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -125,6 +123,17 @@ void main() {
             );
             await _settle(tester);
             await _capture(tester, '$prefix-you-$i');
+          }
+        }
+        if (route == '/settings') {
+          // The Thème row unfolded, then folded again.
+          final row = find.byIcon(Icons.palette_rounded);
+          if (row.evaluate().isNotEmpty) {
+            await tester.tap(row.first);
+            await _settle(tester, frames: 25);
+            await _capture(tester, '$prefix-settings-themes');
+            await tester.tap(row.first);
+            await _settle(tester, frames: 25);
           }
         }
         if (route == '/settings/sound') {
@@ -350,20 +359,6 @@ void main() {
         await _settle(tester);
         await _capture(tester, 'theme-$mode');
       }
-      // The Couleur picker as on Android, with the dynamic colour switch.
-      debugDefaultTargetPlatformOverride = TargetPlatform.android;
-      tester
-          .widgetList<CustomBar>(find.byType(CustomBar))
-          .firstWhere((b) => b.tileName == 'Couleur')
-          .onTap!();
-      await _settle(tester);
-      await _capture(tester, 'accent-sheet');
-      Navigator.of(
-        tester.element(find.byType(CustomBar).first),
-        rootNavigator: true,
-      ).pop();
-      await _settle(tester);
-      debugDefaultTargetPlatformOverride = null;
       // The sponsor section at the bottom of the settings.
       await tester.drag(
         find.byType(Scrollable).first,

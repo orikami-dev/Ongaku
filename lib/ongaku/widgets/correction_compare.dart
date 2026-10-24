@@ -23,6 +23,11 @@ const _demoAsset = 'assets/sounds/ongaku_demo.ogg';
 
 enum _Source { demo, song }
 
+final _stopAll = ValueNotifier<int>(0);
+
+/// Stops every before/after sample, for a test that is about to play.
+void stopCorrectionCompare() => _stopAll.value++;
+
 /// Plays a sample with and without [gains], to hear what a correction does.
 class CorrectionCompare extends StatefulWidget {
   const CorrectionCompare({super.key, required this.gains});
@@ -51,8 +56,19 @@ class _CorrectionCompareState extends State<CorrectionCompare> {
   bool _disposed = false;
 
   @override
+  void initState() {
+    super.initState();
+    _stopAll.addListener(_onStopAll);
+  }
+
+  void _onStopAll() {
+    if (_playing) unawaited(_stop());
+  }
+
+  @override
   void dispose() {
     _disposed = true;
+    _stopAll.removeListener(_onStopAll);
     unawaited(_stop());
     super.dispose();
   }
@@ -75,14 +91,12 @@ class _CorrectionCompareState extends State<CorrectionCompare> {
       final demo = _demo ?? AudioPlayer(handleInterruptions: false);
       if (_demo == null) {
         _demo = demo;
-        demo.androidAudioSessionIdStream
-            .where((id) => id != null)
-            .first
-            .then((id) {
-              _demoSession = id;
-              return OngakuSound.attachExtra(id!);
-            })
-            .ignore();
+        demo.androidAudioSessionIdStream.where((id) => id != null).first.then((
+          id,
+        ) {
+          _demoSession = id;
+          return OngakuSound.attachExtra(id!);
+        }).ignore();
         await demo.setAsset(_demoAsset);
         await demo.setLoopMode(LoopMode.one);
       }

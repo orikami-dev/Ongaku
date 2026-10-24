@@ -146,11 +146,22 @@ class _OngakuNowPlayingPageState extends State<OngakuNowPlayingPage>
             duration: const Duration(milliseconds: 380),
             switchInCurve: Curves.easeOutCubic,
             switchOutCurve: Curves.easeInCubic,
+            // Lyrics and queue rise out of the controls, inside the
+            // player; the artwork settles back in.
             transitionBuilder: (child, a) => FadeTransition(
               opacity: a,
-              child: ScaleTransition(
-                scale: Tween<double>(begin: 0.97, end: 1).animate(a),
-                child: child,
+              child: SlideTransition(
+                position: Tween(
+                  begin: child.key == const ValueKey('art')
+                      ? Offset.zero
+                      : const Offset(0, 0.12),
+                  end: Offset.zero,
+                ).animate(a),
+                child: ScaleTransition(
+                  scale: Tween<double>(begin: 0.95, end: 1).animate(a),
+                  alignment: Alignment.bottomCenter,
+                  child: child,
+                ),
               ),
             ),
             child: switch (_phoneView) {
@@ -284,10 +295,23 @@ class _OngakuNowPlayingPageState extends State<OngakuNowPlayingPage>
           ),
           child: Column(
             children: [
-              _PanelHeader(metadata: metadata),
-              const SizedBox(height: 16),
-              const _ModeChips(),
-              const SizedBox(height: 10),
+              // Header and modes come with the queue; with the big artwork
+              // the title goes under it, so the artwork shows once.
+              AnimatedSize(
+                duration: const Duration(milliseconds: 320),
+                curve: Curves.easeOutCubic,
+                alignment: Alignment.topCenter,
+                child: _panelQueue
+                    ? Column(
+                        children: [
+                          _PanelHeader(metadata: metadata),
+                          const SizedBox(height: 16),
+                          const _ModeChips(),
+                          const SizedBox(height: 10),
+                        ],
+                      )
+                    : const SizedBox(width: double.infinity),
+              ),
               Expanded(
                 child: AnimatedSwitcher(
                   duration: const Duration(milliseconds: 320),
@@ -295,9 +319,28 @@ class _OngakuNowPlayingPageState extends State<OngakuNowPlayingPage>
                       FadeTransition(opacity: a, child: child),
                   child: _panelQueue
                       ? const _UpNext(key: ValueKey('queue'), dense: true)
-                      : Center(
+                      : Column(
                           key: const ValueKey('art'),
-                          child: _BigArtwork(metadata: metadata),
+                          children: [
+                            Expanded(
+                              child: Center(
+                                child: _BigArtwork(metadata: metadata),
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _TitleArtist(
+                                    metadata: metadata,
+                                    large: true,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                _StarButton(metadata: metadata),
+                              ],
+                            ),
+                          ],
                         ),
                 ),
               ),
@@ -319,6 +362,17 @@ class _OngakuNowPlayingPageState extends State<OngakuNowPlayingPage>
       ),
     );
 
+    // The panel and its lyrics move together: pulled up from the bottom
+    // when it opens, and down again with the finger to close it.
+    Widget pulled(Widget child) => AnimatedBuilder(
+      animation: Listenable.merge([animation, _drag]),
+      builder: (context, child) => Transform.translate(
+        offset: Offset(0, (1 - animation.value) * h + _drag.value),
+        child: child,
+      ),
+      child: child,
+    );
+
     return Material(
       type: MaterialType.transparency,
       child: DefaultTextStyle.merge(
@@ -335,37 +389,49 @@ class _OngakuNowPlayingPageState extends State<OngakuNowPlayingPage>
                 ),
               ),
             ),
-            // Lyrics take the whole left side, on the song's colours.
-            Positioned.fill(
-              child: IgnorePointer(
-                ignoring: !_panelLyrics,
-                child: AnimatedOpacity(
-                  opacity: _panelLyrics ? 1 : 0,
-                  duration: const Duration(milliseconds: 420),
-                  curve: Curves.easeOutCubic,
-                  child: FadeTransition(
-                    opacity: animation,
-                    child: ArtworkBackground(
-                      child: Padding(
-                        padding: EdgeInsets.only(
-                          right: panelWidth,
-                          left: padding.left,
+            // Lyrics slide out of the player into their own card beside
+            // it, the same height; the page behind stays visible.
+            Positioned(
+              right: panelWidth + 12,
+              bottom: landscape ? padding.bottom + 12 : 0,
+              height: landscape
+                  ? panelHeight - padding.top - padding.bottom - 24
+                  : panelHeight,
+              width: (w - panelWidth - 12 - padding.left - 12).clamp(
+                0.0,
+                panelWidth * 1.15,
+              ),
+              child: pulled(
+                IgnorePointer(
+                  ignoring: !_panelLyrics,
+                  child: AnimatedSlide(
+                    offset: _panelLyrics ? Offset.zero : const Offset(0.6, 0),
+                    duration: const Duration(milliseconds: 460),
+                    curve: Curves.easeOutCubic,
+                    child: AnimatedOpacity(
+                      opacity: _panelLyrics ? 1 : 0,
+                      duration: const Duration(milliseconds: 320),
+                      child: AnimatedScale(
+                        scale: _panelLyrics ? 1 : 0.9,
+                        alignment: Alignment.centerRight,
+                        duration: const Duration(milliseconds: 460),
+                        curve: Curves.easeOutCubic,
+                        child: ClipRSuperellipse(
+                          borderRadius: BorderRadius.circular(26),
+                          child: ArtworkBackground(
+                            child: _panelLyrics
+                                ? SyncedLyricsView(
+                                    fontSize: w - panelWidth > 600 ? 30 : 25,
+                                    padding: const EdgeInsets.fromLTRB(
+                                      28,
+                                      20,
+                                      24,
+                                      0,
+                                    ),
+                                  )
+                                : const SizedBox.shrink(),
+                          ),
                         ),
-                        child: _panelLyrics
-                            ? SyncedLyricsView(
-                                fontSize: switch (w - panelWidth) {
-                                  > 700 => 38,
-                                  > 460 => 32,
-                                  _ => 27,
-                                },
-                                padding: EdgeInsets.fromLTRB(
-                                  48,
-                                  padding.top + 12,
-                                  40,
-                                  0,
-                                ),
-                              )
-                            : const SizedBox.shrink(),
                       ),
                     ),
                   ),
@@ -377,15 +443,20 @@ class _OngakuNowPlayingPageState extends State<OngakuNowPlayingPage>
               bottom: 0,
               width: panelWidth,
               height: panelHeight,
-              child: SlideTransition(
-                position: Tween(
-                  begin: const Offset(1.05, 0),
-                  end: Offset.zero,
-                ).animate(animation),
-                child: GestureDetector(
-                  onHorizontalDragEnd: (d) {
-                    if ((d.primaryVelocity ?? 0) > 600) {
+              child: pulled(
+                GestureDetector(
+                  onVerticalDragUpdate: (d) =>
+                      _drag.value = (_drag.value + d.delta.dy).clamp(0, 2000),
+                  onVerticalDragEnd: (d) {
+                    final v = d.primaryVelocity ?? 0;
+                    if (_drag.value > 140 || v > 800) {
                       Navigator.of(context).maybePop();
+                    } else {
+                      _drag.animateTo(
+                        0,
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeOutCubic,
+                      );
                     }
                   },
                   child: panel,

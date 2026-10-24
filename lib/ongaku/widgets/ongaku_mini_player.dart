@@ -33,15 +33,35 @@ class OngakuMiniPlayer extends StatelessWidget {
       initialData: audioHandler.mediaItem.valueOrNull,
       builder: (context, snapshot) {
         final metadata = snapshot.data;
-        if (metadata == null) return const SizedBox.shrink();
-        return _MiniPlayerBar(metadata: metadata);
+        // Rises into place when a song starts, sinks when there is none.
+        return AnimatedSwitcher(
+          duration: const Duration(milliseconds: 360),
+          switchInCurve: Curves.easeOutCubic,
+          switchOutCurve: Curves.easeInCubic,
+          transitionBuilder: (child, a) => FadeTransition(
+            opacity: a,
+            child: SlideTransition(
+              position: Tween(
+                begin: const Offset(0, 0.6),
+                end: Offset.zero,
+              ).animate(a),
+              child: child,
+            ),
+          ),
+          child: metadata == null
+              ? const SizedBox.shrink(key: ValueKey('none'))
+              : _MiniPlayerBar(
+                  key: const ValueKey('bar'),
+                  metadata: metadata,
+                ),
+        );
       },
     );
   }
 }
 
 class _MiniPlayerBar extends StatefulWidget {
-  const _MiniPlayerBar({required this.metadata});
+  const _MiniPlayerBar({super.key, required this.metadata});
 
   final MediaItem metadata;
 

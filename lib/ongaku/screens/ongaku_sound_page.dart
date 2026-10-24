@@ -29,8 +29,7 @@ String outputLabel(OngakuStrings strings, OutputRoute route) =>
     switch (route.type) {
       OutputType.speaker => strings.outputSpeaker,
       OutputType.car => strings.outputCar,
-      OutputType.wired =>
-        route.name.isEmpty ? strings.outputWired : route.name,
+      OutputType.wired => route.name.isEmpty ? strings.outputWired : route.name,
       OutputType.bluetooth =>
         route.name.isEmpty ? strings.outputBluetooth : route.name,
     };
@@ -145,9 +144,8 @@ class _OutputCard extends StatelessWidget {
     final profile = soundProfiles.value[route.id];
     final date = profile == null
         ? ''
-        : DateFormat.yMMMd(
-            Localizations.localeOf(context).toString(),
-          ).format(profile.date);
+        : DateFormat.yMMMd(Localizations.localeOf(context).toString())
+              .format(profile.date);
     final status = profile == null
         ? strings.profileNone
         : profile.method == ProfileMethod.hearing
@@ -236,7 +234,10 @@ class _OutputCard extends StatelessWidget {
                 width: double.infinity,
                 child: FilledButton.icon(
                   onPressed: OngakuSoundEngine.supported.value
-                      ? () => context.push(testPath)
+                      ? () {
+                          stopCorrectionCompare();
+                          context.push(testPath);
+                        }
                       : null,
                   icon: Icon(
                     route.isHeadphones
@@ -318,7 +319,11 @@ class _Layers extends StatelessWidget {
             const SizedBox(height: 14),
             SoundCurve(
               series: [
-                CurveSeries(layerGains[layer]!, colorScheme.primary, fill: true),
+                CurveSeries(
+                  layerGains[layer]!,
+                  colorScheme.primary,
+                  fill: true,
+                ),
               ],
               height: 80,
               range: 8,
@@ -341,10 +346,7 @@ class _Transitions extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 22),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _GroupTitle(strings.transitions),
-          const CrossfadeControls(),
-        ],
+        children: [_GroupTitle(strings.transitions), const CrossfadeControls()],
       ),
     );
   }

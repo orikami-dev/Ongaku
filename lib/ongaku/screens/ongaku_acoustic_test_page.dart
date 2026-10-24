@@ -54,6 +54,8 @@ class _OngakuAcousticTestPageState extends State<OngakuAcousticTestPage> {
   late final OutputRoute _route = OngakuSoundEngine.route.value;
 
   Future<void> _run(OngakuStrings strings) async {
+    // The before/after sample must not play over the test.
+    stopCorrectionCompare();
     if (!await OngakuSoundEngine.requestMicrophone()) {
       setState(() {
         _step = _Step.failed;

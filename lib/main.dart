@@ -37,6 +37,7 @@ import 'package:musify/ongaku/services/ongaku_notification.dart';
 import 'package:musify/ongaku/sound/sound_start.dart';
 import 'package:musify/ongaku/theme/ongaku_palettes.dart';
 import 'package:musify/ongaku/theme/ongaku_theme.dart';
+import 'package:musify/ongaku/widgets/ongaku_system_bars.dart';
 import 'package:musify/services/audio_service.dart';
 import 'package:musify/services/data_manager.dart';
 import 'package:musify/services/desktop_media_artwork.dart';
@@ -281,6 +282,8 @@ class _MusifyState extends State<Musify> with WidgetsBindingObserver {
             supportedLocales: appSupportedLocales,
             locale: languageSetting,
             routerConfig: NavigationManager.router,
+            // Ongaku: the system bars follow the app's theme.
+            builder: (context, child) => OngakuSystemBars(child: child!),
           ),
         );
       },

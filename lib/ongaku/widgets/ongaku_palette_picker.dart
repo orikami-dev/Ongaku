@@ -13,13 +13,24 @@ import 'package:material_ui/material_ui.dart';
 import 'package:musify/main.dart';
 import 'package:musify/ongaku/l10n/ongaku_strings.dart';
 import 'package:musify/ongaku/theme/ongaku_palettes.dart';
+import 'package:musify/ongaku/widgets/ongaku_settings_ui.dart';
 import 'package:musify/services/settings_manager.dart';
 import 'package:musify/theme/app_themes.dart' show themeMode;
 
-/// Settings > Apparence: the themes as cards, each showing its day and
-/// night colours and its app icon. A tap applies the theme at once.
-class OngakuPalettePicker extends StatelessWidget {
-  const OngakuPalettePicker({super.key});
+/// Settings > Apparence: the Thème row. A tap unfolds the themes below it as
+/// cards, each showing its day and night colours and its app icon, and the
+/// arrow turns; a second tap folds them. A card applies its theme at once.
+class OngakuPalettePicker extends StatefulWidget {
+  const OngakuPalettePicker({super.key, this.borderRadius = BorderRadius.zero});
+
+  final BorderRadius borderRadius;
+
+  @override
+  State<OngakuPalettePicker> createState() => _OngakuPalettePickerState();
+}
+
+class _OngakuPalettePickerState extends State<OngakuPalettePicker> {
+  bool _open = false;
 
   @override
   Widget build(BuildContext context) {
@@ -28,64 +39,109 @@ class OngakuPalettePicker extends StatelessWidget {
     return ValueListenableBuilder<OngakuPalette>(
       valueListenable: ongakuPalette,
       builder: (context, current, _) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 0, 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                strings.paletteTitle,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                height: 150,
-                child: ListView.separated(
-                  // Opens on the theme in use.
-                  controller: ScrollController(
-                    initialScrollOffset: current.index > 1
-                        ? (current.index - 1) * (_cardWidth + 10)
-                        : 0,
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            OngakuSettingsRow(
+              title: strings.paletteTitle,
+              icon: Icons.palette_rounded,
+              borderRadius: _open ? BorderRadius.zero : widget.borderRadius,
+              onTap: () {
+                HapticFeedback.selectionClick();
+                setState(() => _open = !_open);
+              },
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    current.label,
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: colorScheme.onSurface.withValues(alpha: 0.5),
+                    ),
                   ),
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.only(right: 16),
-                  itemCount: OngakuPalette.values.length,
-                  separatorBuilder: (_, _) => const SizedBox(width: 10),
-                  itemBuilder: (context, i) {
-                    final palette = OngakuPalette.values[i];
-                    return _PaletteCard(
-                      palette: palette,
-                      selected: palette == current,
-                      onTap: () {
-                        HapticFeedback.selectionClick();
-                        setOngakuPalette(palette);
-                        Musify.updateAppState(
-                          context,
-                          newThemeMode: themeMode,
-                        );
-                      },
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(height: 8),
-              Padding(
-                padding: const EdgeInsets.only(right: 16),
-                child: Text(
-                  strings.paletteHint,
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    color: colorScheme.onSurface.withValues(alpha: 0.55),
+                  const SizedBox(width: 4),
+                  AnimatedRotation(
+                    turns: _open ? 0.25 : 0,
+                    duration: const Duration(milliseconds: 260),
+                    curve: Curves.easeOutCubic,
+                    child: Icon(
+                      Icons.chevron_right_rounded,
+                      size: 22,
+                      color: colorScheme.onSurface.withValues(alpha: 0.3),
+                    ),
                   ),
-                ),
+                ],
               ),
-            ],
-          ),
+            ),
+            AnimatedSize(
+              duration: const Duration(milliseconds: 320),
+              curve: Curves.easeOutCubic,
+              alignment: Alignment.topCenter,
+              child: _open
+                  ? ColoredBox(
+                      color: colorScheme.surfaceContainerLow,
+                      child: _cards(context, strings, colorScheme, current),
+                    )
+                  : const SizedBox(width: double.infinity),
+            ),
+          ],
         );
       },
+    );
+  }
+
+  Widget _cards(
+    BuildContext context,
+    OngakuStrings strings,
+    ColorScheme colorScheme,
+    OngakuPalette current,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 0, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            height: 150,
+            child: ListView.separated(
+              // Opens on the theme in use.
+              controller: ScrollController(
+                initialScrollOffset: current.index > 1
+                    ? (current.index - 1) * (_cardWidth + 10)
+                    : 0,
+              ),
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.only(right: 16),
+              itemCount: OngakuPalette.values.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 10),
+              itemBuilder: (context, i) {
+                final palette = OngakuPalette.values[i];
+                return _PaletteCard(
+                  palette: palette,
+                  selected: palette == current,
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    setOngakuPalette(palette);
+                    Musify.updateAppState(context, newThemeMode: themeMode);
+                  },
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: Text(
+              strings.paletteHint,
+              style: TextStyle(
+                fontSize: 12.5,
+                color: colorScheme.onSurface.withValues(alpha: 0.55),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

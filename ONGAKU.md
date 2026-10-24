@@ -36,8 +36,9 @@ small hooks marked `Ongaku:` or importing `package:musify/ongaku/...`:
 | `lib/localization/app_*.arb` | "Ongaku" instead of "Musify" in texts, rewritten by `scripts/brand_strings.py` after each merge |
 | `pubspec.yaml` | 4 dependencies (`# Ongaku`, including the local `packages/ongaku_sound` plugin), Inter font, About page artwork |
 | `lib/main.dart` (start) | `ongakuStartSound(audioHandler)`: calibrated sound and Mode doux; `ongakuWatchPaletteIcon()`: app icon of the theme |
+| `lib/main.dart` (app builder) | `OngakuSystemBars`: status and navigation bars follow the app theme, not the system |
 | `android/app/src/main/AndroidManifest.xml` | launcher filter moved to one `activity-alias` per theme |
-| `lib/screens/settings_page.dart` (Apparence) | `OngakuPalettePicker` first; Couleur row only for the Ongaku theme |
+| `lib/screens/settings_page.dart` (Apparence) | `OngakuPalettePicker` (the Thème row, unfolding its cards) first; no Couleur row |
 | `lib/services/router_service.dart` (settings) | `ongakuSoundRoutes` |
 | `lib/screens/settings_page.dart` (Lecture) | Musify's Égaliseur row removed, "Son calibré" row in its place (Android) |
 
@@ -114,6 +115,23 @@ the Android label, and the Linux/Windows titles.
   (maths, settings, engine, crossfade), pages in `lib/ongaku/screens/`.
   The maths is tested on simulated signals (`test/ongaku_sound_test.dart`).
   Musify's own equalizer is hidden and kept off (v10.1).
+
+## v12
+
+- Player pulled up from the bottom on every screen, dragged down to close;
+  on large screens the lyrics slide out of the panel into their own card
+  beside it, on phones lyrics and queue rise from the controls. Layout and
+  behaviour unchanged.
+- Large-screen panel: with the big artwork, no header or mode chips, the
+  title and star sit under the artwork (the artwork showed twice); header
+  and chips come back with the queue.
+- Mini player slides in when a song starts.
+- Settings: the Thème row (palette icon) unfolds the theme cards, its arrow
+  turns; the Couleur row is gone.
+- `OngakuSystemBars`: the navigation bar takes the tab bar colour and the
+  app's contrast (it was white on a dark app with the phone in day mode).
+- `stopCorrectionCompare()`: the before/after sample stops when a test
+  starts.
 
 ## v10.1
 
