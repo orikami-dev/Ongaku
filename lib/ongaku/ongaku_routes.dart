@@ -56,6 +56,7 @@ GoRoute ongakuRecentsRoute(PushPageBuilder pushPage) => GoRoute(
 /// Settings > Import from Deezer / Apple Music.
 List<GoRoute> ongakuImportRoutes(PushPageBuilder pushPage) => [
   for (final (path, source) in [
+    ('import-spotify', ImportSource.spotify),
     ('import-deezer-playlist', ImportSource.deezer),
     ('import-apple-music-playlist', ImportSource.appleMusic),
   ])

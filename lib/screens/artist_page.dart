@@ -315,8 +315,7 @@ class _ArtistPageState extends State<ArtistPage> {
           monthlyListeners: _artist!['monthlyListeners']?.toString(),
           description: _artist!['description']?.toString(),
         ),
-        _buildPlaybackButtons(),
-        const SizedBox(height: 12),
+        // Ongaku: the round buttons sit above Play / Shuffle.
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           spacing: 5,
@@ -341,6 +340,8 @@ class _ArtistPageState extends State<ArtistPage> {
             ),
           ],
         ),
+        const SizedBox(height: 12),
+        _buildPlaybackButtons(),
       ],
     );
   }

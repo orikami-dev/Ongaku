@@ -78,6 +78,7 @@ class OngakuStrings {
   String get importDeezer => _t('importDeezer');
   String get importApple => _t('importApple');
   String get importDeezerHelp => _t('importDeezerHelp');
+  String get importSpotifyHelp => _t('importSpotifyHelp');
   String get importAppleHelp => _t('importAppleHelp');
   String get importLink => _t('importLink');
   String get importRead => _t('importRead');
@@ -160,6 +161,11 @@ class OngakuStrings {
           '(Share > Copy link), or choose a file exported from the Music app '
           'on Mac or iTunes on Windows (File > Library > Export Playlist, '
           'Text format). Ongaku then looks for each song on YouTube.',
+      'importSpotifyHelp':
+          'Paste the link of a public Spotify playlist or album '
+          '(Share > Copy link). If some songs are missing, also choose a CSV '
+          'export of the playlist (for example from exportify.app). Ongaku '
+          'then looks for each song on YouTube.',
       'importLink': 'Playlist link',
       'importRead': 'Read playlist',
       'importFile': 'Choose an exported file',
@@ -241,6 +247,11 @@ class OngakuStrings {
           "depuis l'app Musique sur Mac ou iTunes sur Windows (Fichier > "
           'Bibliothèque > Exporter la playlist, format Texte). Ongaku '
           'cherche ensuite chaque titre sur YouTube.',
+      'importSpotifyHelp':
+          "Collez le lien d'une playlist ou d'un album Spotify public "
+          '(Partager > Copier le lien). S\'il manque des titres, choisissez '
+          'aussi un export CSV de la playlist (par exemple sur '
+          'exportify.app). Ongaku cherche ensuite chaque titre sur YouTube.',
       'importLink': 'Lien de la playlist',
       'importRead': 'Lire la playlist',
       'importFile': 'Choisir un fichier exporté',

@@ -332,25 +332,8 @@ class _PlaylistPageState extends State<PlaylistPage> {
           isArtist: widget.isArtist,
           showTitle: false,
         ),
-        if (songsLength > 0)
-          PlaylistActionButtons(
-            onPlay: () => audioHandler.playPlaylistSong(
-              playlist: _playlist,
-              songIndex: 0,
-              shuffle: false,
-            ),
-            onShuffle: () async {
-              final songs = _playlist['list'] as List? ?? [];
-              if (songs.isEmpty) return;
-              await audioHandler.addPlaylistToQueue(
-                List<Map>.from(songs.whereType<Map>()),
-                replace: true,
-                shuffle: true,
-              );
-            },
-          ),
+        // Ongaku: the round buttons sit above Play / Shuffle.
         if (hasSecondaryActions) ...[
-          const SizedBox(height: 12),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             spacing: 5,
@@ -372,7 +355,25 @@ class _PlaylistPageState extends State<PlaylistPage> {
               if (isUserCreated) ...[_buildShareButton(), _buildEditButton()],
             ],
           ),
+          const SizedBox(height: 12),
         ],
+        if (songsLength > 0)
+          PlaylistActionButtons(
+            onPlay: () => audioHandler.playPlaylistSong(
+              playlist: _playlist,
+              songIndex: 0,
+              shuffle: false,
+            ),
+            onShuffle: () async {
+              final songs = _playlist['list'] as List? ?? [];
+              if (songs.isEmpty) return;
+              await audioHandler.addPlaylistToQueue(
+                List<Map>.from(songs.whereType<Map>()),
+                replace: true,
+                shuffle: true,
+              );
+            },
+          ),
         if (songsLength > 1) ...[
           const SizedBox(height: 12),
           SortChips<PlaylistSortType>(

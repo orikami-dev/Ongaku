@@ -28,10 +28,16 @@ class ImportedTrack {
 
 /// A playlist read from another service.
 class ImportedPlaylist {
-  const ImportedPlaylist(this.name, this.tracks);
+  const ImportedPlaylist(this.name, this.tracks, {this.image});
 
   final String? name;
   final List<ImportedTrack> tracks;
+
+  /// The cover's URL, when the service shows one.
+  final String? image;
+
+  ImportedPlaylist withTracks(List<ImportedTrack> other) =>
+      ImportedPlaylist(name, other, image: image);
 }
 
 /// Why a playlist could not be read. The page shows a message for each.
@@ -94,6 +100,7 @@ Future<ImportedPlaylist> fetchDeezerPlaylist(
       Uri.parse('https://api.deezer.com/${parsed.kind}/${parsed.id}'),
     );
     final name = info['title'] as String?;
+    final image = (info['picture_xl'] ?? info['cover_xl']) as String?;
 
     final tracks = <ImportedTrack>[];
     Uri? page = Uri.parse(
@@ -114,16 +121,23 @@ Future<ImportedPlaylist> fetchDeezerPlaylist(
     if (tracks.isEmpty) {
       throw const PlaylistImportException(ImportError.privateOrEmpty);
     }
-    return ImportedPlaylist(name, tracks);
+    return ImportedPlaylist(name, tracks, image: image);
   } finally {
     if (client == null) c.close();
   }
 }
 
-Future<Map<String, dynamic>> _getJson(http.Client c, Uri uri) async {
+Future<Map<String, dynamic>> _getJson(
+  http.Client c,
+  Uri uri, {
+  Map<String, String> headers = const {},
+}) async {
   final http.Response response;
   try {
-    response = await c.get(uri, headers: {'User-Agent': _userAgent});
+    response = await c.get(
+      uri,
+      headers: {'User-Agent': _userAgent, ...headers},
+    );
   } catch (e) {
     throw PlaylistImportException(ImportError.network, e);
   }
@@ -219,7 +233,22 @@ Future<ImportedPlaylist> fetchAppleMusicPlaylist(
     if (response.statusCode != 200) {
       throw PlaylistImportException(ImportError.network, response.statusCode);
     }
-    final playlist = parseAppleMusicPage(utf8.decode(response.bodyBytes));
+    final page = utf8.decode(response.bodyBytes);
+    var playlist = parseAppleMusicPage(page);
+    // The page only carries the first songs of a long playlist. The rest
+    // comes from the API the Apple Music website itself uses.
+    try {
+      final full = await _appleApiPlaylist(c, trimmed, page);
+      if (full != null && full.tracks.length >= playlist.tracks.length) {
+        playlist = ImportedPlaylist(
+          full.name ?? playlist.name,
+          full.tracks,
+          image: full.image ?? playlist.image,
+        );
+      }
+    } on Object catch (_) {
+      // Keep what the page gave.
+    }
     if (playlist.tracks.isEmpty) {
       throw const PlaylistImportException(ImportError.privateOrEmpty);
     }
@@ -234,6 +263,7 @@ Future<ImportedPlaylist> fetchAppleMusicPlaylist(
 ImportedPlaylist parseAppleMusicPage(String page) {
   final document = html.parse(page);
   final name = _appleName(document);
+  final image = _appleImage(document);
 
   final serialized = document.getElementById('serialized-server-data')?.text;
   if (serialized != null && serialized.trim().isNotEmpty) {
@@ -246,7 +276,9 @@ ImportedPlaylist parseAppleMusicPage(String page) {
       final tracks = <ImportedTrack>[];
       final seen = <String>{};
       _collectAppleSongs(sections.isEmpty ? data : sections, tracks, seen);
-      if (tracks.isNotEmpty) return ImportedPlaylist(name, tracks);
+      if (tracks.isNotEmpty) {
+        return ImportedPlaylist(name, tracks, image: image);
+      }
     } on FormatException {
       // Fall through to the schema.org data.
     }
@@ -257,13 +289,122 @@ ImportedPlaylist parseAppleMusicPage(String page) {
   )) {
     try {
       final tracks = _schemaTracks(jsonDecode(script.text));
-      if (tracks.isNotEmpty) return ImportedPlaylist(name, tracks);
+      if (tracks.isNotEmpty) {
+        return ImportedPlaylist(name, tracks, image: image);
+      }
     } on FormatException {
       continue;
     }
   }
-  return ImportedPlaylist(name, const []);
+  return ImportedPlaylist(name, const [], image: image);
 }
+
+/// The page's share picture, asked for as a 600 px square cover.
+String? _appleImage(Document document) {
+  final og = document
+      .querySelector('meta[property="og:image"]')
+      ?.attributes['content']
+      ?.trim();
+  if (og == null || og.isEmpty) return null;
+  return appleArtwork(og);
+}
+
+/// Apple's artwork URLs end with the size, such as `1200x630wp-60.jpg` or the
+/// template `{w}x{h}bb.jpg`: ask for a 600 px square.
+String appleArtwork(String url) {
+  if (url.contains('{w}')) {
+    return url
+        .replaceAll('{w}', '600')
+        .replaceAll('{h}', '600')
+        .replaceAll('{c}', 'bb')
+        .replaceAll('{f}', 'jpg');
+  }
+  if (!url.contains('mzstatic.com')) return url;
+  return url.replaceFirst(RegExp(r'/[^/]+$'), '/600x600bb.jpg');
+}
+
+/// Storefront, kind and id of an Apple Music link, such as
+/// `https://music.apple.com/fr/playlist/chill/pl.u-abc` (kind `playlists`).
+({String storefront, String kind, String id})? parseAppleMusicLink(
+  String link,
+) {
+  final uri = Uri.tryParse(link.trim());
+  if (uri == null) return null;
+  final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
+  final kindIndex = segments.indexWhere((s) => s == 'playlist' || s == 'album');
+  if (kindIndex < 1 || kindIndex == segments.length - 1) return null;
+  return (
+    storefront: segments[kindIndex - 1],
+    kind: '${segments[kindIndex]}s',
+    id: segments.last,
+  );
+}
+
+/// Reads the whole playlist through amp-api.music.apple.com, with the
+/// public token the Apple Music website embeds in its script.
+Future<ImportedPlaylist?> _appleApiPlaylist(
+  http.Client c,
+  String link,
+  String page,
+) async {
+  final parsed = parseAppleMusicLink(link);
+  if (parsed == null) return null;
+  final token = await _appleToken(c, page);
+  if (token == null) return null;
+  final headers = {
+    'Authorization': 'Bearer $token',
+    'Origin': 'https://music.apple.com',
+    'Referer': 'https://music.apple.com/',
+  };
+  const host = 'https://amp-api.music.apple.com';
+  final base = '/v1/catalog/${parsed.storefront}/${parsed.kind}/${parsed.id}';
+
+  final info = await _getJson(c, Uri.parse('$host$base'), headers: headers);
+  final data = info['data'];
+  final attributes = data is List && data.isNotEmpty && data.first is Map
+      ? (data.first as Map)['attributes'] as Map?
+      : null;
+  final artwork = (attributes?['artwork'] as Map?)?['url'] as String?;
+
+  final tracks = <ImportedTrack>[];
+  String? next = '$base/tracks?limit=100';
+  // A safety cap at 30,000 songs.
+  for (var pages = 0; next != null && pages < 300; pages++) {
+    final json = await _getJson(c, Uri.parse('$host$next'), headers: headers);
+    for (final item in (json['data'] as List? ?? const [])) {
+      final a = item is Map ? item['attributes'] : null;
+      if (a is! Map) continue;
+      final title = (a['name'] as String?)?.trim() ?? '';
+      if (title.isEmpty) continue;
+      tracks.add(ImportedTrack(title, (a['artistName'] as String?) ?? ''));
+    }
+    final n = json['next'];
+    next = n is String && n.isNotEmpty ? n : null;
+  }
+  return ImportedPlaylist(
+    attributes?['name'] as String?,
+    tracks,
+    image: artwork == null ? null : appleArtwork(artwork),
+  );
+}
+
+Future<String?> _appleToken(http.Client c, String page) async {
+  final scripts = RegExp(r'src="(/assets/index[~-][^"]+\.js)"')
+      .allMatches(page)
+      .map((m) => m.group(1)!);
+  for (final src in scripts) {
+    final response = await c.get(
+      Uri.parse('https://music.apple.com$src'),
+      headers: {'User-Agent': _userAgent},
+    );
+    if (response.statusCode != 200) continue;
+    final token = _jwt.firstMatch(response.body)?.group(0);
+    if (token != null) return token;
+  }
+  return null;
+}
+
+final _jwt = RegExp(r'eyJh[\w-]+\.[\w-]+\.[\w-]+');
 
 String? _appleName(Document document) {
   final og = document
@@ -361,6 +502,182 @@ List<ImportedTrack> _schemaTracks(Object? json) {
   }
 
   visit(json);
+  return tracks;
+}
+
+// ---------------------------------------------------------------------------
+// Spotify: name and cover from the public oEmbed endpoint, songs from the
+// embed player's page (with its anonymous token for long playlists). A CSV
+// export stays available for the full list when Spotify refuses.
+// ---------------------------------------------------------------------------
+
+/// Kind and id of a Spotify link, such as
+/// `https://open.spotify.com/intl-fr/playlist/37i9dQZF1DXcBWIGoYBM5M?si=x`.
+({String kind, String id})? parseSpotifyLink(String link) {
+  final match = RegExp(
+    r'open\.spotify\.com/(?:intl-[a-z-]+/)?(?:embed/)?(playlist|album)/([A-Za-z0-9]+)',
+    caseSensitive: false,
+  ).firstMatch(link);
+  if (match != null) {
+    return (kind: match.group(1)!.toLowerCase(), id: match.group(2)!);
+  }
+  final uri = RegExp('spotify:(playlist|album):([A-Za-z0-9]+)')
+      .firstMatch(link);
+  if (uri == null) return null;
+  return (kind: uri.group(1)!, id: uri.group(2)!);
+}
+
+/// Reads a public Spotify playlist or album from its link.
+Future<ImportedPlaylist> fetchSpotifyPlaylist(
+  String link, {
+  http.Client? client,
+}) async {
+  final c = client ?? http.Client();
+  try {
+    var target = link.trim();
+    if (parseSpotifyLink(target) == null &&
+        RegExp(r'spotify\.link/|spotify\.app\.link/').hasMatch(target)) {
+      target = await _resolveRedirects(c, target);
+    }
+    final parsed = parseSpotifyLink(target);
+    if (parsed == null) {
+      throw const PlaylistImportException(ImportError.invalidLink);
+    }
+    final canonical = 'https://open.spotify.com/${parsed.kind}/${parsed.id}';
+
+    String? name;
+    String? image;
+    try {
+      final oembed = await _getJson(
+        c,
+        Uri.parse('https://open.spotify.com/oembed?url=$canonical'),
+      );
+      name = oembed['title'] as String?;
+      image = oembed['thumbnail_url'] as String?;
+    } on PlaylistImportException {
+      // The embed page below also has them.
+    }
+
+    final http.Response embed;
+    try {
+      embed = await c.get(
+        Uri.parse('https://open.spotify.com/embed/${parsed.kind}/${parsed.id}'),
+        headers: {'User-Agent': _userAgent, 'Accept-Language': 'en'},
+      );
+    } catch (e) {
+      throw PlaylistImportException(ImportError.network, e);
+    }
+    if (embed.statusCode == 404) {
+      throw const PlaylistImportException(ImportError.notFound);
+    }
+    if (embed.statusCode != 200) {
+      throw PlaylistImportException(ImportError.network, embed.statusCode);
+    }
+    final fromPage = parseSpotifyEmbedPage(utf8.decode(embed.bodyBytes));
+    var tracks = fromPage.playlist.tracks;
+
+    final token = fromPage.token;
+    if (token != null) {
+      try {
+        final all = await _spotifyApiTracks(c, parsed.kind, parsed.id, token);
+        if (all.length > tracks.length) tracks = all;
+      } on Object catch (_) {
+        // Keep the embed page's songs.
+      }
+    }
+    if (tracks.isEmpty) {
+      throw const PlaylistImportException(ImportError.privateOrEmpty);
+    }
+    return ImportedPlaylist(
+      name ?? fromPage.playlist.name,
+      tracks,
+      image: image ?? fromPage.playlist.image,
+    );
+  } finally {
+    if (client == null) c.close();
+  }
+}
+
+/// Songs, name, cover and anonymous token of Spotify's embed player page.
+({ImportedPlaylist playlist, String? token}) parseSpotifyEmbedPage(
+  String page,
+) {
+  final script = html.parse(page).getElementById('__NEXT_DATA__')?.text;
+  if (script == null) {
+    return (playlist: const ImportedPlaylist(null, []), token: null);
+  }
+  final Object? data;
+  try {
+    data = jsonDecode(script);
+  } on FormatException {
+    return (playlist: const ImportedPlaylist(null, []), token: null);
+  }
+
+  String? token;
+  Map? entity;
+  void visit(Object? node) {
+    if (node is List) {
+      node.forEach(visit);
+    } else if (node is Map) {
+      if (token == null && node['accessToken'] is String) {
+        token = node['accessToken'] as String;
+      }
+      if (entity == null && node['trackList'] is List) entity = node;
+      node.values.forEach(visit);
+    }
+  }
+
+  visit(data);
+  final tracks = <ImportedTrack>[];
+  for (final item in (entity?['trackList'] as List? ?? const [])) {
+    if (item is! Map) continue;
+    final title = (item['title'] as String?)?.trim() ?? '';
+    if (title.isEmpty) continue;
+    tracks.add(
+      ImportedTrack(title, (item['subtitle'] as String?)?.trim() ?? ''),
+    );
+  }
+  String? image;
+  final cover = entity?['coverArt'];
+  if (cover is Map && cover['sources'] is List) {
+    final sources = (cover['sources'] as List).whereType<Map>().toList()
+      ..sort(
+        (a, b) =>
+            ((b['width'] ?? 0) as num).compareTo((a['width'] ?? 0) as num),
+      );
+    if (sources.isNotEmpty) image = sources.first['url'] as String?;
+  }
+  final name = (entity?['name'] ?? entity?['title']) as String?;
+  return (playlist: ImportedPlaylist(name, tracks, image: image), token: token);
+}
+
+Future<List<ImportedTrack>> _spotifyApiTracks(
+  http.Client c,
+  String kind,
+  String id,
+  String token,
+) async {
+  final headers = {'Authorization': 'Bearer $token'};
+  final tracks = <ImportedTrack>[];
+  String? next = 'https://api.spotify.com/v1/${kind}s/$id/tracks?limit=100';
+  for (var pages = 0; next != null && pages < 120; pages++) {
+    final json = await _getJson(c, Uri.parse(next), headers: headers);
+    for (final item in (json['items'] as List? ?? const [])) {
+      if (item is! Map) continue;
+      // Playlists wrap each song in {track: ...}; albums list songs directly.
+      final track = item['track'] is Map ? item['track'] as Map : item;
+      final title = (track['name'] as String?)?.trim() ?? '';
+      if (title.isEmpty) continue;
+      final artists = (track['artists'] as List? ?? const [])
+          .whereType<Map>()
+          .map((a) => a['name'])
+          .whereType<String>()
+          .join(', ');
+      tracks.add(ImportedTrack(title, artists));
+    }
+    final n = json['next'];
+    next = n is String && n.isNotEmpty ? n : null;
+  }
   return tracks;
 }
 

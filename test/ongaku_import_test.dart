@@ -254,4 +254,230 @@ void main() {
       );
     });
   });
+
+  group('covers and long playlists', () {
+    test('Deezer cover', () async {
+      final client = MockClient((request) async {
+        if (request.url.path == '/playlist/5') {
+          return http.Response(
+            jsonEncode({'title': 'Mix', 'picture_xl': 'https://cdn/x.jpg'}),
+            200,
+          );
+        }
+        return http.Response(
+          jsonEncode({
+            'data': [
+              {
+                'title': 'A',
+                'artist': {'name': 'B'},
+              },
+            ],
+          }),
+          200,
+        );
+      });
+      final playlist = await fetchDeezerPlaylist(
+        'https://www.deezer.com/playlist/5',
+        client: client,
+      );
+      expect(playlist.image, 'https://cdn/x.jpg');
+    });
+
+    test('Apple Music reads every song through the web API', () async {
+      const token = 'eyJhbGciOi.eyJpc3MiOi.c2lnbmF0dXJl';
+      final page =
+          '<html><head><meta property="og:title" content="Big - Playlist - '
+          'Apple Music"><meta property="og:image" content="https://is1-ssl.'
+          'mzstatic.com/image/thumb/a/b/1200x630wp-60.jpg">'
+          '<script type="module" src="/assets/index~abc.js"></script></head>'
+          '<body><script id="serialized-server-data">'
+          '${jsonEncode([
+            {
+              'items': [
+                {
+                  'id': '1',
+                  'title': 'First',
+                  'artistName': 'X',
+                  'contentDescriptor': {'kind': 'song'},
+                },
+              ],
+              'id': 'track-list',
+            },
+          ])}</script></body></html>';
+      final client = MockClient((request) async {
+        final url = request.url.toString();
+        if (url.startsWith('https://music.apple.com/fr/playlist')) {
+          return http.Response.bytes(utf8.encode(page), 200);
+        }
+        if (url == 'https://music.apple.com/assets/index~abc.js') {
+          return http.Response('var t="$token";', 200);
+        }
+        expect(request.headers['Authorization'], 'Bearer $token');
+        if (url.endsWith('/playlists/pl.u-1')) {
+          return http.Response(
+            jsonEncode({
+              'data': [
+                {
+                  'attributes': {
+                    'name': 'Big',
+                    'artwork': {'url': 'https://is1/{w}x{h}bb.jpg'},
+                  },
+                },
+              ],
+            }),
+            200,
+          );
+        }
+        final offset = int.parse(request.url.queryParameters['offset'] ?? '0');
+        return http.Response(
+          jsonEncode({
+            'data': [
+              for (var i = 0; i < 100; i++)
+                {
+                  'attributes': {
+                    'name': 'Song ${offset + i}',
+                    'artistName': 'Artist',
+                  },
+                },
+            ],
+            if (offset < 200)
+              'next':
+                  '/v1/catalog/fr/playlists/pl.u-1/tracks?offset=${offset + 100}',
+          }),
+          200,
+        );
+      });
+      final playlist = await fetchAppleMusicPlaylist(
+        'https://music.apple.com/fr/playlist/big/pl.u-1',
+        client: client,
+      );
+      expect(playlist.tracks.length, 300);
+      expect(playlist.name, 'Big');
+      expect(playlist.image, 'https://is1/600x600bb.jpg');
+    });
+
+    test('Apple Music keeps the page songs when the API fails', () async {
+      final client = MockClient((request) async {
+        if (request.url.host == 'music.apple.com' &&
+            request.url.path.contains('playlist')) {
+          return http.Response.bytes(
+            utf8.encode(
+              '<html><head><meta property="og:image" content="https://is1-ssl'
+              '.mzstatic.com/a/1200x630wp.jpg"></head><body><script id='
+              '"serialized-server-data">[{"id":"track-list","items":[{"id":'
+              '"1","title":"Only","artistName":"Y","contentDescriptor":'
+              '{"kind":"song"}}]}]</script></body></html>',
+            ),
+            200,
+          );
+        }
+        return http.Response('', 500);
+      });
+      final playlist = await fetchAppleMusicPlaylist(
+        'https://music.apple.com/us/playlist/x/pl.2',
+        client: client,
+      );
+      expect(playlist.tracks.single.title, 'Only');
+      expect(playlist.image, 'https://is1-ssl.mzstatic.com/a/600x600bb.jpg');
+    });
+
+    test(
+      'Spotify: name and cover from oEmbed, all songs from the API',
+      () async {
+        final next = {
+          'props': {
+            'pageProps': {
+              'state': {
+                'settings': {
+                  'session': {'accessToken': 'tok'},
+                },
+                'data': {
+                  'entity': {
+                    'name': 'Embed name',
+                    'trackList': [
+                      {'title': 'One', 'subtitle': 'Band'},
+                    ],
+                  },
+                },
+              },
+            },
+          },
+        };
+        final client = MockClient((request) async {
+          final url = request.url;
+          if (url.path == '/oembed') {
+            return http.Response(
+              jsonEncode({
+                'title': 'Road Trip',
+                'thumbnail_url': 'https://i.scdn.co/image/abc',
+              }),
+              200,
+            );
+          }
+          if (url.path.startsWith('/embed/')) {
+            return http.Response.bytes(
+              utf8.encode(
+                '<html><script id="__NEXT_DATA__" type="application/json">'
+                '${jsonEncode(next)}</script></html>',
+              ),
+              200,
+            );
+          }
+          expect(request.headers['Authorization'], 'Bearer tok');
+          final offset = int.parse(url.queryParameters['offset'] ?? '0');
+          return http.Response(
+            jsonEncode({
+              'items': [
+                for (var i = 0; i < 100; i++)
+                  {
+                    'track': {
+                      'name': 'Song ${offset + i}',
+                      'artists': [
+                        {'name': 'A'},
+                        {'name': 'B'},
+                      ],
+                    },
+                  },
+              ],
+              'next': offset == 0
+                  ? 'https://api.spotify.com/v1/playlists/37i/tracks?offset=100'
+                  : null,
+            }),
+            200,
+          );
+        });
+        final playlist = await fetchSpotifyPlaylist(
+          'https://open.spotify.com/intl-fr/playlist/37i?si=abc',
+          client: client,
+        );
+        expect(playlist.name, 'Road Trip');
+        expect(playlist.image, 'https://i.scdn.co/image/abc');
+        expect(playlist.tracks.length, 200);
+        expect(playlist.tracks.first.artist, 'A, B');
+      },
+    );
+
+    test('Spotify falls back to the embed list', () async {
+      final client = MockClient((request) async {
+        if (request.url.path.startsWith('/embed/')) {
+          return http.Response.bytes(
+            utf8.encode(
+              '<script id="__NEXT_DATA__">{"entity":{"name":"E","trackList":'
+              '[{"title":"T","subtitle":"S"}],"coverArt":{"sources":[{"url":'
+              '"small","width":64},{"url":"big","width":640}]}}}</script>',
+            ),
+            200,
+          );
+        }
+        return http.Response('', 401);
+      });
+      final playlist = await fetchSpotifyPlaylist(
+        'spotify:album:xyz',
+        client: client,
+      );
+      expect(playlist.name, 'E');
+      expect(playlist.image, 'big');
+      expect(playlist.tracks.single.toString(), 'T - S');
+    });
+  });
 }

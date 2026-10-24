@@ -23,11 +23,12 @@ import 'package:musify/services/playlists_manager.dart';
 import 'package:musify/utilities/flutter_toast.dart';
 import 'package:musify/widgets/mini_player.dart';
 
-/// Services a playlist can be imported from (Spotify has Musify's own page).
-enum ImportSource { deezer, appleMusic }
+/// Services a playlist can be imported from.
+enum ImportSource { spotify, deezer, appleMusic }
 
-/// Imports a Deezer or Apple Music playlist: reads its songs from a link
-/// (or, for Apple Music, an exported file), then finds each one on YouTube.
+/// Imports a Spotify, Deezer or Apple Music playlist with its name and
+/// cover: reads its songs from a link (or an exported file), then finds each
+/// one on YouTube.
 class OngakuImportPlaylistPage extends StatefulWidget {
   const OngakuImportPlaylistPage({super.key, required this.source});
 
@@ -73,9 +74,18 @@ class _OngakuImportPlaylistPageState extends State<OngakuImportPlaylistPage> {
     try {
       final playlist = await reader();
       if (!mounted) return;
-      setState(() => _playlist = playlist);
-      if (_nameController.text.trim().isEmpty && playlist.name != null) {
-        _nameController.text = playlist.name!;
+      // A file read after a link keeps the link's name and cover.
+      final previous = _playlist;
+      final merged = previous != null && playlist.image == null
+          ? ImportedPlaylist(
+              previous.name ?? playlist.name,
+              playlist.tracks,
+              image: previous.image,
+            )
+          : playlist;
+      setState(() => _playlist = merged);
+      if (_nameController.text.trim().isEmpty && merged.name != null) {
+        _nameController.text = merged.name!;
       }
     } on PlaylistImportException catch (e) {
       logger.log('Ongaku import: ${e.error}', error: e.detail);
@@ -96,9 +106,11 @@ class _OngakuImportPlaylistPageState extends State<OngakuImportPlaylistPage> {
     }
     FocusScope.of(context).unfocus();
     await _read(
-      () => widget.source == ImportSource.deezer
-          ? fetchDeezerPlaylist(link)
-          : fetchAppleMusicPlaylist(link),
+      () => switch (widget.source) {
+        ImportSource.spotify => fetchSpotifyPlaylist(link),
+        ImportSource.deezer => fetchDeezerPlaylist(link),
+        ImportSource.appleMusic => fetchAppleMusicPlaylist(link),
+      },
     );
   }
 
@@ -157,7 +169,7 @@ class _OngakuImportPlaylistPageState extends State<OngakuImportPlaylistPage> {
     }
     if (!mounted) return;
 
-    final (_, playlistId) = createCustomPlaylist(name, null, context);
+    final (_, playlistId) = createCustomPlaylist(name, playlist.image, context);
     addSongsInCustomPlaylist(context, playlistId, result.found);
     setState(() {
       _importing = false;
@@ -193,7 +205,24 @@ class _OngakuImportPlaylistPageState extends State<OngakuImportPlaylistPage> {
     final l10n = context.l10n!;
     final strings = OngakuStrings.of(context);
     final colorScheme = Theme.of(context).colorScheme;
-    final deezer = widget.source == ImportSource.deezer;
+    final source = widget.source;
+    final (title, help, hint) = switch (source) {
+      ImportSource.spotify => (
+        'Spotify',
+        strings.importSpotifyHelp,
+        'https://open.spotify.com/playlist/…',
+      ),
+      ImportSource.deezer => (
+        'Deezer',
+        strings.importDeezerHelp,
+        'https://www.deezer.com/playlist/…',
+      ),
+      ImportSource.appleMusic => (
+        'Apple Music',
+        strings.importAppleHelp,
+        'https://music.apple.com/…/playlist/…',
+      ),
+    };
     final playlist = _playlist;
 
     InputDecoration field(String label, {String? hint}) => InputDecoration(
@@ -210,7 +239,7 @@ class _OngakuImportPlaylistPageState extends State<OngakuImportPlaylistPage> {
     return Scaffold(
       appBar: AppBar(
         // The service name: the full "Import playlist from..." is cut off.
-        title: Text(deezer ? 'Deezer' : 'Apple Music'),
+        title: Text(title),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
@@ -220,9 +249,7 @@ class _OngakuImportPlaylistPageState extends State<OngakuImportPlaylistPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  deezer ? strings.importDeezerHelp : strings.importAppleHelp,
-                ),
+                Text(help),
                 const SizedBox(height: 16),
                 TextField(
                   controller: _linkController,
@@ -231,12 +258,7 @@ class _OngakuImportPlaylistPageState extends State<OngakuImportPlaylistPage> {
                   autocorrect: false,
                   textInputAction: TextInputAction.go,
                   onSubmitted: (_) => _readLink(),
-                  decoration: field(
-                    strings.importLink,
-                    hint: deezer
-                        ? 'https://www.deezer.com/playlist/…'
-                        : 'https://music.apple.com/…/playlist/…',
-                  ),
+                  decoration: field(strings.importLink, hint: hint),
                 ),
                 const SizedBox(height: 12),
                 FilledButton.icon(
@@ -250,7 +272,7 @@ class _OngakuImportPlaylistPageState extends State<OngakuImportPlaylistPage> {
                       : const Icon(FluentIcons.link_24_regular),
                   label: Text(strings.importRead),
                 ),
-                if (!deezer) ...[
+                if (source != ImportSource.deezer) ...[
                   const SizedBox(height: 12),
                   OutlinedButton.icon(
                     onPressed: _busy ? null : _chooseFile,
@@ -260,17 +282,30 @@ class _OngakuImportPlaylistPageState extends State<OngakuImportPlaylistPage> {
                 ],
                 if (playlist != null) ...[
                   const SizedBox(height: 24),
-                  Text(
-                    strings.importTracksRead(playlist.tracks.length),
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    playlist.tracks.take(3).join(' · ') +
-                        (playlist.tracks.length > 3 ? ' …' : ''),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall,
+                  Row(
+                    children: [
+                      _Cover(url: playlist.image),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              strings.importTracksRead(playlist.tracks.length),
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              playlist.tracks.take(3).join(' · ') +
+                                  (playlist.tracks.length > 3 ? ' …' : ''),
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 12),
                   TextField(
@@ -313,6 +348,38 @@ class _OngakuImportPlaylistPageState extends State<OngakuImportPlaylistPage> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// The imported playlist's cover, or a placeholder when it has none.
+class _Cover extends StatelessWidget {
+  const _Cover({required this.url});
+
+  final String? url;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final placeholder = ColoredBox(
+      color: colorScheme.surfaceContainerHigh,
+      child: Icon(
+        FluentIcons.music_note_2_24_regular,
+        color: colorScheme.onSurfaceVariant,
+      ),
+    );
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: SizedBox.square(
+        dimension: 72,
+        child: url == null
+            ? placeholder
+            : Image.network(
+                url!,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => placeholder,
+              ),
       ),
     );
   }

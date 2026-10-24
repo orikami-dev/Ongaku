@@ -24,7 +24,8 @@ small hooks marked `Ongaku:` or importing `package:musify/ongaku/...`:
 | `lib/services/settings_manager.dart`, `lib/theme/app_colors.dart` | default accent (Apple red), system colors off |
 | `lib/widgets/shapes/*` | squircle instead of cookie shapes |
 | `lib/widgets/playlist_hero_artwork.dart` | square cover instead of the star clip |
-| `lib/screens/settings_page.dart` | pickers close with `ongakuClosePicker`; Deezer / Apple Music import rows |
+| `lib/screens/settings_page.dart` | pickers close with `ongakuClosePicker`; Spotify row opens Ongaku's import; Deezer / Apple Music import rows |
+| `lib/screens/playlist_page.dart`, `artist_page.dart` | round buttons above Play / Shuffle |
 | `lib/services/router_service.dart` (settings) | `ongakuImportRoutes` |
 | `lib/utilities/flutter_bottom_sheet.dart` | `isCustomBottomSheetOpen` |
 | `lib/widgets/confirmation_dialog.dart`, `rename_song_dialog.dart` | readable text on the coloured confirm button |
@@ -79,6 +80,17 @@ the Android label, and the Linux/Windows titles.
 * Settings are grouped by category (`settings_page.dart` `_buildCategories`); `CustomBar` and `SectionHeader` delegate to `widgets/ongaku_settings_ui.dart` and `ongaku_page_parts.dart`, so every list in the app shares the iOS look.
 * Player: the old ⋯ menu is gone; its actions sit in the bottom row. The heart icon became a star everywhere (`FluentIcons.star_*`).
 * Lyrics: wider LRCLIB search and a per-session timing nudge (± 0.5 s).
+
+## v8
+
+* Round buttons (like, add, download, share, edit) above Play / Shuffle.
+* Imports keep the source playlist's name and cover, for Spotify, Deezer and
+  Apple Music. Apple Music reads every song through the web API
+  (amp-api.music.apple.com, with the public token of the website's script);
+  the page alone only holds the first songs. Spotify reads the link: name
+  and cover from oEmbed, songs from the embed player and, for long
+  playlists, the Web API with the embed's anonymous token; a CSV export is
+  still accepted.
 
 ## v7
 
