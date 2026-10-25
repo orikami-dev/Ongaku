@@ -136,6 +136,17 @@ void main() {
             await _settle(tester);
             await _capture(tester, '$prefix-you-$i');
           }
+          await tester.drag(
+            find.byType(CustomScrollView).last,
+            Offset(0, size.height * 3),
+          );
+          await _settle(tester);
+          final history = find.text('Historique');
+          if (history.evaluate().isNotEmpty) {
+            await tester.tap(history.first);
+            await _settle(tester);
+            await _capture(tester, '$prefix-you-history');
+          }
         }
         if (route == '/settings') {
           // The Thème row unfolded, then folded again.
@@ -200,6 +211,10 @@ void main() {
         await _settle(tester, frames: 15);
         await _capture(tester, '$prefix-player-queue');
         await crossfadeSheet(context);
+        // Songs already played show above "À suivre".
+        await audioHandler.skipToSong(2);
+        await _settle(tester, frames: 15);
+        await _capture(tester, '$prefix-player-queue-history');
 
         Navigator.of(context, rootNavigator: true).pop();
         await _settle(tester);
@@ -221,6 +236,7 @@ void main() {
         '/library',
         '/search',
         '/settings',
+        '/settings/logs',
         '/home/you',
         '/library/localFiles',
         '/library/userSongs/liked',

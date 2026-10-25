@@ -9,8 +9,10 @@
  */
 
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:audio_service/audio_service.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:musify/extensions/l10n.dart';
@@ -39,6 +41,7 @@ import 'package:musify/utilities/mediaitem.dart';
 import 'package:musify/utilities/playlist_dialogs.dart';
 import 'package:musify/widgets/marquee.dart';
 import 'package:musify/widgets/song_artwork.dart';
+import 'package:ongaku_sound/ongaku_sound.dart';
 
 /// Opens the player: full screen on phones, a panel on the right of open
 /// foldables and tablets (Apple Music on Android).
@@ -1091,106 +1094,182 @@ class _Chip extends StatelessWidget {
 
 /// The songs after the current one: tap to play, drag ≡ to move, swipe to
 /// remove.
-class _UpNext extends StatelessWidget {
+class _UpNext extends StatefulWidget {
   const _UpNext({super.key, this.dense = false});
 
   final bool dense;
 
   @override
+  State<_UpNext> createState() => _UpNextState();
+}
+
+/// The queue: the songs already played above (greyed, a tap plays one
+/// again), then "À suivre". It opens on "À suivre" with the last song
+/// played just showing above it; scroll up for the rest of the history.
+class _UpNextState extends State<_UpNext> {
+  static const _rowHeight = 64.0;
+  final _upNextKey = UniqueKey();
+  ScrollController? _scroll;
+  bool _peeked = false;
+
+  @override
+  void dispose() {
+    _scroll?.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final strings = OngakuStrings.of(context);
-    final side = dense ? 0.0 : 24.0;
+    final side = widget.dense ? 0.0 : 24.0;
 
     return StreamBuilder<List<Map>>(
       stream: audioHandler.queueAsMapStream,
       builder: (context, snapshot) {
         final queue = snapshot.data ?? const <Map>[];
-        final start = audioHandler.currentQueueIndex + 1;
+        final current = audioHandler.currentQueueIndex;
+        final start = current + 1;
         final upcoming = start < queue.length
             ? queue.sublist(start)
             : const <Map>[];
+        final played = current > 0 && current <= queue.length
+            ? queue.sublist(0, current)
+            : const <Map>[];
+        final scroll = _scroll ??= ScrollController();
+        // Once there is a history, show its last song just above
+        // "À suivre", unless the list was scrolled already.
+        if (played.isNotEmpty && !_peeked) {
+          _peeked = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (scroll.hasClients && scroll.offset == 0) {
+              scroll.jumpTo(-_rowHeight * 0.9);
+            }
+          });
+        }
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: EdgeInsets.fromLTRB(side, 12, side, 6),
-              child: Text(
-                strings.upNext,
-                style: const TextStyle(
-                  color: _white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.3,
+        Widget title(String text, {double top = 12}) => Padding(
+          padding: EdgeInsets.fromLTRB(side, top, side, 6),
+          child: Text(
+            text,
+            style: const TextStyle(
+              color: _white,
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.3,
+            ),
+          ),
+        );
+
+        return ShaderMask(
+          shaderCallback: (rect) => const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Colors.transparent, _white, _white, Colors.transparent],
+            stops: [0, 0.04, 0.9, 1],
+          ).createShader(rect),
+          blendMode: BlendMode.dstIn,
+          child: CustomScrollView(
+            controller: scroll,
+            center: _upNextKey,
+            physics: const BouncingScrollPhysics(
+              parent: AlwaysScrollableScrollPhysics(),
+            ),
+            slivers: [
+              // Before the centre, slivers grow upwards: the last song
+              // played comes first, right above "À suivre".
+              if (played.isNotEmpty)
+                SliverPadding(
+                  padding: EdgeInsets.symmetric(horizontal: side),
+                  sliver: SliverList.builder(
+                    itemCount: played.length + 1,
+                    itemBuilder: (context, i) {
+                      if (i == played.length) {
+                        return title(strings.statsHistory, top: 4);
+                      }
+                      final index = current - 1 - i;
+                      return Opacity(
+                        opacity: 0.45,
+                        child: _QueueRow(
+                          song: queue[index],
+                          index: index,
+                          reorderable: false,
+                          onTap: () => audioHandler.skipToSong(index),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              SliverToBoxAdapter(
+                key: _upNextKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (played.isNotEmpty)
+                      Padding(
+                        padding: EdgeInsets.fromLTRB(side, 6, side, 0),
+                        child: Divider(
+                          height: 1,
+                          thickness: 0.5,
+                          color: _whiteA(0.25),
+                        ),
+                      ),
+                    title(strings.upNext),
+                  ],
                 ),
               ),
-            ),
-            Expanded(
-              child: upcoming.isEmpty
-                  ? const SizedBox.shrink()
-                  : ShaderMask(
-                      shaderCallback: (rect) => const LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [_white, _white, Colors.transparent],
-                        stops: [0, 0.9, 1],
-                      ).createShader(rect),
-                      blendMode: BlendMode.dstIn,
-                      child: ReorderableListView.builder(
-                        padding: EdgeInsets.fromLTRB(side, 0, side, 24),
-                        buildDefaultDragHandles: false,
-                        itemCount: upcoming.length,
-                        proxyDecorator: (child, _, __) => Material(
-                          color: _whiteA(0.12),
-                          borderRadius: BorderRadius.circular(10),
-                          child: child,
-                        ),
-                        onReorderItem: (oldIndex, newIndex) {
-                          final id = upcoming[oldIndex]['queueEntryId']
-                              ?.toString();
-                          if (id == null) return;
-                          audioHandler.reorderQueueById(id, start + newIndex);
-                        },
-                        itemBuilder: (context, i) {
-                          final song = upcoming[i];
-                          final key =
-                              '${song['queueEntryId'] ?? song['ytid']}_$i';
-                          // Right: favourite (springs back). Left: remove.
-                          return Dismissible(
-                            key: ValueKey(key),
-                            dismissThresholds: const {
-                              DismissDirection.startToEnd: 0.3,
-                            },
-                            confirmDismiss: (direction) async {
-                              if (direction == DismissDirection.endToStart) {
-                                return true;
-                              }
-                              await ongakuToggleLike(context, song);
-                              return false;
-                            },
-                            onDismissed: (_) =>
-                                audioHandler.removeFromQueue(start + i),
-                            background: OngakuSwipeBackground(
-                              icon: isSongAlreadyLiked(song['ytid'])
-                                  ? Icons.star_border_rounded
-                                  : Icons.star_rounded,
-                              alignment: Alignment.centerLeft,
-                            ),
-                            secondaryBackground: const OngakuSwipeBackground(
-                              icon: Icons.delete_rounded,
-                              alignment: Alignment.centerRight,
-                            ),
-                            child: _QueueRow(
-                              song: song,
-                              index: i,
-                              onTap: () => audioHandler.skipToSong(start + i),
-                            ),
-                          );
-                        },
+              SliverPadding(
+                padding: EdgeInsets.fromLTRB(side, 0, side, 24),
+                sliver: SliverReorderableList(
+                  itemCount: upcoming.length,
+                  proxyDecorator: (child, _, __) => Material(
+                    color: _whiteA(0.12),
+                    borderRadius: BorderRadius.circular(10),
+                    child: child,
+                  ),
+                  onReorderItem: (oldIndex, newIndex) {
+                    final id = upcoming[oldIndex]['queueEntryId']?.toString();
+                    if (id == null) return;
+                    audioHandler.reorderQueueById(id, start + newIndex);
+                  },
+                  itemBuilder: (context, i) {
+                    final song = upcoming[i];
+                    final key = '${song['queueEntryId'] ?? song['ytid']}_$i';
+                    // Right: favourite (springs back). Left: remove.
+                    return Dismissible(
+                      key: ValueKey(key),
+                      dismissThresholds: const {
+                        DismissDirection.startToEnd: 0.3,
+                      },
+                      confirmDismiss: (direction) async {
+                        if (direction == DismissDirection.endToStart) {
+                          return true;
+                        }
+                        await ongakuToggleLike(context, song);
+                        return false;
+                      },
+                      onDismissed: (_) =>
+                          audioHandler.removeFromQueue(start + i),
+                      background: OngakuSwipeBackground(
+                        icon: isSongAlreadyLiked(song['ytid'])
+                            ? Icons.star_border_rounded
+                            : Icons.star_rounded,
+                        alignment: Alignment.centerLeft,
                       ),
-                    ),
-            ),
-          ],
+                      secondaryBackground: const OngakuSwipeBackground(
+                        icon: Icons.delete_rounded,
+                        alignment: Alignment.centerRight,
+                      ),
+                      child: _QueueRow(
+                        song: song,
+                        index: i,
+                        onTap: () => audioHandler.skipToSong(start + i),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -1202,11 +1281,15 @@ class _QueueRow extends StatelessWidget {
     required this.song,
     required this.index,
     required this.onTap,
+    this.reorderable = true,
   });
 
   final Map song;
   final int index;
   final VoidCallback onTap;
+
+  /// Songs already played cannot be moved.
+  final bool reorderable;
 
   @override
   Widget build(BuildContext context) {
@@ -1248,13 +1331,14 @@ class _QueueRow extends StatelessWidget {
                 ],
               ),
             ),
-            ReorderableDragStartListener(
-              index: index,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
-                child: Icon(Icons.drag_handle_rounded, color: _whiteA(0.45)),
+            if (reorderable)
+              ReorderableDragStartListener(
+                index: index,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
+                  child: Icon(Icons.drag_handle_rounded, color: _whiteA(0.45)),
+                ),
               ),
-            ),
           ],
         ),
       ),
@@ -1471,28 +1555,57 @@ class _PressIconState extends State<_PressIcon> {
   }
 }
 
-class _VolumeBar extends StatelessWidget {
+class _VolumeBar extends StatefulWidget {
   const _VolumeBar();
+
+  @override
+  State<_VolumeBar> createState() => _VolumeBarState();
+}
+
+/// The phone's media volume, as the volume keys set it. Not the player's
+/// own volume, which the smooth transitions move up and down.
+class _VolumeBarState extends State<_VolumeBar> {
+  static final _android = !kIsWeb && Platform.isAndroid;
+
+  late final Stream<double> _volume = _android
+      ? OngakuSound.mediaVolume()
+      : audioHandler.volumeStream;
+
+  /// While the finger is on the bar, it follows the finger, not the
+  /// volume steps.
+  double? _dragging;
+
+  void _set(double value) {
+    setState(() => _dragging = value);
+    _android
+        ? OngakuSound.setMediaVolume(value)
+        : audioHandler.setVolume(value);
+  }
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<double>(
-      stream: audioHandler.volumeStream,
-      initialData: audioHandler.volume,
+      stream: _volume,
+      initialData: _android ? null : audioHandler.volume,
       builder: (context, snapshot) {
-        final volume = (snapshot.data ?? 1).clamp(0.0, 1.0);
+        final volume = (_dragging ?? snapshot.data ?? 0).clamp(0.0, 1.0);
         return Row(
           children: [
             Icon(Icons.volume_mute_rounded, size: 20, color: _whiteA(0.55)),
             Expanded(
               child: LayoutBuilder(
                 builder: (context, c) {
-                  void set(double dx) =>
-                      audioHandler.setVolume((dx / c.maxWidth).clamp(0.0, 1.0));
+                  double at(double dx) => (dx / c.maxWidth).clamp(0.0, 1.0);
+                  void end() => setState(() => _dragging = null);
                   return GestureDetector(
                     behavior: HitTestBehavior.opaque,
-                    onHorizontalDragUpdate: (d) => set(d.localPosition.dx),
-                    onTapUp: (d) => set(d.localPosition.dx),
+                    onHorizontalDragUpdate: (d) => _set(at(d.localPosition.dx)),
+                    onHorizontalDragEnd: (_) => end(),
+                    onHorizontalDragCancel: end,
+                    onTapUp: (d) {
+                      _set(at(d.localPosition.dx));
+                      end();
+                    },
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 10,

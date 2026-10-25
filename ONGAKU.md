@@ -55,6 +55,10 @@ small hooks marked `Ongaku:` or importing `package:musify/ongaku/...`:
 | `lib/services/router_service.dart`, `lib/screens/library_page.dart` | Apple Music Library tab: `OngakuLibraryPage` as tab root, `ongakuLibraryRoutes`; `ongakuPlaylistsOnly` turns the upstream page into Library > Playlists |
 | `lib/widgets/song_bar.dart` | Swipe a song to the right to like it (`OngakuSwipeToLike`, theme colour) |
 | `lib/screens/search_page.dart` | "Recherches récentes" header with "Effacer" (`OngakuSearchHistoryHeader`) |
+| `lib/services/logger_service.dart` | every log line also goes to `OngakuJournal` (for "Exporter les journaux") |
+| `lib/screens/settings_page.dart` | "Aide et dépannage" group: "Exporter les journaux" replaces "Copy logs" |
+| `lib/services/update_manager.dart` | `ongakuOfferUpdate`: download, check (same signing key, newer, SHA-256) and install in the app; Musify's dialog stays as the fallback |
+| `lib/main.dart` | `ongakuEnableAutoUpdatesOnce()`: automatic updates on from 1.3, once |
 | `lib/screens/settings_page.dart` | Listening statistics switch, clear play history and clear statistics rows removed (now on the Statistiques d'écoute page), clear search history row removed (Search tab); `_toggleWrapped` removed with them |
 
 Everything else (playback, YouTube extraction, library, playlists, stats, proxy,

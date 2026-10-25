@@ -8,6 +8,7 @@
  *     (at your option) any later version. See <https://www.gnu.org/licenses/>.
  */
 
+import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:intl/intl.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:musify/extensions/l10n.dart';
@@ -16,6 +17,7 @@ import 'package:musify/ongaku/home/you_stats.dart';
 import 'package:musify/ongaku/l10n/ongaku_strings.dart';
 import 'package:musify/ongaku/theme/ongaku_motion.dart';
 import 'package:musify/ongaku/widgets/ongaku_page_parts.dart';
+import 'package:musify/ongaku/widgets/ongaku_settings_ui.dart';
 import 'package:musify/services/common_services.dart';
 import 'package:musify/services/data_manager.dart';
 import 'package:musify/services/listening_stats_service.dart';
@@ -27,13 +29,15 @@ import 'package:musify/utilities/mediaitem.dart';
 import 'package:musify/widgets/confirmation_dialog.dart';
 import 'package:musify/widgets/mini_player_bottom_space.dart';
 import 'package:musify/widgets/song_artwork.dart';
+import 'package:musify/widgets/song_bar.dart';
 
 /// Ongaku's colours for Replay: the icon's burgundy, pink and violet.
 const _replayColors = [Color(0xFF5A1430), Color(0xFFE8264F), Color(0xFF6E44E8)];
 
-/// "Statistiques d'écoute" (formerly "Vous"): a Replay of the chosen month (minutes, songs, artists, plays),
-/// top artists, top songs and the minutes month by month. Musify's
-/// listening statistics, shown the Ongaku way.
+/// "Statistiques d'écoute" (formerly "Vous"). Résumé: a Replay of the
+/// chosen month (minutes, songs, artists, plays), top artists, top songs,
+/// the minutes month by month and the statistics' settings. Historique:
+/// the listening history. Musify's data, shown the Ongaku way.
 class OngakuYouPage extends StatefulWidget {
   const OngakuYouPage({super.key});
 
@@ -41,14 +45,22 @@ class OngakuYouPage extends StatefulWidget {
   State<OngakuYouPage> createState() => _OngakuYouPageState();
 }
 
+enum _YouTab { summary, history }
+
 class _OngakuYouPageState extends State<OngakuYouPage> {
   String _monthKey = listeningStatsMonthKey(DateTime.now());
   bool _allSongs = false;
+  _YouTab _tab = _YouTab.summary;
 
   MonthListening _month(String key) => MonthListening(
     monthDisplayMinutes(listeningStatsService.monthStats(key)),
     listeningStatsService.monthTopSongs(key, limit: 200),
   );
+
+  void _selectMonth(String key) => setState(() {
+    _monthKey = key;
+    _allSongs = false;
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -57,14 +69,6 @@ class _OngakuYouPageState extends State<OngakuYouPage> {
       body: ValueListenableBuilder<bool>(
         valueListenable: wrappedEnabled,
         builder: (context, enabled, _) {
-          final current = listeningStatsMonthKey(DateTime.now());
-          final keys = {
-            current,
-            ...listeningStatsService.availableMonthKeys,
-          }.toList()..sort((a, b) => b.compareTo(a));
-          if (!keys.contains(_monthKey)) _monthKey = current;
-          final month = _month(_monthKey);
-
           return CustomScrollView(
             physics: const BouncingScrollPhysics(
               parent: AlwaysScrollableScrollPhysics(),
@@ -76,72 +80,21 @@ class _OngakuYouPageState extends State<OngakuYouPage> {
                   showBack: true,
                 ),
               ),
-              // Moved here from the settings: the switch and the two
-              // "clear" buttons.
-              SliverToBoxAdapter(child: _StatsSwitch(enabled: enabled)),
-              if (!enabled)
-                SliverToBoxAdapter(child: _Message(text: strings.statsOff))
-              else ...[
-                if (keys.length > 1)
-                  SliverToBoxAdapter(
-                    child: _MonthChips(
-                      keys: keys,
-                      selected: _monthKey,
-                      onSelected: (key) => setState(() {
-                        _monthKey = key;
-                        _allSongs = false;
-                      }),
-                    ),
-                  ),
-                SliverToBoxAdapter(
-                  child: _ReplayCard(monthKey: _monthKey, month: month),
+              SliverToBoxAdapter(
+                child: _Tabs(
+                  selected: _tab,
+                  onSelected: (tab) => setState(() => _tab = tab),
                 ),
-                if (month.isEmpty)
-                  SliverToBoxAdapter(child: _Message(text: strings.statsEmpty))
-                else ...[
-                  if (month.artists.isNotEmpty) ...[
-                    SliverToBoxAdapter(
-                      child: OngakuSectionTitle(title: strings.topArtists),
-                    ),
-                    SliverToBoxAdapter(child: _TopArtists(month: month)),
-                  ],
-                  SliverToBoxAdapter(
-                    child: OngakuSectionTitle(title: strings.topSongs),
-                  ),
-                  SliverToBoxAdapter(
-                    child: _TopSongs(
-                      month: month,
-                      title: formatMonthPeriodLabel(
-                        Localizations.localeOf(context),
-                        _monthKey,
-                      ),
-                      all: _allSongs,
-                      onShowAll: () => setState(() => _allSongs = true),
-                    ),
-                  ),
-                ],
-                if (keys.length > 1) ...[
-                  SliverToBoxAdapter(
-                    child: OngakuSectionTitle(title: strings.monthByMonth),
-                  ),
-                  SliverToBoxAdapter(
-                    child: _MonthBars(
-                      minutes: {
-                        for (final key in keys.take(12))
-                          key: monthDisplayMinutes(
-                            listeningStatsService.monthStats(key),
-                          ),
-                      },
-                      selected: _monthKey,
-                      onSelected: (key) => setState(() {
-                        _monthKey = key;
-                        _allSongs = false;
-                      }),
-                    ),
-                  ),
-                ],
+              ),
+              if (_tab == _YouTab.history)
+                const _History()
+              else ...[
+                if (!enabled)
+                  SliverToBoxAdapter(child: _Message(text: strings.statsOff))
+                else
+                  ..._summary(context, strings),
+                SliverToBoxAdapter(child: _StatsSettings(enabled: enabled)),
               ],
-              const SliverToBoxAdapter(child: _ClearButtons()),
               const SliverToBoxAdapter(child: SizedBox(height: 24)),
               const SliverMiniPlayerBottomSpace(),
             ],
@@ -150,6 +103,258 @@ class _OngakuYouPageState extends State<OngakuYouPage> {
       ),
     );
   }
+
+  List<Widget> _summary(BuildContext context, OngakuStrings strings) {
+    final current = listeningStatsMonthKey(DateTime.now());
+    final keys = {current, ...listeningStatsService.availableMonthKeys}.toList()
+      ..sort((a, b) => b.compareTo(a));
+    if (!keys.contains(_monthKey)) _monthKey = current;
+    final month = _month(_monthKey);
+    return [
+      if (keys.length > 1)
+        SliverToBoxAdapter(
+          child: _MonthChips(
+            keys: keys,
+            selected: _monthKey,
+            onSelected: _selectMonth,
+          ),
+        ),
+      SliverToBoxAdapter(
+        child: _ReplayCard(monthKey: _monthKey, month: month),
+      ),
+      if (month.isEmpty)
+        SliverToBoxAdapter(child: _Message(text: strings.statsEmpty))
+      else ...[
+        if (month.artists.isNotEmpty) ...[
+          SliverToBoxAdapter(
+            child: OngakuSectionTitle(title: strings.topArtists),
+          ),
+          SliverToBoxAdapter(child: _TopArtists(month: month)),
+        ],
+        SliverToBoxAdapter(child: OngakuSectionTitle(title: strings.topSongs)),
+        SliverToBoxAdapter(
+          child: _Card(
+            child: _TopSongs(
+              month: month,
+              title: formatMonthPeriodLabel(
+                Localizations.localeOf(context),
+                _monthKey,
+              ),
+              all: _allSongs,
+              onShowAll: () => setState(() => _allSongs = true),
+            ),
+          ),
+        ),
+      ],
+      if (keys.length > 1) ...[
+        SliverToBoxAdapter(
+          child: OngakuSectionTitle(title: strings.monthByMonth),
+        ),
+        SliverToBoxAdapter(
+          child: _Card(
+            child: _MonthBars(
+              minutes: {
+                for (final key in keys.take(12))
+                  key: monthDisplayMinutes(
+                    listeningStatsService.monthStats(key),
+                  ),
+              },
+              selected: _monthKey,
+              onSelected: _selectMonth,
+            ),
+          ),
+        ),
+      ],
+    ];
+  }
+}
+
+/// "Résumé" and "Historique", as one rounded control.
+class _Tabs extends StatelessWidget {
+  const _Tabs({required this.selected, required this.onSelected});
+
+  final _YouTab selected;
+  final ValueChanged<_YouTab> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = OngakuStrings.of(context);
+    final margin = ongakuPageMargin(context);
+    return Padding(
+      padding: EdgeInsets.fromLTRB(margin, 8, margin, 4),
+      child: SizedBox(
+        width: double.infinity,
+        child: SegmentedButton<_YouTab>(
+          showSelectedIcon: false,
+          segments: [
+            ButtonSegment(
+              value: _YouTab.summary,
+              icon: const Icon(FluentIcons.data_bar_vertical_24_regular),
+              label: Text(strings.statsSummary),
+            ),
+            ButtonSegment(
+              value: _YouTab.history,
+              icon: const Icon(FluentIcons.history_24_regular),
+              label: Text(strings.statsHistory),
+            ),
+          ],
+          selected: {selected},
+          onSelectionChanged: (s) => onSelected(s.first),
+        ),
+      ),
+    );
+  }
+}
+
+/// A rounded surface around a block of the page.
+class _Card extends StatelessWidget {
+  const _Card({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final margin = ongakuPageMargin(context);
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: margin),
+      child: ClipRSuperellipse(
+        borderRadius: BorderRadius.circular(16),
+        child: ColoredBox(
+          color: Theme.of(context).colorScheme.surfaceContainerLow,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(4, 10, 4, 12),
+            child: child,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The listening history (moved here from the home menu): play it all,
+/// shuffled or from a song, and clear it.
+class _History extends StatelessWidget {
+  const _History();
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = OngakuStrings.of(context);
+    final l10n = context.l10n!;
+    final colorScheme = Theme.of(context).colorScheme;
+    final margin = ongakuPageMargin(context);
+    return ValueListenableBuilder<List>(
+      valueListenable: userRecentlyPlayed,
+      builder: (context, songs, _) {
+        final list = songs.whereType<Map>().toList();
+        if (list.isEmpty) {
+          return SliverToBoxAdapter(
+            child: _Message(text: strings.historyEmpty),
+          );
+        }
+        final playlist = {'title': l10n.recentlyPlayed, 'list': list};
+        return SliverList.list(
+          children: [
+            Padding(
+              padding: EdgeInsets.fromLTRB(margin, 14, margin, 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: FilledButton.tonalIcon(
+                      onPressed: () => audioHandler.playPlaylistSong(
+                        playlist: playlist,
+                        songIndex: 0,
+                      ),
+                      icon: const Icon(FluentIcons.play_24_filled),
+                      label: Text(strings.historyPlay),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: FilledButton.tonalIcon(
+                      onPressed: () => audioHandler.addPlaylistToQueue(
+                        [...list]..shuffle(),
+                        replace: true,
+                        startIndex: 0,
+                      ),
+                      icon: const Icon(FluentIcons.arrow_shuffle_24_regular),
+                      label: Text(strings.shuffleMix),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.fromLTRB(margin, 4, margin, 6),
+              child: Text(
+                strings.songCount(list.length),
+                style: TextStyle(
+                  fontSize: 13,
+                  color: colorScheme.onSurface.withValues(alpha: 0.55),
+                ),
+              ),
+            ),
+            for (var i = 0; i < list.length; i++)
+              SongBar(
+                list[i],
+                true,
+                isRecentSong: true,
+                onPlay: () => audioHandler.playPlaylistSong(
+                  playlist: playlist,
+                  songIndex: i,
+                ),
+              ),
+            Padding(
+              padding: EdgeInsets.fromLTRB(margin, 16, margin, 0),
+              child: OngakuSettingsGroup(
+                title: '',
+                tint: const Color(0xFFFF3B30),
+                children: [
+                  OngakuSettingsRow(
+                    title: l10n.clearRecentlyPlayed,
+                    icon: FluentIcons.delete_24_regular,
+                    textColor: const Color(0xFFFF3B30),
+                    onTap: () => _confirmClear(
+                      context,
+                      l10n.clearRecentlyPlayedQuestion,
+                      () async {
+                        userRecentlyPlayed.value = [];
+                        await deleteData('user', 'recentlyPlayedSongs');
+                      },
+                      l10n.recentlyPlayedMsg,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// Asks before clearing, then says it is done.
+void _confirmClear(
+  BuildContext context,
+  String question,
+  Future<void> Function() onClear,
+  String done,
+) {
+  final l10n = context.l10n!;
+  showDialog<void>(
+    context: context,
+    builder: (dialogContext) => ConfirmationDialog(
+      confirmationMessage: question,
+      submitMessage: l10n.clear,
+      isDangerous: true,
+      onCancel: () => Navigator.of(dialogContext).pop(),
+      onSubmit: () async {
+        Navigator.of(dialogContext).pop();
+        await onClear();
+        if (context.mounted) showToast(context, '$done!');
+      },
+    ),
+  );
 }
 
 /// Months that have statistics, newest first.
@@ -638,13 +843,14 @@ class _Message extends StatelessWidget {
   }
 }
 
-/// Turns the listening statistics on or off (Musify's settings switch).
-class _StatsSwitch extends StatelessWidget {
-  const _StatsSwitch({required this.enabled});
+/// The statistics' own settings, at the bottom of the summary: record
+/// them or not (Musify's settings switch), and clear them.
+class _StatsSettings extends StatelessWidget {
+  const _StatsSettings({required this.enabled});
 
   final bool enabled;
 
-  Future<void> _set(BuildContext context, bool value) async {
+  Future<void> _set(bool value) async {
     // Same steps as Musify's settings page.
     if (!value) {
       audioHandler.resetListeningStatsSession(
@@ -662,86 +868,36 @@ class _StatsSwitch extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n!;
-    final colorScheme = Theme.of(context).colorScheme;
+    final strings = OngakuStrings.of(context);
     final margin = ongakuPageMargin(context);
     return Padding(
-      padding: EdgeInsets.fromLTRB(margin, 14, margin - 8, 0),
-      child: Row(
+      padding: EdgeInsets.fromLTRB(margin, 28, margin, 0),
+      child: OngakuSettingsGroup(
+        title: strings.statsSettings,
+        tint: Theme.of(context).colorScheme.primary,
         children: [
-          Expanded(
-            child: Text(
-              l10n.listeningStatsDescription,
-              style: TextStyle(
-                fontSize: 14,
-                color: colorScheme.onSurface.withValues(alpha: 0.6),
-              ),
+          OngakuSettingsRow(
+            title: strings.statsRecord,
+            icon: FluentIcons.data_bar_vertical_24_regular,
+            description: l10n.listeningStatsDescription,
+            trailing: Switch(value: enabled, onChanged: _set),
+            onTap: () => _set(!enabled),
+          ),
+          OngakuSettingsRow(
+            title: l10n.clearListeningStats,
+            icon: FluentIcons.delete_24_regular,
+            iconColor: const Color(0xFFFF3B30),
+            textColor: const Color(0xFFFF3B30),
+            onTap: () => _confirmClear(
+              context,
+              l10n.clearListeningStatsQuestion,
+              () async {
+                audioHandler.resetListeningStatsSession(flushStats: false);
+                await listeningStatsService.clearStats();
+                audioHandler.startListeningStatsSessionIfNeeded();
+              },
+              l10n.listeningStatsCleared,
             ),
-          ),
-          Switch(value: enabled, onChanged: (v) => _set(context, v)),
-        ],
-      ),
-    );
-  }
-}
-
-/// Clear the play history and the statistics, each after a question.
-class _ClearButtons extends StatelessWidget {
-  const _ClearButtons();
-
-  void _confirm(
-    BuildContext context,
-    String question,
-    Future<void> Function() onClear,
-    String done,
-  ) {
-    final l10n = context.l10n!;
-    showDialog<void>(
-      context: context,
-      builder: (dialogContext) => ConfirmationDialog(
-        confirmationMessage: question,
-        submitMessage: l10n.clear,
-        isDangerous: true,
-        onCancel: () => Navigator.of(dialogContext).pop(),
-        onSubmit: () async {
-          Navigator.of(dialogContext).pop();
-          await onClear();
-          if (context.mounted) showToast(context, '$done!');
-        },
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n!;
-    final colorScheme = Theme.of(context).colorScheme;
-    final margin = ongakuPageMargin(context);
-    Widget button(String label, VoidCallback onTap) => Align(
-      alignment: Alignment.centerLeft,
-      child: TextButton(
-        onPressed: onTap,
-        style: TextButton.styleFrom(foregroundColor: colorScheme.primary),
-        child: Text(label, style: const TextStyle(fontSize: 16)),
-      ),
-    );
-    return Padding(
-      padding: EdgeInsets.fromLTRB(margin - 12, 28, margin, 0),
-      child: Column(
-        children: [
-          button(
-            l10n.clearRecentlyPlayed,
-            () => _confirm(context, l10n.clearRecentlyPlayedQuestion, () async {
-              userRecentlyPlayed.value = [];
-              await deleteData('user', 'recentlyPlayedSongs');
-            }, l10n.recentlyPlayedMsg),
-          ),
-          button(
-            l10n.clearListeningStats,
-            () => _confirm(context, l10n.clearListeningStatsQuestion, () async {
-              audioHandler.resetListeningStatsSession(flushStats: false);
-              await listeningStatsService.clearStats();
-              audioHandler.startListeningStatsSessionIfNeeded();
-            }, l10n.listeningStatsCleared),
           ),
         ],
       ),

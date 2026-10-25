@@ -131,22 +131,45 @@ class OngakuYouButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return OngakuCircleButton(
+      icon: FluentIcons.clock_24_regular,
+      tooltip: OngakuStrings.of(context).statsTitle,
+      onTap: () => context.push('/home/you'),
+    );
+  }
+}
+
+/// A round button in the theme's colour, next to a large title.
+class OngakuCircleButton extends StatelessWidget {
+  const OngakuCircleButton({
+    super.key,
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     return Tooltip(
-      message: OngakuStrings.of(context).statsTitle,
-      child: OngakuPressable(
-        onTap: () => context.push('/home/you'),
-        child: Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: colorScheme.primary.withValues(alpha: 0.16),
-          ),
-          child: Icon(
-            FluentIcons.clock_24_regular,
-            size: 26,
-            color: colorScheme.primary,
+      message: tooltip,
+      child: Semantics(
+        button: true,
+        label: tooltip,
+        child: OngakuPressable(
+          onTap: onTap,
+          child: Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: colorScheme.primary.withValues(alpha: 0.16),
+            ),
+            child: Icon(icon, size: 24, color: colorScheme.primary),
           ),
         ),
       ),

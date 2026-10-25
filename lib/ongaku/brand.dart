@@ -34,7 +34,10 @@ const apkDownloadFilename = '$appName.apk';
 /// fixes only, 1.x.0 for a visible feature, x.0 for a redesign. Keep it in
 /// step with `version:` in pubspec.yaml, whose version code only goes up
 /// (1.0.0+1300 follows the test builds v1 to v12, codes 100 to 1200).
-const ongakuVersion = '1.2';
+const ongakuVersion = '1.3';
+
+/// The version code of pubspec.yaml, for the logs report.
+const ongakuVersionCode = 1330;
 
 /// Ongaku's author, credited first on the About and sponsor sections.
 const ongakuAuthor = 'Orikami';

@@ -17,6 +17,7 @@ import 'package:musify/ongaku/screens/ongaku_all_songs_page.dart';
 import 'package:musify/ongaku/screens/ongaku_hearing_test_page.dart';
 import 'package:musify/ongaku/screens/ongaku_import_playlist_page.dart';
 import 'package:musify/ongaku/screens/ongaku_library_page.dart';
+import 'package:musify/ongaku/screens/ongaku_logs_page.dart';
 import 'package:musify/ongaku/screens/ongaku_sound_page.dart';
 import 'package:musify/ongaku/screens/ongaku_you_page.dart';
 import 'package:musify/screens/library_page.dart';
@@ -120,8 +121,14 @@ List<GoRoute> ongakuImportRoutes(PushPageBuilder pushPage) => [
     ),
 ];
 
-/// Settings > Son calibré, with its acoustic and hearing tests.
+/// Settings > Son calibré, with its acoustic and hearing tests, and
+/// Settings > Exporter les journaux.
 List<GoRoute> ongakuSoundRoutes(PushPageBuilder pushPage) => [
+  GoRoute(
+    path: 'logs',
+    pageBuilder: (context, state) =>
+        pushPage(child: const OngakuLogsPage(), state: state),
+  ),
   GoRoute(
     path: 'sound',
     pageBuilder: (context, state) =>

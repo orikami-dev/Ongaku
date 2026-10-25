@@ -22,6 +22,7 @@
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:musify/extensions/l10n.dart';
+import 'package:musify/ongaku/services/ongaku_logs.dart';
 
 class Logger {
   String _logs = '';
@@ -41,6 +42,8 @@ class Logger {
 
     debugPrint(logMessage);
     _logs += '$logMessage\n';
+    // Ongaku: also kept for "Exporter les journaux".
+    OngakuJournal.add(logMessage);
     logCount.value++;
   }
 

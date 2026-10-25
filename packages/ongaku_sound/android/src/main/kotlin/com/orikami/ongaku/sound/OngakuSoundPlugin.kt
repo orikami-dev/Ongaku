@@ -12,12 +12,14 @@ package com.orikami.ongaku.sound
 
 import android.app.UiModeManager
 import android.content.BroadcastReceiver
+import android.content.ClipData
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.content.res.Configuration
+import android.database.ContentObserver
 import android.media.AudioAttributes
 import android.media.AudioDeviceCallback
 import android.media.AudioDeviceInfo
@@ -32,10 +34,16 @@ import android.media.audiofx.Visualizer
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.net.Uri
+import android.provider.Settings
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
+import java.io.File
+import java.io.PrintWriter
+import java.io.StringWriter
+import java.security.MessageDigest
 import kotlin.math.PI
 import kotlin.math.exp
 import kotlin.math.ln
@@ -52,6 +60,27 @@ import kotlin.math.sqrt
  * stereo widening, the current output (speaker, Bluetooth, wired, car),
  * a microphone measurement of a sine sweep, test tones and a live spectrum.
  */
+private const val CRASH_FILE = "ongaku-crash.txt"
+private var crashHandlerInstalled = false
+
+/** Keeps the trace of a crash that closes the app, for the next start. */
+private fun installCrashHandler(context: Context) {
+    if (crashHandlerInstalled) return
+    crashHandlerInstalled = true
+    val previous = Thread.getDefaultUncaughtExceptionHandler()
+    val dir = context.filesDir
+    Thread.setDefaultUncaughtExceptionHandler { thread, error ->
+        try {
+            val trace = StringWriter().also { error.printStackTrace(PrintWriter(it)) }
+            File(dir, CRASH_FILE).writeText(
+                "${java.util.Date()} (${thread.name})\n$trace",
+            )
+        } catch (_: Exception) {
+        }
+        previous?.uncaughtException(thread, error)
+    }
+}
+
 class OngakuSoundPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
     companion object {
         /** Band centres in Hz, shared with the Dart side. */
@@ -66,6 +95,8 @@ class OngakuSoundPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
     private lateinit var methods: MethodChannel
     private lateinit var routes: EventChannel
     private lateinit var spectrum: EventChannel
+    private lateinit var volume: EventChannel
+    private var volumeObserver: ContentObserver? = null
     private val main = Handler(Looper.getMainLooper())
 
     private var sessionId = 0
@@ -90,6 +121,7 @@ class OngakuSoundPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         context = binding.applicationContext
+        installCrashHandler(context)
         methods = MethodChannel(binding.binaryMessenger, "ongaku_sound")
         methods.setMethodCallHandler(this)
         routes = EventChannel(binding.binaryMessenger, "ongaku_sound/route")
@@ -130,6 +162,35 @@ class OngakuSoundPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 stopVisualizer()
             }
         })
+
+        // The phone's media volume (not the player's, which the smooth
+        // transitions move), for the player's volume bar.
+        volume = EventChannel(binding.binaryMessenger, "ongaku_sound/volume")
+        volume.setStreamHandler(object : EventChannel.StreamHandler {
+            override fun onListen(arguments: Any?, events: EventChannel.EventSink) {
+                var last = -1.0
+                val observer = object : ContentObserver(main) {
+                    override fun onChange(selfChange: Boolean) {
+                        val now = mediaVolume()
+                        if (now != last) {
+                            last = now
+                            events.success(now)
+                        }
+                    }
+                }
+                volumeObserver = observer
+                context.contentResolver.registerContentObserver(
+                    Settings.System.CONTENT_URI, true, observer,
+                )
+                last = mediaVolume()
+                events.success(last)
+            }
+
+            override fun onCancel(arguments: Any?) {
+                volumeObserver?.let { context.contentResolver.unregisterContentObserver(it) }
+                volumeObserver = null
+            }
+        })
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
@@ -137,6 +198,8 @@ class OngakuSoundPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         for (id in effects.keys.toList()) release(id)
         stopVisualizer()
         tone?.release()
+        volumeObserver?.let { context.contentResolver.unregisterContentObserver(it) }
+        volumeObserver = null
     }
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
@@ -207,6 +270,37 @@ class OngakuSoundPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 "setLauncherIcon" -> result.success(
                     setLauncherIcon(call.argument<String>("palette") ?: "ongaku"),
                 )
+                // Also not sound: what "Exporter les journaux" needs.
+                "deviceInfo" -> result.success(deviceInfo())
+                "lastCrash" -> result.success(takeLastCrash())
+                "sendLogs" -> result.success(
+                    sendLogs(
+                        call.argument<String>("to") ?: "",
+                        call.argument<String>("subject") ?: "",
+                        call.argument<String>("text") ?: "",
+                        call.argument<String>("fileName") ?: "journaux.txt",
+                        call.argument<String>("content") ?: "",
+                    ),
+                )
+                "mediaVolume" -> result.success(mediaVolume())
+                "setMediaVolume" -> {
+                    setMediaVolume(call.argument<Double>("value") ?: 0.0)
+                    result.success(null)
+                }
+                // In-app updates: what the downloaded APK is, and its install.
+                "apkInfo" -> background(result) { apkInfo(call.argument<String>("path") ?: "") }
+                "canInstallApks" -> result.success(
+                    Build.VERSION.SDK_INT < 26 || context.packageManager.canRequestPackageInstalls(),
+                )
+                "allowInstallApks" -> {
+                    val intent = Intent(
+                        Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                        Uri.parse("package:${context.packageName}"),
+                    ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    context.startActivity(intent)
+                    result.success(null)
+                }
+                "installApk" -> result.success(installApk(call.argument<String>("fileName") ?: ""))
                 "setOpeningMode" -> result.success(
                     setOpeningMode(call.argument<String>("mode") ?: "system"),
                 )
@@ -553,6 +647,153 @@ class OngakuSoundPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             energy[band] += re * re + im * im
         }
         return DoubleArray(CENTRES.size) { 10 * log10(max(energy[it], 1e-9)) }
+    }
+
+    // --- Logs export --------------------------------------------------------
+
+    /** Android version and generic model, for the report header. The names
+     * the user gave the phone and its accessories are returned only so the
+     * report can remove them. */
+    private fun deviceInfo(): Map<String, Any> {
+        val names = mutableListOf<String>()
+        try {
+            Settings.Global.getString(context.contentResolver, Settings.Global.DEVICE_NAME)
+                ?.let { names.add(it) }
+        } catch (_: Exception) {
+        }
+        try {
+            for (d in audioManager.getDevices(AudioManager.GET_DEVICES_ALL)) {
+                val n = d.productName?.toString()
+                if (!n.isNullOrBlank()) names.add(n)
+            }
+        } catch (_: Exception) {
+        }
+        return mapOf(
+            "android" to Build.VERSION.RELEASE,
+            "sdk" to Build.VERSION.SDK_INT,
+            "model" to Build.MODEL,
+            "maker" to Build.MANUFACTURER,
+            "names" to names.distinct(),
+        )
+    }
+
+    /** The trace of the last crash, once (the file is removed). */
+    private fun takeLastCrash(): String? {
+        val file = File(context.filesDir, CRASH_FILE)
+        if (!file.exists()) return null
+        return try {
+            file.readText()
+        } catch (_: Exception) {
+            null
+        } finally {
+            file.delete()
+        }
+    }
+
+    /**
+     * Opens the phone's mail app with the report attached; the user sends it
+     * there. The file goes in share_plus's shared cache folder, whose
+     * provider is already declared.
+     */
+    private fun mediaVolume(): Double {
+        val max = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+        if (max <= 0) return 0.0
+        return audioManager.getStreamVolume(AudioManager.STREAM_MUSIC).toDouble() / max
+    }
+
+    private fun setMediaVolume(value: Double) {
+        val max = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+        val step = Math.round(value.coerceIn(0.0, 1.0) * max).toInt()
+        if (step != audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)) {
+            audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, step, 0)
+        }
+    }
+
+    private fun sha256(bytes: ByteArray): String =
+        MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+
+    @Suppress("DEPRECATION")
+    private fun signers(info: android.content.pm.PackageInfo?): List<String> {
+        if (info == null) return emptyList()
+        val signatures = if (Build.VERSION.SDK_INT >= 28) {
+            val signing = info.signingInfo ?: return emptyList()
+            if (signing.hasMultipleSigners()) signing.apkContentsSigners else signing.signingCertificateHistory
+        } else {
+            info.signatures
+        }
+        return signatures?.map { sha256(it.toByteArray()) } ?: emptyList()
+    }
+
+    /**
+     * The downloaded APK: its package, version, file hash and signing
+     * certificates, next to the installed app's own certificates.
+     */
+    @Suppress("DEPRECATION")
+    private fun apkInfo(path: String): Map<String, Any?> {
+        val pm = context.packageManager
+        val flags = if (Build.VERSION.SDK_INT >= 28) PackageManager.GET_SIGNING_CERTIFICATES else PackageManager.GET_SIGNATURES
+        val file = File(path)
+        val archive = pm.getPackageArchiveInfo(path, flags)
+        val installed = pm.getPackageInfo(context.packageName, flags)
+        val digest = MessageDigest.getInstance("SHA-256")
+        file.inputStream().use { input ->
+            val buffer = ByteArray(1 shl 16)
+            while (true) {
+                val n = input.read(buffer)
+                if (n < 0) break
+                digest.update(buffer, 0, n)
+            }
+        }
+        val versionCode = if (archive == null) null else if (Build.VERSION.SDK_INT >= 28) archive.longVersionCode else archive.versionCode.toLong()
+        return mapOf(
+            "package" to archive?.packageName,
+            "versionCode" to versionCode,
+            "sha256" to digest.digest().joinToString("") { "%02x".format(it) },
+            "signers" to signers(archive),
+            "installedSigners" to signers(installed),
+            "installedPackage" to context.packageName,
+        )
+    }
+
+    /** Hands the APK (in cache/share_plus) to Android's installer, which asks. */
+    private fun installApk(fileName: String): Boolean {
+        val uri = Uri.parse("content://${context.packageName}.flutter.share_provider/cache/$fileName")
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(uri, "application/vnd.android.package-archive")
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        return try {
+            context.startActivity(intent)
+            true
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun sendLogs(to: String, subject: String, text: String, fileName: String, content: String): Boolean {
+        val dir = File(context.cacheDir, "share_plus").apply { mkdirs() }
+        File(dir, fileName).writeText(content)
+        val uri = Uri.parse("content://${context.packageName}.flutter.share_provider/cache/$fileName")
+        val send = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_EMAIL, arrayOf(to))
+            putExtra(Intent.EXTRA_SUBJECT, subject)
+            putExtra(Intent.EXTRA_TEXT, text)
+            putExtra(Intent.EXTRA_STREAM, uri)
+            clipData = ClipData.newRawUri(fileName, uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            // Only mail apps.
+            selector = Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:"))
+        }
+        return try {
+            val chooser = Intent.createChooser(send, subject).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            context.startActivity(chooser)
+            true
+        } catch (_: Exception) {
+            false
+        }
     }
 
     /**

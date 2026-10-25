@@ -68,6 +68,11 @@ class _OngakuHomePageState extends State<OngakuHomePage> {
     super.dispose();
   }
 
+  void _refresh() {
+    _refreshRecommendedSongs();
+    showToast(context, OngakuStrings.of(context).refreshed);
+  }
+
   void _refreshRecommendedSongs() {
     if (!mounted) return;
     setState(() => _recommendedSongsFuture = getRecommendedSongs());
@@ -120,7 +125,7 @@ class _OngakuHomePageState extends State<OngakuHomePage> {
                   child: OngakuLargeTitle(
                     title: l10n.home,
                     includeStatusBar: false,
-                    trailing: const OngakuYouButton(),
+                    trailing: _TitleButtons(onRefresh: _refresh),
                   ),
                 ),
                 SliverToBoxAdapter(child: _announcement(context)),
@@ -161,14 +166,7 @@ class _OngakuHomePageState extends State<OngakuHomePage> {
               ],
             ),
           ),
-          _TopBar(
-            scrolled: _scrolled,
-            height: topInset + barHeight,
-            onRefresh: () {
-              _refreshRecommendedSongs();
-              showToast(context, OngakuStrings.of(context).refreshed);
-            },
-          ),
+          _TopBar(scrolled: _scrolled, height: topInset + barHeight),
         ],
       ),
     );
@@ -680,21 +678,14 @@ class _OngakuHomePageState extends State<OngakuHomePage> {
   }
 }
 
-/// Top bar: transparent with the menu button at first, then the small page
-/// title on the page colour once the large title has scrolled away.
 /// The home page's top bar: the app's logo (in the theme's colours) and
-/// name, and the ⋮ menu. It stays put; the page fades out under it as it
+/// name. It stays put; the page fades out under it as it
 /// scrolls, instead of a solid bar following the scroll.
 class _TopBar extends StatelessWidget {
-  const _TopBar({
-    required this.scrolled,
-    required this.height,
-    required this.onRefresh,
-  });
+  const _TopBar({required this.scrolled, required this.height});
 
   final ValueNotifier<bool> scrolled;
   final double height;
-  final VoidCallback onRefresh;
 
   @override
   Widget build(BuildContext context) {
@@ -765,7 +756,6 @@ class _TopBar extends StatelessWidget {
                     ),
                   ),
                 ),
-                _HomeMenu(onRefresh: onRefresh),
               ],
             ),
           ),
@@ -775,75 +765,46 @@ class _TopBar extends StatelessWidget {
   }
 }
 
-enum _MenuAction { refresh, history, mix }
+/// Plays the liked songs and the local files, shuffled.
+Future<void> _playMix(BuildContext context) async {
+  final seen = <String>{};
+  final songs = <Map>[
+    for (final song in [...userLikedSongsList.value, ...localSongs.value])
+      if (song is Map && seen.add(song['ytid']?.toString() ?? '')) song,
+  ]..shuffle();
+  if (songs.isEmpty) {
+    showToast(context, OngakuStrings.of(context).nothingToMix);
+    return;
+  }
+  await audioHandler.addPlaylistToQueue(songs, replace: true, startIndex: 0);
+}
 
-/// The "⋮" menu of the home page: fresh recommendations, the listening
-/// history and a shuffled mix of the liked songs and local files.
-class _HomeMenu extends StatelessWidget {
-  const _HomeMenu({required this.onRefresh});
+/// The buttons next to the large title: fresh recommendations, a shuffled
+/// mix, then the listening statistics.
+class _TitleButtons extends StatelessWidget {
+  const _TitleButtons({required this.onRefresh});
 
   final VoidCallback onRefresh;
-
-  Future<void> _playMix(BuildContext context) async {
-    final seen = <String>{};
-    final songs = <Map>[
-      for (final song in [...userLikedSongsList.value, ...localSongs.value])
-        if (song is Map && seen.add(song['ytid']?.toString() ?? '')) song,
-    ]..shuffle();
-    if (songs.isEmpty) {
-      showToast(context, OngakuStrings.of(context).nothingToMix);
-      return;
-    }
-    await audioHandler.addPlaylistToQueue(songs, replace: true, startIndex: 0);
-  }
 
   @override
   Widget build(BuildContext context) {
     final strings = OngakuStrings.of(context);
-    return PopupMenuButton<_MenuAction>(
-      icon: Icon(
-        Icons.more_vert_rounded,
-        color: Theme.of(context).colorScheme.primary,
-      ),
-      onSelected: (action) => switch (action) {
-        _MenuAction.refresh => onRefresh(),
-        _MenuAction.history => context.push('/home/recents'),
-        _MenuAction.mix => _playMix(context),
-      },
-      itemBuilder: (context) => [
-        PopupMenuItem(
-          value: _MenuAction.refresh,
-          child: _MenuRow(
-            Icons.refresh_rounded,
-            strings.refreshRecommendations,
-          ),
-        ),
-        PopupMenuItem(
-          value: _MenuAction.history,
-          child: _MenuRow(Icons.history_rounded, strings.listeningHistory),
-        ),
-        PopupMenuItem(
-          value: _MenuAction.mix,
-          child: _MenuRow(Icons.shuffle_rounded, strings.shuffleMix),
-        ),
-      ],
-    );
-  }
-}
-
-class _MenuRow extends StatelessWidget {
-  const _MenuRow(this.icon, this.label);
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 20, color: Theme.of(context).colorScheme.primary),
-        const SizedBox(width: 12),
-        Text(label),
+        OngakuCircleButton(
+          icon: FluentIcons.arrow_clockwise_24_regular,
+          tooltip: strings.refreshRecommendations,
+          onTap: onRefresh,
+        ),
+        const SizedBox(width: 8),
+        OngakuCircleButton(
+          icon: FluentIcons.arrow_shuffle_24_regular,
+          tooltip: strings.shuffleMix,
+          onTap: () => _playMix(context),
+        ),
+        const SizedBox(width: 8),
+        const OngakuYouButton(),
       ],
     );
   }
