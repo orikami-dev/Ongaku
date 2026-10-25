@@ -2,7 +2,7 @@
 
 Studio : ORIKAMI.
 
-## 1.0 (bientôt)
+## 1.0
 
 - Première version publique d'Ongaku.
 - Accueil : logo et nom de l'app en haut, barre du haut qui reste en place et s'efface.

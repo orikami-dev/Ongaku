@@ -6,7 +6,10 @@
 <p align="center"><b>Écoute. Respire.</b><br>par ORIKAMI</p>
 
 <p align="center">
-  🚧 <b>La version 1.0 arrive bientôt.</b><br>
+  <a href="https://github.com/orikami-dev/ongaku/releases/latest">⬇️ <b>Télécharger la dernière version</b></a>
+  ·
+  <a href="https://github.com/orikami-dev/ongaku/releases">📦 Toutes les versions</a>
+  ·
   <a href="CHANGELOG.md">📝 Journal des versions</a>
 </p>
 
@@ -62,7 +65,7 @@ Chaque thème a ses couleurs et son icône d'app assortie.
 
 | Version | Ce qu'elle a apporté |
 |---|---|
-| 1.0 *(bientôt)* | Première version publique : lecteur partagé sur les pliants, interface à la taille de l'écran, Android Auto, mises à jour intégrées. |
+| [1.0](https://github.com/orikami-dev/ongaku/releases/tag/v1.0) | Première version publique : lecteur partagé sur les pliants, interface à la taille de l'écran, Android Auto, mises à jour intégrées. |
 
 ## 🛠️ Le dépôt
 
