@@ -155,7 +155,7 @@ the Android label, and the Linux/Windows titles.
 * Sound layers are accent pills (the chips could not be chosen on the
   phone).
 * "Écouter la différence" on the test results and on the output card:
-  play the demo loop (`assets/sounds/ongaku_demo.ogg`, made by
+  play the demo loop of the current theme (`assets/sounds/demo_<theme>.ogg`, made by
   `scripts/make_demo_sample.py`) or the current song, switching between
   Avant (flat) and Après (the correction), via `OngakuSoundEngine.preview`.
 * Musify's equalizer is gone from the settings and switched off at start,

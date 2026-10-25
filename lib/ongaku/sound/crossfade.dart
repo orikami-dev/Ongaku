@@ -29,8 +29,9 @@ import 'package:ongaku_sound/ongaku_sound.dart';
 /// is thus loaded before the fade: at the fade point it goes back to its
 /// start and the two volumes cross, with no gap if the network is slow.
 
-/// Seconds the next song gets to load before the fade.
-const _lead = Duration(seconds: 5);
+/// Seconds the next song gets to load before the fade (finding its stream
+/// can take a few seconds on a slow network).
+const _lead = Duration(seconds: 8);
 
 class OngakuCrossfade {
   OngakuCrossfade._();
@@ -89,11 +90,9 @@ class OngakuCrossfade {
     if (crossfadeMode.value == CrossfadeMode.manual) {
       return math.min(crossfadeSeconds.value, seconds / 4);
     }
-    // Auto: an album played in order keeps its own transitions.
-    final album = current.album ?? '';
-    if (album.isNotEmpty && album == next.album) return 0;
-    if (seconds < 90) return 3;
-    return 6;
+    // Auto: long enough for the two songs to really mix.
+    if (seconds < 90) return 4;
+    return 8;
   }
 
   static bool _eligible() {
@@ -157,7 +156,7 @@ class OngakuCrossfade {
 
     // Load the ending song in the second player a bit before.
     final prepareFrom = crossfadeMode.value == CrossfadeMode.auto
-        ? const Duration(seconds: 26)
+        ? const Duration(seconds: 32)
         : Duration(milliseconds: (fade * 1000).round()) + _lead + _lead;
     if (remaining <= prepareFrom && _preparedFor != current.id) {
       _preparedFor = current.id;
@@ -223,16 +222,21 @@ class OngakuCrossfade {
       await _main.setVolume(0);
       await _handler!.skipToNext();
 
-      // Equal-power crossfade, from the fade point and once the next song
-      // really plays; it waits muted until then and restarts from its top.
+      // The ending song fades out on its own clock, from the fade point to
+      // its last second, so it never stops short even if the next song is
+      // late. The next song fades in from the moment it really plays,
+      // restarted from its top: the two overlap for the whole fade.
       final total = (fadeSeconds * 1000).round();
+      final end = ghost.duration ?? (position + Duration(milliseconds: total));
+      final outFrom = fadeAt ?? position;
+      final outLength = math.max(1, (end - outFrom).inMilliseconds);
       final started = DateTime.now();
       DateTime? nextPlaying;
       progress.value = 0;
       while (_fading) {
-        await Future<void>.delayed(const Duration(milliseconds: 50));
-        final atFade = fadeAt == null || ghost.position >= fadeAt;
+        await Future<void>.delayed(const Duration(milliseconds: 40));
         final ghostDone = ghost.processingState == ProcessingState.completed;
+        final atFade = ghost.position >= outFrom;
         if (nextPlaying == null &&
             (atFade || ghostDone) &&
             _main.playing &&
@@ -243,16 +247,24 @@ class OngakuCrossfade {
           nextPlaying = DateTime.now();
           _switching = false;
         }
-        // If the next song is slow to start, the ending one keeps playing.
+        final out = ghostDone
+            ? 1.0
+            : ((ghost.position - outFrom).inMilliseconds / outLength).clamp(
+                0.0,
+                1.0,
+              );
         final elapsed = nextPlaying == null
             ? 0
             : DateTime.now().difference(nextPlaying).inMilliseconds;
-        final t = (elapsed / total).clamp(0.0, 1.0);
-        progress.value = t;
-        await ghost.setVolume(base * math.cos(t * math.pi / 2));
-        await _main.setVolume(base * math.sin(t * math.pi / 2));
+        final into = (elapsed / total).clamp(0.0, 1.0);
+        progress.value = into;
+        await ghost.setVolume(base * ongakuFadeOut(out));
+        await _main.setVolume(base * ongakuFadeIn(into));
         final waited = DateTime.now().difference(started).inMilliseconds;
-        if (t >= 1 || waited > total + _lead.inMilliseconds + 15000) break;
+        if ((into >= 1 && (out >= 1 || ghostDone)) ||
+            waited > total + _lead.inMilliseconds + 20000) {
+          break;
+        }
       }
       await _main.setVolume(base);
     } catch (e) {
@@ -284,4 +296,18 @@ class OngakuCrossfade {
       if (session != null) await OngakuSound.detachExtra(session);
     } catch (_) {}
   }
+}
+
+/// Volume of the ending song along its fade (0 to 1): equal power, so the
+/// mix keeps the same loudness, with a soft start.
+double ongakuFadeOut(double t) {
+  final u = t.clamp(0.0, 1.0);
+  return math.cos(u * u * (3 - 2 * u) * math.pi / 2);
+}
+
+/// Volume of the next song along its fade (0 to 1): rises early, so both
+/// songs are clearly heard together in the middle.
+double ongakuFadeIn(double t) {
+  final u = t.clamp(0.0, 1.0);
+  return math.sin(u * math.pi / 2);
 }

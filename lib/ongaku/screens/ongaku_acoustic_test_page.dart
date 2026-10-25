@@ -27,6 +27,9 @@ enum _Step { intro, checking, measuring, analysing, result, failed }
 /// Above this ambient level (dBFS) the room is too noisy to measure.
 const _noiseLimit = -45.0;
 
+/// Sweeps played per measurement.
+const _sweeps = 3;
+
 MeasureResult _analyse(SweepRecording r) => analyseSweep(
   // The lead before the sweep is kept: it tells the noise level.
   recording: r.samples,
@@ -75,9 +78,16 @@ class _OngakuAcousticTestPageState extends State<OngakuAcousticTestPage> {
         return;
       }
       setState(() => _step = _Step.measuring);
-      final recording = await OngakuSound.measure();
-      setState(() => _step = _Step.analysing);
-      final result = await compute(_analyse, recording);
+      // Three sweeps, combined band by band: one disturbed sweep no longer
+      // spoils the measurement.
+      final results = <MeasureResult>[];
+      for (var i = 0; i < _sweeps; i++) {
+        final recording = await OngakuSound.measure();
+        if (!mounted) return;
+        if (i == _sweeps - 1) setState(() => _step = _Step.analysing);
+        results.add(await compute(_analyse, recording));
+      }
+      final result = combineMeasurements(results);
       if (!mounted) return;
       if (result.error != null) {
         setState(() {
@@ -90,7 +100,10 @@ class _OngakuAcousticTestPageState extends State<OngakuAcousticTestPage> {
       }
       setState(() {
         _response = result.response;
-        _correction = correctionFromResponse(result.response);
+        _correction = correctionFromResponse(
+          result.response,
+          phoneSpeaker: _route.type == OutputType.speaker,
+        );
         _step = _Step.result;
       });
     } catch (e, stackTrace) {

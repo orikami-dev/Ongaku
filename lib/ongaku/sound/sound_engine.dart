@@ -22,6 +22,9 @@ import 'package:permission_handler/permission_handler.dart';
 /// Applies the calibrated sound: the profile of the output in use (phone
 /// speaker, earbuds, car with Android Auto) plus the chosen layer, on the
 /// player's audio session. In Auto, the layer follows the music.
+/// Below this level (dB, from the 8-bit capture) a frame is near silence.
+const _quietFrame = 12.0;
+
 class OngakuSoundEngine {
   OngakuSoundEngine._();
 
@@ -196,6 +199,19 @@ class OngakuSoundEngine {
       for (var i = 0; i < raw.length; i++)
         raw[i] - (enabled && i < _applied.length ? _applied[i] : 0),
     ];
+    final total = levels.fold<double>(
+      0,
+      (sum, l) => sum + math.pow(10, l / 10),
+    );
+    final db = 10 * math.log(total + 1e-9) / math.ln10;
+    loudness.value = loudness.value == null
+        ? db
+        : loudness.value! * 0.7 + db * 0.3;
+
+    // Silence or a very quiet moment (a gap, a fade) says nothing about the
+    // style: it no longer pulls the average and the beat towards "quiet".
+    if (db < _quietFrame) return;
+
     _frames++;
     // About 4 frames a second: a 5-second average, quicker at the start
     // of a song so Auto settles within a few seconds.
@@ -207,15 +223,6 @@ class OngakuSoundEngine {
             for (var i = 0; i < levels.length; i++)
               average[i] * keep + levels[i] * (1 - keep),
           ];
-    final total = levels.fold<double>(
-      0,
-      (sum, l) => sum + math.pow(10, l / 10),
-    );
-    final db = 10 * math.log(total + 1e-9) / math.ln10;
-    loudness.value = loudness.value == null
-        ? db
-        : loudness.value! * 0.7 + db * 0.3;
-
     final mean = _loudMean;
     _loudMean = mean == null ? db : mean * 0.95 + db * 0.05;
     if (mean != null) {
