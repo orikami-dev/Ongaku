@@ -31,7 +31,7 @@ Ongaku est un lecteur de musique Android gratuit et sans publicité, au style Ap
 | 🔊 **Son calibré** | Un réglage par sortie (haut-parleur, écouteurs, voiture), avec test acoustique ou test d'audition. |
 | 🌙 **Mode doux** | Fondu enchaîné entre les titres. |
 | 🚗 **Android Auto** | Tes onglets et ta musique en voiture. |
-| 🔄 **Mises à jour intégrées** | Les nouvelles versions sont proposées directement dans l'app. |
+| 🔄 **Mises à jour automatiques** | Les nouvelles versions se téléchargent seules, vérifiées avant l'installation. |
 
 ## 🎨 Quatre thèmes
 
@@ -54,7 +54,9 @@ Chaque thème a ses couleurs et son icône d'app assortie.
 - 📖 Sur un pliant à moitié ouvert, le lecteur se partage : pochette ou paroles en haut, commandes et file d'attente en bas.
 - 🔤 « Tous les titres » avec index alphabétique.
 - 📥 Import de playlists Spotify, Deezer et Apple Music, avec nom, pochette et tous les titres.
-- 📊 Replay : tes statistiques d'écoute.
+- 📊 Statistiques d'écoute : résumé et historique.
+- 👆 Gestes : glisse la pochette pour changer de titre, glisse un titre pour l'aimer.
+- 📚 Bibliothèque façon Apple Music, avec épingles et catégories à ton goût.
 - 🚫 Sans publicité, sans abonnement, SponsorBlock intégré.
 
 <p align="center">
@@ -65,6 +67,7 @@ Chaque thème a ses couleurs et son icône d'app assortie.
 
 | Version | Ce qu'elle a apporté |
 |---|---|
+| [1.3.0](https://github.com/orikami-dev/ongaku/releases/tag/v1.3.0) | Bibliothèque façon Apple Music, gestes dans le lecteur, statistiques refaites, mises à jour automatiques. |
 | [1.0](https://github.com/orikami-dev/ongaku/releases/tag/v1.0) | Première version publique : lecteur partagé sur les pliants, interface à la taille de l'écran, Android Auto, mises à jour intégrées. |
 
 ## 🛠️ Le dépôt
