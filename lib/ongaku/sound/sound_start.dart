@@ -10,6 +10,7 @@
 
 import 'dart:async';
 
+import 'package:musify/ongaku/services/ongaku_logs.dart';
 import 'package:musify/ongaku/sound/crossfade.dart';
 import 'package:musify/ongaku/sound/sound_engine.dart';
 import 'package:musify/services/audio_service.dart';
@@ -26,6 +27,7 @@ void ongakuStartSound(MusifyAudioHandler handler) {
     unawaited(addOrUpdateData<bool>('settings', 'equalizerEnabled', false));
     unawaited(handler.setEqualizerEnabled(false));
   }
+  OngakuJournal.watch(handler);
   unawaited(OngakuSoundEngine.start(handler));
   OngakuCrossfade.start(handler);
 }

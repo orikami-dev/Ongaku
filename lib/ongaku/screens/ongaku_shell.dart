@@ -14,6 +14,7 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:musify/extensions/l10n.dart';
 import 'package:musify/main.dart';
+import 'package:musify/ongaku/screens/ongaku_logs_page.dart';
 import 'package:musify/ongaku/theme/ongaku_motion.dart';
 import 'package:musify/ongaku/widgets/ongaku_mini_player.dart';
 import 'package:musify/services/settings_manager.dart';
@@ -58,6 +59,15 @@ class _OngakuShellState extends State<OngakuShell> {
   static const _searchIndex = 1;
   static const _libraryIndex = 2;
   static const _settingsIndex = 3;
+
+  @override
+  void initState() {
+    super.initState();
+    // After a crash that closed the app, offer to export the logs.
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      if (mounted) ongakuOfferLogsAfterCrash(context);
+    });
+  }
 
   @override
   void didChangeDependencies() {

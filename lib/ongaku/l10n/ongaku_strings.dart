@@ -89,6 +89,32 @@ class OngakuStrings {
   String get importErrNetwork => _t('importErrNetwork');
   String get importErrFile => _t('importErrFile');
   String get recentlyPlayed => _t('recentlyPlayed');
+  String get updateRefused => _t('updateRefused');
+  String get updateAllow => _t('updateAllow');
+  String updateReady(String version) =>
+      _t('updateReady').replaceAll('{version}', version);
+  String get updateChecked => _t('updateChecked');
+  String get updateLater => _t('updateLater');
+  String get updateInstall => _t('updateInstall');
+  String get updateInstallFailed => _t('updateInstallFailed');
+  String get statsSummary => _t('statsSummary');
+  String get statsHistory => _t('statsHistory');
+  String get statsSettings => _t('statsSettings');
+  String get statsRecord => _t('statsRecord');
+  String get historyEmpty => _t('historyEmpty');
+  String get historyPlay => _t('historyPlay');
+  String get logsTitle => _t('logsTitle');
+  String get logsInfo => _t('logsInfo');
+  String get logsDescribe => _t('logsDescribe');
+  String get logsCancel => _t('logsCancel');
+  String get logsCopy => _t('logsCopy');
+  String get logsSend => _t('logsSend');
+  String get logsMailBody => _t('logsMailBody');
+  String get logsNoMailApp => _t('logsNoMailApp');
+  String get logsCopied => _t('logsCopied');
+  String get logsAfterCrash => _t('logsAfterCrash');
+  String get logsExport => _t('logsExport');
+  String get catHelp => _t('catHelp');
   String get recentSearches => _t('recentSearches');
   String get clear => _t('clear');
   String get statsTitle => _t('statsTitle');
@@ -310,8 +336,8 @@ class OngakuStrings {
       'topSongs': 'Top Songs',
       'monthByMonth': 'Month by Month',
       'statsOff':
-          'Listening statistics are turned off. Turn them on just above to '
-          'get your Replay.',
+          'Listening statistics are turned off. Turn on "Record my listening" '
+          'below to get your Replay.',
       'statsEmpty': 'Listen to some music to see your Replay here.',
       'openSettings': 'Open Settings',
       'playCountOne': '1 play',
@@ -420,6 +446,33 @@ class OngakuStrings {
       'recentSearches': 'Recent Searches',
       'clear': 'Clear',
       'statsTitle': 'Listening Statistics',
+      'logsTitle': 'Logs to send',
+      'logsInfo':
+          'Personal data has been removed. You can read it before sending.',
+      'logsDescribe': 'Describe the problem (optional)',
+      'logsCancel': 'Cancel',
+      'logsCopy': 'Copy',
+      'logsSend': 'Send by e-mail',
+      'logsMailBody': 'Ongaku logs attached.',
+      'logsNoMailApp': 'No mail app found. Use Copy instead.',
+      'logsCopied': 'Logs copied',
+      'logsAfterCrash': 'The app closed unexpectedly. Export the logs?',
+      'logsExport': 'Export the logs',
+      'catHelp': 'Help and troubleshooting',
+      'statsSummary': 'Summary',
+      'statsHistory': 'History',
+      'statsSettings': 'Statistics',
+      'statsRecord': 'Record my listening',
+      'historyEmpty': 'The songs you play will appear here.',
+      'historyPlay': 'Play',
+      'updateRefused':
+          'The update was not installed: it could not be verified.',
+      'updateAllow': 'Allow Ongaku to install updates, then tap Install again.',
+      'updateReady': 'Ongaku {version} is ready',
+      'updateChecked': 'Downloaded and checked: same signature as your Ongaku. Android will ask you to confirm.',
+      'updateLater': 'Later',
+      'updateInstall': 'Install',
+      'updateInstallFailed': 'The installer could not open.',
       'recentlyPlayed': 'Recently Played',
       'moreBy': 'More by',
       'essentialAlbums': 'Essential Albums',
@@ -535,8 +588,8 @@ class OngakuStrings {
       'topSongs': 'Top titres',
       'monthByMonth': 'Mois par mois',
       'statsOff':
-          'Les statistiques d’écoute sont désactivées. Activez-les juste '
-          'au-dessus pour voir votre Replay.',
+          'Les statistiques d’écoute sont désactivées. Activez « Enregistrer '
+          'mes écoutes » plus bas pour voir votre Replay.',
       'statsEmpty': 'Écoutez de la musique pour voir votre Replay ici.',
       'openSettings': 'Ouvrir les réglages',
       'playCountOne': '1 écoute',
@@ -646,6 +699,31 @@ class OngakuStrings {
       'recentSearches': 'Recherches récentes',
       'clear': 'Effacer',
       'statsTitle': 'Statistiques d\'écoute',
+      'logsTitle': 'Journaux à envoyer',
+      'logsInfo': 'Les données personnelles ont été retirées. Vous pouvez relire avant d\'envoyer.',
+      'logsDescribe': 'Décrivez le problème (facultatif)',
+      'logsCancel': 'Annuler',
+      'logsCopy': 'Copier',
+      'logsSend': 'Envoyer par e-mail',
+      'logsMailBody': 'Journaux d\'Ongaku en pièce jointe.',
+      'logsNoMailApp': 'Aucune app de messagerie trouvée. Utilisez Copier.',
+      'logsCopied': 'Journaux copiés',
+      'logsAfterCrash': 'L\'app s\'est fermée. Exporter les journaux ?',
+      'logsExport': 'Exporter les journaux',
+      'catHelp': 'Aide et dépannage',
+      'statsSummary': 'Résumé',
+      'statsHistory': 'Historique',
+      'statsSettings': 'Statistiques',
+      'statsRecord': 'Enregistrer mes écoutes',
+      'historyEmpty': 'Les titres que vous écoutez apparaîtront ici.',
+      'historyPlay': 'Lire',
+      'updateRefused': 'La mise à jour n\'a pas été installée : elle n\'a pas pu être vérifiée.',
+      'updateAllow': 'Autorisez Ongaku à installer des mises à jour, puis appuyez de nouveau sur Installer.',
+      'updateReady': 'Ongaku {version} est prête',
+      'updateChecked': 'Téléchargée et vérifiée : même signature que votre Ongaku. Android vous demandera de confirmer.',
+      'updateLater': 'Plus tard',
+      'updateInstall': 'Installer',
+      'updateInstallFailed': 'L\'installateur n\'a pas pu s\'ouvrir.',
       'recentlyPlayed': 'Écoutés récemment',
       'moreBy': 'Plus de :',
       'essentialAlbums': 'Albums incontournables',

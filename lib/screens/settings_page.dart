@@ -27,6 +27,7 @@ import 'package:musify/constants/app_constants.dart';
 import 'package:musify/extensions/l10n.dart';
 import 'package:musify/main.dart';
 import 'package:musify/ongaku/l10n/ongaku_strings.dart';
+import 'package:musify/ongaku/screens/ongaku_logs_page.dart';
 import 'package:musify/ongaku/services/ongaku_updates.dart';
 import 'package:musify/ongaku/widgets/ongaku_credits.dart';
 import 'package:musify/ongaku/widgets/ongaku_page_parts.dart';
@@ -404,20 +405,24 @@ class SettingsPage extends StatelessWidget {
             onTap: () =>
                 launchURL(Uri.parse('https://crowdin.com/project/musify')),
           ),
-          ValueListenableBuilder<int>(
-            valueListenable: logger.logCount,
-            builder: (context, logCount, _) => CustomBar(
-              '${context.l10n!.copyLogs} ($logCount)',
-              FluentIcons.error_circle_24_regular,
-              onTap: () async =>
-                  showToast(context, await logger.copyLogs(context)),
-            ),
-          ),
           CustomBar(
             context.l10n!.about,
             FluentIcons.book_information_24_regular,
             borderRadius: commonCustomBarRadiusLast,
             onTap: () => NavigationManager.router.go('/settings/about'),
+          ),
+        ]),
+        // Ongaku: "Exporter les journaux" (filtered, read before sending)
+        // replaces Musify's "Copy logs" row.
+        _group(strings.catHelp, const Color(0xFFFF9500), [
+          ValueListenableBuilder<int>(
+            valueListenable: logger.logCount,
+            builder: (context, logCount, _) => CustomBar(
+              '${strings.logsExport} ($logCount)',
+              FluentIcons.error_circle_24_regular,
+              borderRadius: commonCustomBarRadius,
+              onTap: () => NavigationManager.router.go(logsPath),
+            ),
           ),
         ]),
         if (online) _buildSponsorSection(context),

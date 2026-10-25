@@ -29,6 +29,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:musify/extensions/l10n.dart';
 import 'package:musify/main.dart';
 import 'package:musify/ongaku/brand.dart';
+import 'package:musify/ongaku/services/ongaku_updates.dart';
 import 'package:musify/services/data_manager.dart';
 import 'package:musify/services/router_service.dart';
 import 'package:musify/services/settings_manager.dart';
@@ -77,6 +78,15 @@ Future<void> checkAppUpdates() async {
 
     final releasesResponse =
         json.decode(releasesRequest.body) as Map<String, dynamic>;
+
+    // Ongaku: download, check and install the update inside the app.
+    if (await ongakuOfferUpdate(
+      map,
+      latestVersion,
+      releasesResponse['body']?.toString() ?? '',
+    )) {
+      return;
+    }
 
     await showDialog(
       context: NavigationManager().context,

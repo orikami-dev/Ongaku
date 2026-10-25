@@ -60,6 +60,10 @@ check lib/widgets/song_bar.dart "OngakuSwipeToLike("
 check lib/screens/search_page.dart "OngakuSearchHistoryHeader()"
 check lib/screens/settings_page.dart "live on the Statistiques"
 check lib/services/audio_service.dart "OngakuAutoBrowser(this)"
+check lib/services/logger_service.dart "OngakuJournal.add(logMessage)"
+check lib/screens/settings_page.dart "Exporter les journaux"
+check lib/services/update_manager.dart "ongakuOfferUpdate("
+check lib/main.dart "ongakuEnableAutoUpdatesOnce()"
 python3 scripts/brand_strings.py --check || missing=1
 [ "$missing" = 0 ] || { echo "An upstream change removed an Ongaku hook: re-apply it (see ONGAKU.md)."; exit 1; }
 echo "OK"

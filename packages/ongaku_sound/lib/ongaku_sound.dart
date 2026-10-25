@@ -86,6 +86,7 @@ class OngakuSound {
   static const _methods = MethodChannel('ongaku_sound');
   static const _routes = EventChannel('ongaku_sound/route');
   static const _spectrum = EventChannel('ongaku_sound/spectrum');
+  static const _volume = EventChannel('ongaku_sound/volume');
 
   /// Android 9 or later: the 10-band equalizer is available.
   static Future<bool> isSupported() async =>
@@ -179,4 +180,73 @@ class OngakuSound {
   });
 
   static Future<void> stopTone() => _methods.invokeMethod('stopTone');
+
+  // --- Logs export ------------------------------------------------------
+
+  /// Android version, generic model, and the names the user gave the phone
+  /// and its accessories (only so the report can remove them).
+  static Future<Map<String, Object?>> deviceInfo() async =>
+      Map<String, Object?>.from(
+        await _methods.invokeMethod<Map<Object?, Object?>>('deviceInfo') ??
+            const {},
+      );
+
+  /// The trace of the crash that last closed the app, once.
+  static Future<String?> lastCrash() =>
+      _methods.invokeMethod<String>('lastCrash');
+
+  /// Opens the mail app with [content] attached as [fileName]. False when
+  /// no mail app could open.
+  static Future<bool> sendLogs({
+    required String to,
+    required String subject,
+    required String text,
+    required String fileName,
+    required String content,
+  }) async =>
+      await _methods.invokeMethod<bool>('sendLogs', {
+        'to': to,
+        'subject': subject,
+        'text': text,
+        'fileName': fileName,
+        'content': content,
+      }) ??
+      false;
+
+  // --- Media volume -----------------------------------------------------
+
+  /// The phone's media volume (0 to 1), now and on every change, whoever
+  /// changes it (the volume keys, another app, the player's bar).
+  static Stream<double> mediaVolume() =>
+      _volume.receiveBroadcastStream().map((v) => (v as num).toDouble());
+
+  static Future<void> setMediaVolume(double value) =>
+      _methods.invokeMethod('setMediaVolume', {'value': value});
+
+  // --- In-app updates ---------------------------------------------------
+
+  /// What the APK at [path] is: package, versionCode, sha256 of the file,
+  /// its signers and the installed app's signers (SHA-256 of each
+  /// certificate).
+  static Future<Map<String, Object?>> apkInfo(String path) async =>
+      Map<String, Object?>.from(
+        await _methods.invokeMethod<Map<Object?, Object?>>('apkInfo', {
+              'path': path,
+            }) ??
+            const {},
+      );
+
+  /// Whether the user let Ongaku install updates (Android 8 or later).
+  static Future<bool> canInstallApks() async =>
+      await _methods.invokeMethod<bool>('canInstallApks') ?? false;
+
+  /// Opens the system page where the user allows it.
+  static Future<void> allowInstallApks() =>
+      _methods.invokeMethod('allowInstallApks');
+
+  /// Hands `cache/share_plus/<fileName>` to Android's installer, which
+  /// asks the user before installing.
+  static Future<bool> installApk(String fileName) async =>
+      await _methods.invokeMethod<bool>('installApk', {'fileName': fileName}) ??
+      false;
 }

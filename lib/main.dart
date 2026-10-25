@@ -34,6 +34,7 @@ import 'package:musify/extensions/l10n.dart';
 import 'package:musify/localization/app_localizations.dart';
 import 'package:musify/ongaku/brand.dart';
 import 'package:musify/ongaku/services/ongaku_notification.dart';
+import 'package:musify/ongaku/services/ongaku_updates.dart';
 import 'package:musify/ongaku/sound/sound_start.dart';
 import 'package:musify/ongaku/theme/ongaku_palettes.dart';
 import 'package:musify/ongaku/theme/ongaku_theme.dart';
@@ -184,6 +185,8 @@ class _MusifyState extends State<Musify> with WidgetsBindingObserver {
     }
 
     if (!isFdroidBuild && isMobilePlatform) {
+      // Ongaku: automatic updates on (once; the setting still turns them off).
+      ongakuEnableAutoUpdatesOnce();
       if (shouldWeCheckUpdates.value == true) {
         if (!isUpdateChecked && kReleaseMode) {
           SchedulerBinding.instance.addPostFrameCallback((_) {
