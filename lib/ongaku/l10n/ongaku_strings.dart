@@ -89,6 +89,9 @@ class OngakuStrings {
   String get importErrNetwork => _t('importErrNetwork');
   String get importErrFile => _t('importErrFile');
   String get recentlyPlayed => _t('recentlyPlayed');
+  String get recentSearches => _t('recentSearches');
+  String get clear => _t('clear');
+  String get statsTitle => _t('statsTitle');
   String get libEdit => _t('libEdit');
   String get libDone => _t('libDone');
   String get libSongs => _t('libSongs');
@@ -307,7 +310,7 @@ class OngakuStrings {
       'topSongs': 'Top Songs',
       'monthByMonth': 'Month by Month',
       'statsOff':
-          'Listening statistics are turned off. Turn them on in Settings to '
+          'Listening statistics are turned off. Turn them on just above to '
           'get your Replay.',
       'statsEmpty': 'Listen to some music to see your Replay here.',
       'openSettings': 'Open Settings',
@@ -414,6 +417,9 @@ class OngakuStrings {
           'Pin a playlist, album or artist from its ⋯ menu to keep it here.',
       'libNoArtists': 'Artists you like show up here.',
       'libNoAlbums': 'Albums you like show up here.',
+      'recentSearches': 'Recent Searches',
+      'clear': 'Clear',
+      'statsTitle': 'Listening Statistics',
       'recentlyPlayed': 'Recently Played',
       'moreBy': 'More by',
       'essentialAlbums': 'Essential Albums',
@@ -529,8 +535,8 @@ class OngakuStrings {
       'topSongs': 'Top titres',
       'monthByMonth': 'Mois par mois',
       'statsOff':
-          'Les statistiques d’écoute sont désactivées. Activez-les dans les '
-          'réglages pour voir votre Replay.',
+          'Les statistiques d’écoute sont désactivées. Activez-les juste '
+          'au-dessus pour voir votre Replay.',
       'statsEmpty': 'Écoutez de la musique pour voir votre Replay ici.',
       'openSettings': 'Ouvrir les réglages',
       'playCountOne': '1 écoute',
@@ -637,6 +643,9 @@ class OngakuStrings {
       'libPinHint': 'Épinglez une playlist, un album ou un artiste depuis son menu ⋯ pour le retrouver ici.',
       'libNoArtists': 'Les artistes que vous aimez apparaissent ici.',
       'libNoAlbums': 'Les albums que vous aimez apparaissent ici.',
+      'recentSearches': 'Recherches récentes',
+      'clear': 'Effacer',
+      'statsTitle': 'Statistiques d\'écoute',
       'recentlyPlayed': 'Écoutés récemment',
       'moreBy': 'Plus de :',
       'essentialAlbums': 'Albums incontournables',

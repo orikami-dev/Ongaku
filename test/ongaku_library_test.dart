@@ -36,4 +36,28 @@ void main() {
     final ids = ongakuLibraryCategories.map((c) => c.id).toSet();
     expect(ids.length, ongakuLibraryCategories.length);
   });
+
+  test('categories follow the saved order, new ones at the end', () {
+    final ids = ongakuOrderedCategories(['radio', 'songs']).map((c) => c.id);
+    expect(ids.take(3), ['radio', 'songs', 'playlists']);
+    expect(ids.length, ongakuLibraryCategories.length);
+  });
+
+  test('moving a visible category keeps hidden ones in place', () {
+    final order = ['a', 'b', 'c', 'd'];
+    // 'b' is hidden (offline): move 'd' to the top of the visible rows.
+    expect(ongakuMoveCategory(order, ['a', 'c', 'd'], 2, 0), [
+      'd',
+      'a',
+      'b',
+      'c',
+    ]);
+    // Move 'a' to the end.
+    expect(ongakuMoveCategory(order, ['a', 'c', 'd'], 0, 2), [
+      'b',
+      'c',
+      'd',
+      'a',
+    ]);
+  });
 }

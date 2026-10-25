@@ -53,6 +53,9 @@ small hooks marked `Ongaku:` or importing `package:musify/ongaku/...`:
 | `lib/services/audio_service.dart` (Android Auto) | `OngakuAutoBrowser`: Accueil, Bibliothèque (Tous les titres, fichiers locaux), Lecture aléatoire rows |
 | `lib/services/router_service.dart`, `lib/screens/library_page.dart` | "Tous les titres": `ongakuAllSongsRoute`, `ongakuAllSongsBar` |
 | `lib/services/router_service.dart`, `lib/screens/library_page.dart` | Apple Music Library tab: `OngakuLibraryPage` as tab root, `ongakuLibraryRoutes`; `ongakuPlaylistsOnly` turns the upstream page into Library > Playlists |
+| `lib/widgets/song_bar.dart` | Swipe a song to the right to like it (`OngakuSwipeToLike`, theme colour) |
+| `lib/screens/search_page.dart` | "Recherches récentes" header with "Effacer" (`OngakuSearchHistoryHeader`) |
+| `lib/screens/settings_page.dart` | Listening statistics switch, clear play history and clear statistics rows removed (now on the Statistiques d'écoute page), clear search history row removed (Search tab); `_toggleWrapped` removed with them |
 
 Everything else (playback, YouTube extraction, library, playlists, stats, proxy,
 equalizer, downloads...) is untouched Musify code, so upstream bug fixes and API

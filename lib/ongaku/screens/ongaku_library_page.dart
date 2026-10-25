@@ -125,22 +125,67 @@ const ongakuLibraryCategories = [
 
 /// Categories the listener hid with "Edit".
 final ValueNotifier<List<String>> ongakuHiddenLibraryCategories = ValueNotifier(
-  _readHidden(),
+  _readList('ongakuHiddenLibraryCategories'),
 );
 
-List<String> _readHidden() {
+void _setHidden(List<String> ids) {
+  ongakuHiddenLibraryCategories.value = ids;
   try {
-    final value = Hive.box('settings').get('ongakuHiddenLibraryCategories');
+    Hive.box('settings').put('ongakuHiddenLibraryCategories', ids);
+  } catch (_) {}
+}
+
+/// The listener's order of the categories ("Edit", drag ≡).
+final ValueNotifier<List<String>> ongakuLibraryOrder = ValueNotifier(
+  _readList('ongakuLibraryOrder'),
+);
+
+List<String> _readList(String key) {
+  try {
+    final value = Hive.box('settings').get(key);
     return value is List ? value.cast<String>() : const [];
   } catch (_) {
     return const [];
   }
 }
 
-void _setHidden(List<String> ids) {
-  ongakuHiddenLibraryCategories.value = ids;
+/// Every category, in the saved order; new ones keep their default place
+/// at the end.
+List<OngakuLibraryCategory> ongakuOrderedCategories(List<String> order) {
+  final rank = {for (var i = 0; i < order.length; i++) order[i]: i};
+  final list = [...ongakuLibraryCategories];
+  final defaults = {for (var i = 0; i < list.length; i++) list[i].id: i};
+  list.sort((a, b) {
+    final ra = rank[a.id] ?? order.length + defaults[a.id]!;
+    final rb = rank[b.id] ?? order.length + defaults[b.id]!;
+    return ra.compareTo(rb);
+  });
+  return list;
+}
+
+/// Moves one of the [visible] rows from [from] to [to] (already adjusted for
+/// the removed row) inside the full [order], hidden rows staying put.
+List<String> ongakuMoveCategory(
+  List<String> order,
+  List<String> visible,
+  int from,
+  int to,
+) {
+  final moved = visible[from];
+  final rest = [...visible]..removeAt(from);
+  if (rest.isEmpty) return order;
+  final full = order.where((id) => id != moved).toList();
+  final at = to < rest.length
+      ? full.indexOf(rest[to])
+      : full.indexOf(rest.last) + 1;
+  full.insert(at, moved);
+  return full;
+}
+
+void _setOrder(List<String> ids) {
+  ongakuLibraryOrder.value = ids;
   try {
-    Hive.box('settings').put('ongakuHiddenLibraryCategories', ids);
+    Hive.box('settings').put('ongakuLibraryOrder', ids);
   } catch (_) {}
 }
 
@@ -170,11 +215,13 @@ class _OngakuLibraryPageState extends State<OngakuLibraryPage> {
           userCustomPlaylists,
           userLikedPlaylists,
           ongakuHiddenLibraryCategories,
+          ongakuLibraryOrder,
         ]),
         builder: (context, _) {
           final pins = resolvePinnedPlaylists(pinnedPlaylistIds.value);
           final hidden = ongakuHiddenLibraryCategories.value;
-          final categories = ongakuLibraryCategories
+          final ordered = ongakuOrderedCategories(ongakuLibraryOrder.value);
+          final categories = ordered
               .where((c) => !c.online || !offlineMode.value)
               .where((c) => _editing || !hidden.contains(c.id))
               .toList();
@@ -241,9 +288,24 @@ class _OngakuLibraryPageState extends State<OngakuLibraryPage> {
                 ),
               SliverPadding(
                 padding: EdgeInsets.only(left: margin, top: 8),
-                sliver: SliverList.builder(
+                sliver: SliverReorderableList(
                   itemCount: categories.length,
+                  proxyDecorator: (child, _, __) => Material(
+                    color: colorScheme.surfaceContainerHigh,
+                    elevation: 6,
+                    child: child,
+                  ),
+                  onReorderItem: (from, to) => _setOrder(
+                    ongakuMoveCategory(
+                      [for (final c in ordered) c.id],
+                      [for (final c in categories) c.id],
+                      from,
+                      to,
+                    ),
+                  ),
                   itemBuilder: (context, i) => _CategoryRow(
+                    key: ValueKey(categories[i].id),
+                    index: i,
                     category: categories[i],
                     label: _label(context, categories[i].id),
                     editing: _editing,
@@ -358,6 +420,8 @@ class _OngakuLibraryPageState extends State<OngakuLibraryPage> {
 
 class _CategoryRow extends StatelessWidget {
   const _CategoryRow({
+    super.key,
+    required this.index,
     required this.category,
     required this.label,
     required this.editing,
@@ -366,6 +430,7 @@ class _CategoryRow extends StatelessWidget {
     required this.onToggle,
   });
 
+  final int index;
   final OngakuLibraryCategory category;
   final String label;
   final bool editing;
@@ -431,7 +496,21 @@ class _CategoryRow extends StatelessWidget {
                           ),
                         ),
                       ),
-                      if (!editing)
+                      if (editing)
+                        ReorderableDragStartListener(
+                          index: index,
+                          child: Padding(
+                            padding: const EdgeInsets.only(left: 12),
+                            child: Icon(
+                              Icons.drag_handle_rounded,
+                              size: 26,
+                              color: colorScheme.onSurface.withValues(
+                                alpha: 0.45,
+                              ),
+                            ),
+                          ),
+                        )
+                      else
                         Icon(
                           Icons.chevron_right_rounded,
                           size: 24,

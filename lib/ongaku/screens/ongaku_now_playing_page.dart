@@ -27,6 +27,8 @@ import 'package:musify/ongaku/widgets/artwork_background.dart';
 import 'package:musify/ongaku/widgets/ongaku_mini_player.dart'
     show MiniPlayPauseButton;
 import 'package:musify/ongaku/widgets/ongaku_popover.dart';
+import 'package:musify/ongaku/widgets/swipe_to_like.dart';
+import 'package:musify/ongaku/widgets/swipe_to_skip.dart';
 import 'package:musify/ongaku/widgets/synced_lyrics_view.dart';
 import 'package:musify/services/common_services.dart';
 import 'package:musify/services/data_manager.dart';
@@ -668,7 +670,7 @@ class _BigArtwork extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, c) {
         final size = c.biggest.shortestSide;
-        return StreamBuilder<bool>(
+        final art = StreamBuilder<bool>(
           stream: audioHandler.playbackState.map((s) => s.playing).distinct(),
           initialData: audioHandler.playbackState.valueOrNull?.playing,
           builder: (context, snapshot) {
@@ -703,6 +705,12 @@ class _BigArtwork extends StatelessWidget {
               ),
             );
           },
+        );
+        // Swipe sideways on the artwork to change song.
+        return OngakuSwipeToSkip(
+          onNext: audioHandler.skipToNext,
+          onPrevious: audioHandler.skipToPrevious,
+          child: art,
         );
       },
     );
@@ -929,52 +937,42 @@ class _CircleButton extends StatelessWidget {
   }
 }
 
-/// Shuffle, repeat and autoplay as three pill buttons.
+/// Add to a playlist, sleep timer, autoplay and Mode doux as pill buttons.
 class _ModeChips extends StatelessWidget {
   const _ModeChips();
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final metadata = audioHandler.mediaItem.valueOrNull;
+    final canAdd =
+        metadata != null &&
+        metadata.extras?['isLive'] != true &&
+        !offlineMode.value;
     return Row(
       children: [
         Expanded(
-          child: ValueListenableBuilder<bool>(
-            valueListenable: shuffleNotifier,
-            builder: (context, on, _) => _Chip(
-              icon: Icons.shuffle_rounded,
-              on: on,
-              tooltip: l10n?.shuffle,
-              onTap: () => audioHandler.setShuffleMode(
-                on ? AudioServiceShuffleMode.none : AudioServiceShuffleMode.all,
-              ),
-            ),
+          child: _Chip(
+            icon: Icons.playlist_add_rounded,
+            on: false,
+            tooltip: l10n?.addToPlaylist,
+            onTap: canAdd
+                ? () => showAddToPlaylistDialog(
+                    context,
+                    song: mediaItemToMap(metadata),
+                  )
+                : null,
           ),
         ),
         const SizedBox(width: 12),
         Expanded(
-          child: ValueListenableBuilder<AudioServiceRepeatMode>(
-            valueListenable: repeatNotifier,
-            builder: (context, mode, _) => _Chip(
-              icon: mode == AudioServiceRepeatMode.one
-                  ? Icons.repeat_one_rounded
-                  : Icons.repeat_rounded,
-              on: mode != AudioServiceRepeatMode.none,
-              tooltip: l10n?.repeat,
-              onTap: () {
-                // Same cycle as Musify: off, all, one.
-                final queueLength = audioHandler.queue.valueOrNull?.length ?? 0;
-                final next = switch (mode) {
-                  AudioServiceRepeatMode.none =>
-                    queueLength <= 1
-                        ? AudioServiceRepeatMode.one
-                        : AudioServiceRepeatMode.all,
-                  AudioServiceRepeatMode.all => AudioServiceRepeatMode.one,
-                  _ => AudioServiceRepeatMode.none,
-                };
-                repeatNotifier.value = next;
-                audioHandler.setRepeatMode(next);
-              },
+          child: ValueListenableBuilder<Duration?>(
+            valueListenable: sleepTimerNotifier,
+            builder: (context, remaining, _) => _Chip(
+              icon: Icons.bedtime_rounded,
+              on: remaining != null,
+              tooltip: l10n?.sleepTimer,
+              onTap: () => _toggleSleep(context),
             ),
           ),
         ),
@@ -1015,6 +1013,33 @@ class _ModeChips extends StatelessWidget {
   }
 }
 
+/// Same cycle as Musify: off, all, one.
+void _cycleRepeat(AudioServiceRepeatMode mode) {
+  final queueLength = audioHandler.queue.valueOrNull?.length ?? 0;
+  final next = switch (mode) {
+    AudioServiceRepeatMode.none =>
+      queueLength <= 1
+          ? AudioServiceRepeatMode.one
+          : AudioServiceRepeatMode.all,
+    AudioServiceRepeatMode.all => AudioServiceRepeatMode.one,
+    _ => AudioServiceRepeatMode.none,
+  };
+  repeatNotifier.value = next;
+  audioHandler.setRepeatMode(next);
+}
+
+/// Sleep timer: opens the choices, or cancels the running timer.
+void _toggleSleep(BuildContext context) {
+  final l10n = context.l10n!;
+  if (sleepTimerNotifier.value != null) {
+    audioHandler.cancelSleepTimer();
+    sleepTimerNotifier.value = null;
+    showToast(context, l10n.sleepTimerCancelled);
+  } else {
+    _showSleepSheet(context);
+  }
+}
+
 class _Chip extends StatelessWidget {
   const _Chip({
     required this.icon,
@@ -1025,20 +1050,24 @@ class _Chip extends StatelessWidget {
 
   final IconData icon;
   final bool on;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final String? tooltip;
 
   @override
   Widget build(BuildContext context) {
+    final onTap = this.onTap;
     return Semantics(
       button: true,
       toggled: on,
+      enabled: onTap != null,
       label: tooltip,
       child: GestureDetector(
-        onTap: () {
-          HapticFeedback.selectionClick();
-          onTap();
-        },
+        onTap: onTap == null
+            ? null
+            : () {
+                HapticFeedback.selectionClick();
+                onTap();
+              },
         child: AnimatedContainer(
           duration: OngakuMotion.quick,
           curve: Curves.easeOutCubic,
@@ -1050,7 +1079,9 @@ class _Chip extends StatelessWidget {
           child: Icon(
             icon,
             size: 22,
-            color: on ? Colors.black.withValues(alpha: 0.75) : _white,
+            color: on
+                ? Colors.black.withValues(alpha: 0.75)
+                : _whiteA(onTap == null ? 0.3 : 1),
           ),
         ),
       ),
@@ -1124,19 +1155,30 @@ class _UpNext extends StatelessWidget {
                           final song = upcoming[i];
                           final key =
                               '${song['queueEntryId'] ?? song['ytid']}_$i';
+                          // Right: favourite (springs back). Left: remove.
                           return Dismissible(
                             key: ValueKey(key),
-                            direction: DismissDirection.endToStart,
+                            dismissThresholds: const {
+                              DismissDirection.startToEnd: 0.3,
+                            },
+                            confirmDismiss: (direction) async {
+                              if (direction == DismissDirection.endToStart) {
+                                return true;
+                              }
+                              await ongakuToggleLike(context, song);
+                              return false;
+                            },
                             onDismissed: (_) =>
                                 audioHandler.removeFromQueue(start + i),
-                            background: Container(
+                            background: OngakuSwipeBackground(
+                              icon: isSongAlreadyLiked(song['ytid'])
+                                  ? Icons.star_border_rounded
+                                  : Icons.star_rounded,
+                              alignment: Alignment.centerLeft,
+                            ),
+                            secondaryBackground: const OngakuSwipeBackground(
+                              icon: Icons.delete_rounded,
                               alignment: Alignment.centerRight,
-                              padding: const EdgeInsets.only(right: 16),
-                              color: Colors.redAccent.withValues(alpha: 0.8),
-                              child: const Icon(
-                                Icons.delete_rounded,
-                                color: _white,
-                              ),
                             ),
                             child: _QueueRow(
                               song: song,
@@ -1483,8 +1525,8 @@ class _VolumeBar extends StatelessWidget {
   }
 }
 
-/// Everything that used to live in the ⋯ menu, once each: lyrics, add to a
-/// playlist, download, sleep timer and queue.
+/// The row under the volume: lyrics, shuffle, download, repeat and queue.
+/// Add to a playlist and the sleep timer sit with the queue's chips.
 class _BottomButtons extends StatelessWidget {
   const _BottomButtons({
     required this.metadata,
@@ -1514,19 +1556,33 @@ class _BottomButtons extends StatelessWidget {
           tooltip: l10n?.lyrics,
           onTap: isRadio ? null : onLyrics,
         ),
-        _ToggleSquare(
-          icon: Icons.playlist_add_rounded,
-          on: false,
-          tooltip: l10n?.addToPlaylist,
-          onTap: isRadio || offlineMode.value
-              ? null
-              : () => showAddToPlaylistDialog(
-                  context,
-                  song: mediaItemToMap(metadata),
-                ),
+        ValueListenableBuilder<bool>(
+          valueListenable: shuffleNotifier,
+          builder: (context, on, _) => _ToggleSquare(
+            icon: Icons.shuffle_rounded,
+            on: on,
+            tooltip: l10n?.shuffle,
+            onTap: isRadio
+                ? null
+                : () => audioHandler.setShuffleMode(
+                    on
+                        ? AudioServiceShuffleMode.none
+                        : AudioServiceShuffleMode.all,
+                  ),
+          ),
         ),
         _DownloadSquare(metadata: metadata, enabled: !isRadio && !isLocal),
-        const _SleepSquare(),
+        ValueListenableBuilder<AudioServiceRepeatMode>(
+          valueListenable: repeatNotifier,
+          builder: (context, mode, _) => _ToggleSquare(
+            icon: mode == AudioServiceRepeatMode.one
+                ? Icons.repeat_one_rounded
+                : Icons.repeat_rounded,
+            on: mode != AudioServiceRepeatMode.none,
+            tooltip: l10n?.repeat,
+            onTap: isRadio ? null : () => _cycleRepeat(mode),
+          ),
+        ),
         _ToggleSquare(
           icon: Icons.format_list_bulleted_rounded,
           on: queueOn,
@@ -1585,36 +1641,6 @@ class _DownloadSquareState extends State<_DownloadSquare> {
           on: saved,
           tooltip: saved ? strings.removeDownload : strings.download,
           onTap: widget.enabled && id != null ? () => _toggle(id, saved) : null,
-        );
-      },
-    );
-  }
-}
-
-/// Sleep timer: lit while a timer runs, tap again to cancel.
-class _SleepSquare extends StatelessWidget {
-  const _SleepSquare();
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n!;
-    return ValueListenableBuilder<Duration?>(
-      valueListenable: sleepTimerNotifier,
-      builder: (context, remaining, _) {
-        final active = remaining != null;
-        return _ToggleSquare(
-          icon: Icons.bedtime_rounded,
-          on: active,
-          tooltip: l10n.sleepTimer,
-          onTap: () {
-            if (active) {
-              audioHandler.cancelSleepTimer();
-              sleepTimerNotifier.value = null;
-              showToast(context, l10n.sleepTimerCancelled);
-            } else {
-              _showSleepSheet(context);
-            }
-          },
         );
       },
     );
