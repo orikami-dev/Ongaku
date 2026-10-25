@@ -31,6 +31,7 @@ import 'package:musify/extensions/l10n.dart';
 import 'package:musify/main.dart';
 import 'package:musify/models/radio_model.dart';
 import 'package:musify/ongaku/widgets/ongaku_page_parts.dart';
+import 'package:musify/ongaku/widgets/search_history_header.dart';
 import 'package:musify/services/common_services.dart';
 import 'package:musify/services/data_manager.dart';
 import 'package:musify/services/playlists_manager.dart';
@@ -362,6 +363,9 @@ class _SearchPageState extends State<SearchPage> {
                             'history-${_suggestionsList.length}-${_searchBar.text}-${searchHistory.length}',
                           ),
                           children: [
+                            // Ongaku: clear the history right where it shows.
+                            if (_suggestionsList.isEmpty && items.isNotEmpty)
+                              const OngakuSearchHistoryHeader(),
                             for (int index = 0; index < items.length; index++)
                               Builder(
                                 builder: (context) {

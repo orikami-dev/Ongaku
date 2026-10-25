@@ -225,6 +225,9 @@ void main() {
         '/library/localFiles',
         '/library/userSongs/liked',
         '/library/allSongs',
+        '/library/playlists',
+        '/library/albums',
+        '/library/artists',
         '/home/playlist/customId-1',
         '/settings/import-deezer-playlist',
         '/settings/import-apple-music-playlist',
@@ -279,7 +282,11 @@ void main() {
       routes: ['/settings/sound', '/settings/sound/acoustic'],
       player: false,
     );
-    OngakuSoundEngine.route.value = const OutputRoute(OutputType.car, '', 'car');
+    OngakuSoundEngine.route.value = const OutputRoute(
+      OutputType.car,
+      '',
+      'car',
+    );
     await shots(
       tester,
       prefix: 'sound-car',
@@ -395,10 +402,7 @@ void main() {
         await _capture(tester, 'theme-$mode');
       }
       // The sponsor section at the bottom of the settings.
-      await tester.drag(
-        find.byType(Scrollable).first,
-        const Offset(0, -6000),
-      );
+      await tester.drag(find.byType(Scrollable).first, const Offset(0, -6000));
       await _settle(tester);
       await _capture(tester, 'settings-bottom');
       NavigationManager.router.go('/settings/about');
@@ -656,7 +660,23 @@ Future<List<Map<String, dynamic>>> _seedLibrary(String dir) async {
       'source': 'youtube',
       'list': songs,
     },
+    {
+      'ytid': 'MPREalbum1',
+      'title': 'Paper Moons',
+      'artist': 'Hikari Ensemble',
+      'image': '$dir/art3.png',
+      'source': 'youtube',
+      'isAlbum': true,
+      'list': songs,
+    },
+    {
+      'ytid': 'UCartist1',
+      'title': 'Hikari Ensemble',
+      'image': '$dir/art1.png',
+      'source': 'youtube-artist',
+    },
   ];
+  pinnedPlaylistIds.value = ['PLseed1', 'customId-1', 'UCartist1'];
   searchHistoryNotifier.value = ['lofi hip hop', 'city pop', 'joe hisaishi'];
   return songs;
 }

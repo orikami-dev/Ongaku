@@ -16,10 +16,13 @@ import 'package:material_ui/material_ui.dart';
 import 'package:musify/main.dart' show audioHandler, logger;
 import 'package:musify/ongaku/l10n/ongaku_strings.dart';
 import 'package:musify/ongaku/sound/sound_engine.dart';
+import 'package:musify/ongaku/theme/ongaku_palettes.dart';
 import 'package:ongaku_sound/ongaku_sound.dart';
 
-/// Demo loop made by `scripts/make_demo_sample.py`.
-const _demoAsset = 'assets/sounds/ongaku_demo.ogg';
+/// Demo loop of the theme in use, made by `scripts/make_demo_sample.py`:
+/// each theme has its own mood (pop, lo-fi, synthwave, koto, bossa, city
+/// pop, funk).
+String get _demoAsset => 'assets/sounds/demo_${ongakuPalette.value.name}.ogg';
 
 enum _Source { demo, song }
 
@@ -44,6 +47,7 @@ class _CorrectionCompareState extends State<CorrectionCompare> {
   _Source _source = _Source.demo;
   AudioPlayer? _demo;
   int? _demoSession;
+  String? _demoLoaded;
 
   bool get _hasSong => audioHandler.mediaItem.valueOrNull != null;
 
@@ -97,8 +101,11 @@ class _CorrectionCompareState extends State<CorrectionCompare> {
           _demoSession = id;
           return OngakuSound.attachExtra(id!);
         }).ignore();
-        await demo.setAsset(_demoAsset);
         await demo.setLoopMode(LoopMode.one);
+      }
+      if (_demoLoaded != _demoAsset) {
+        _demoLoaded = _demoAsset;
+        await demo.setAsset(_demoAsset);
       }
       unawaited(demo.play());
     } catch (e) {
@@ -111,6 +118,7 @@ class _CorrectionCompareState extends State<CorrectionCompare> {
     OngakuSoundEngine.preview.value = null;
     final demo = _demo;
     _demo = null;
+    _demoLoaded = null;
     final session = _demoSession;
     _demoSession = null;
     if (!_disposed) setState(() => _playing = false);

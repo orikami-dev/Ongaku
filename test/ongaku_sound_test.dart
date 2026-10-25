@@ -83,6 +83,40 @@ void main() {
     expect(correction[2].abs(), lessThan(3));
   });
 
+  test('the phone speaker gets a gentle correction, no low boost', () {
+    final response = <double>[-25, -20, -12, -2, 0, 1, -1, 4, -10, -20];
+    final phone = correctionFromResponse(response, phoneSpeaker: true);
+    final other = correctionFromResponse(response);
+    expect(phone[0], lessThanOrEqualTo(0.01));
+    expect(phone[2], lessThanOrEqualTo(0.01));
+    for (final g in phone) {
+      expect(g, inInclusiveRange(-6, 4));
+    }
+    expect(phone[7].abs(), lessThan(other[7].abs()));
+  });
+
+  test('three measurements are combined band by band', () {
+    const base = <double>[0, 1, 2, 3, 0, 0, 0, -3, -6, -9];
+    final disturbed = [...base]..[5] = 15;
+    final combined = combineMeasurements([
+      const MeasureResult.ok(base),
+      MeasureResult.ok(disturbed),
+      const MeasureResult.ok(base),
+    ]);
+    expect(combined.error, isNull);
+    expect(combined.response[5], 0);
+    final wild = combineMeasurements([
+      const MeasureResult.ok(base),
+      MeasureResult.ok([...base]..[4] = 20),
+      MeasureResult.ok([...base]..[4] = -20),
+    ]);
+    expect(wild.error, MeasureError.tooNoisy);
+    final failed = combineMeasurements([
+      const MeasureResult.failed(MeasureError.tooQuiet),
+    ]);
+    expect(failed.error, MeasureError.tooQuiet);
+  });
+
   test('noise instead of the sweep is refused', () {
     final random = math.Random(2);
     final noise = Float32List.fromList([

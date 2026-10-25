@@ -5,7 +5,7 @@ repository: https://github.com/gokadzev/Musify
 issue_tracker: https://github.com/gokadzev/Musify/issues
 
 publish_to: 'none'
-version: 1.0.0+1300 # Ongaku: own version (see lib/ongaku/brand.dart), code only goes up
+version: 1.2.0+1320 # Ongaku: own version (see lib/ongaku/brand.dart), code only goes up
 
 environment:
   sdk: '>=3.13.0 <4.0.0'
@@ -73,9 +73,10 @@ flutter:
     # Ongaku: About page artwork.
     - assets/icons/ongaku_banner.png
     - assets/icons/musify_banner.png
-    # Ongaku: theme icons, demo loop to compare a sound correction.
+    # Ongaku: theme icons, demo loops (one per theme) to compare a sound
+    # correction.
     - assets/icons/palettes/
-    - assets/sounds/ongaku_demo.ogg
+    - assets/sounds/
 
   fonts:
     - family: paytoneOne

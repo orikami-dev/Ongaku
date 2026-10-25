@@ -29,6 +29,7 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:musify/extensions/l10n.dart';
 import 'package:musify/main.dart';
+import 'package:musify/ongaku/widgets/swipe_to_like.dart';
 import 'package:musify/services/common_services.dart';
 import 'package:musify/services/playlist_download_service.dart';
 import 'package:musify/services/playlists_manager.dart';
@@ -433,7 +434,7 @@ class _SongBarState extends State<SongBar> {
         ? _listeningCountLabel()
         : widget.playCount;
 
-    return Material(
+    final bar = Material(
       color: widget.backgroundColor ?? colorScheme.surfaceContainerLow,
       borderRadius: widget.borderRadius,
       clipBehavior: Clip.antiAlias,
@@ -506,6 +507,12 @@ class _SongBarState extends State<SongBar> {
           ),
         ),
       ),
+    );
+    // Ongaku: swipe a song to the right to add it to the favourites.
+    return OngakuSwipeToLike(
+      song: widget.song,
+      borderRadius: widget.borderRadius,
+      child: bar,
     );
   }
 

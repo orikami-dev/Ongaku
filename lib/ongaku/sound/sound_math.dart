@@ -175,17 +175,69 @@ MeasureResult analyseSweep({
 /// Correction for a measured response: flattens it gently, cuts more
 /// readily than it boosts, and never pushes bands the output can't play
 /// (a phone speaker has no 31 Hz).
-List<double> correctionFromResponse(List<double> response) {
+///
+/// [phoneSpeaker]: the phone measures its own speaker from a few
+/// centimetres, where the bass and the treble read wrong (close to the
+/// grille, away from the ear). The correction is then half as strong, only
+/// touches 125 Hz - 8 kHz and never boosts the low end.
+List<double> correctionFromResponse(
+  List<double> response, {
+  bool phoneSpeaker = false,
+}) {
   final raw = <double>[];
   for (var i = 0; i < _bands; i++) {
     final deviation = _at(response, i);
-    var gain = -deviation * 0.8;
+    if (phoneSpeaker && (i < 2 || i > 8)) {
+      raw.add(0);
+      continue;
+    }
+    var gain = -deviation * (phoneSpeaker ? 0.5 : 0.8);
     // Far below the rest: the output can't play it, boosting only distorts.
-    if (deviation < -18) gain = 2;
-    final maxBoost = (i <= 1 || i == _bands - 1) ? 3.0 : 6.0;
-    raw.add(gain.clamp(-10.0, maxBoost));
+    if (deviation < -18) gain = phoneSpeaker ? 0 : 2;
+    final maxBoost = phoneSpeaker
+        ? (i <= 3 ? 0.0 : 4.0)
+        : (i <= 1 || i == _bands - 1)
+        ? 3.0
+        : 6.0;
+    raw.add(gain.clamp(phoneSpeaker ? -6.0 : -10.0, maxBoost));
   }
   return _smooth(raw);
+}
+
+/// Combines several measurements of the same output: the median of each
+/// band, so one sweep disturbed by a noise does not count. Fails when the
+/// measurements disagree too much (the phone moved, or a loud noise).
+MeasureResult combineMeasurements(List<MeasureResult> results) {
+  final good = [
+    for (final r in results)
+      if (r.error == null) r.response,
+  ];
+  if (good.isEmpty) {
+    return results.isEmpty
+        ? const MeasureResult.failed(MeasureError.tooQuiet)
+        : MeasureResult.failed(results.first.error!);
+  }
+  if (good.length == 1) return MeasureResult.ok(good.first);
+  final combined = <double>[];
+  var spread = 0.0;
+  for (var i = 0; i < _bands; i++) {
+    final values = [for (final r in good) _at(r, i)]..sort();
+    final mid = values.length ~/ 2;
+    final median = values.length.isOdd
+        ? values[mid]
+        : (values[mid - 1] + values[mid]) / 2;
+    combined.add(median);
+    // In the bands that matter (125 Hz - 8 kHz), one odd sweep is fine (the
+    // median ignores it); two that disagree mean the measure is unreliable.
+    if (i >= 2 && i <= 8) {
+      final gaps = [for (final v in values) (v - median).abs()]..sort();
+      spread = math.max(spread, gaps[gaps.length - 2]);
+    }
+  }
+  if (good.length >= 3 && spread > 10) {
+    return const MeasureResult.failed(MeasureError.tooNoisy);
+  }
+  return MeasureResult.ok(combined);
 }
 
 // --- Hearing test -------------------------------------------------------

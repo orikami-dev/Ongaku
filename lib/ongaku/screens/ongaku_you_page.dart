@@ -8,26 +8,30 @@
  *     (at your option) any later version. See <https://www.gnu.org/licenses/>.
  */
 
-import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:musify/extensions/l10n.dart';
 import 'package:musify/main.dart';
 import 'package:musify/ongaku/home/you_stats.dart';
 import 'package:musify/ongaku/l10n/ongaku_strings.dart';
 import 'package:musify/ongaku/theme/ongaku_motion.dart';
 import 'package:musify/ongaku/widgets/ongaku_page_parts.dart';
+import 'package:musify/services/common_services.dart';
+import 'package:musify/services/data_manager.dart';
 import 'package:musify/services/listening_stats_service.dart';
 import 'package:musify/services/settings_manager.dart';
 import 'package:musify/utilities/app_utils.dart';
+import 'package:musify/utilities/flutter_toast.dart';
 import 'package:musify/utilities/listening_stats_utils.dart';
 import 'package:musify/utilities/mediaitem.dart';
+import 'package:musify/widgets/confirmation_dialog.dart';
 import 'package:musify/widgets/mini_player_bottom_space.dart';
 import 'package:musify/widgets/song_artwork.dart';
 
 /// Ongaku's colours for Replay: the icon's burgundy, pink and violet.
 const _replayColors = [Color(0xFF5A1430), Color(0xFFE8264F), Color(0xFF6E44E8)];
 
-/// "Vous": a Replay of the chosen month (minutes, songs, artists, plays),
+/// "Statistiques d'écoute" (formerly "Vous"): a Replay of the chosen month (minutes, songs, artists, plays),
 /// top artists, top songs and the minutes month by month. Musify's
 /// listening statistics, shown the Ongaku way.
 class OngakuYouPage extends StatefulWidget {
@@ -67,16 +71,16 @@ class _OngakuYouPageState extends State<OngakuYouPage> {
             ),
             slivers: [
               SliverToBoxAdapter(
-                child: OngakuLargeTitle(title: strings.you, showBack: true),
+                child: OngakuLargeTitle(
+                  title: strings.statsTitle,
+                  showBack: true,
+                ),
               ),
+              // Moved here from the settings: the switch and the two
+              // "clear" buttons.
+              SliverToBoxAdapter(child: _StatsSwitch(enabled: enabled)),
               if (!enabled)
-                SliverToBoxAdapter(
-                  child: _Message(
-                    text: strings.statsOff,
-                    action: strings.openSettings,
-                    onAction: () => context.go('/settings'),
-                  ),
-                )
+                SliverToBoxAdapter(child: _Message(text: strings.statsOff))
               else ...[
                 if (keys.length > 1)
                   SliverToBoxAdapter(
@@ -137,6 +141,7 @@ class _OngakuYouPageState extends State<OngakuYouPage> {
                   ),
                 ],
               ],
+              const SliverToBoxAdapter(child: _ClearButtons()),
               const SliverToBoxAdapter(child: SizedBox(height: 24)),
               const SliverMiniPlayerBottomSpace(),
             ],
@@ -613,32 +618,131 @@ class _MonthBars extends StatelessWidget {
 }
 
 class _Message extends StatelessWidget {
-  const _Message({required this.text, this.action, this.onAction});
+  const _Message({required this.text});
 
   final String text;
-  final String? action;
-  final VoidCallback? onAction;
 
   @override
   Widget build(BuildContext context) {
     final margin = ongakuPageMargin(context);
     return Padding(
       padding: EdgeInsets.fromLTRB(margin, 24, margin, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Text(
+        text,
+        style: TextStyle(
+          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+          fontSize: 15,
+        ),
+      ),
+    );
+  }
+}
+
+/// Turns the listening statistics on or off (Musify's settings switch).
+class _StatsSwitch extends StatelessWidget {
+  const _StatsSwitch({required this.enabled});
+
+  final bool enabled;
+
+  Future<void> _set(BuildContext context, bool value) async {
+    // Same steps as Musify's settings page.
+    if (!value) {
+      audioHandler.resetListeningStatsSession(
+        countCurrentTick: true,
+        flushStats: false,
+      );
+      await listeningStatsService.flush();
+    }
+    await addOrUpdateData<bool>('settings', 'wrappedEnabled', value);
+    wrappedEnabled.value = value;
+    listeningStatsService.reload();
+    if (value) audioHandler.startListeningStatsSessionIfNeeded();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n!;
+    final colorScheme = Theme.of(context).colorScheme;
+    final margin = ongakuPageMargin(context);
+    return Padding(
+      padding: EdgeInsets.fromLTRB(margin, 14, margin - 8, 0),
+      child: Row(
         children: [
-          Text(
-            text,
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurface
-                  .withValues(alpha: 0.6),
-              fontSize: 15,
+          Expanded(
+            child: Text(
+              l10n.listeningStatsDescription,
+              style: TextStyle(
+                fontSize: 14,
+                color: colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
             ),
           ),
-          if (action != null) ...[
-            const SizedBox(height: 12),
-            FilledButton(onPressed: onAction, child: Text(action!)),
-          ],
+          Switch(value: enabled, onChanged: (v) => _set(context, v)),
+        ],
+      ),
+    );
+  }
+}
+
+/// Clear the play history and the statistics, each after a question.
+class _ClearButtons extends StatelessWidget {
+  const _ClearButtons();
+
+  void _confirm(
+    BuildContext context,
+    String question,
+    Future<void> Function() onClear,
+    String done,
+  ) {
+    final l10n = context.l10n!;
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => ConfirmationDialog(
+        confirmationMessage: question,
+        submitMessage: l10n.clear,
+        isDangerous: true,
+        onCancel: () => Navigator.of(dialogContext).pop(),
+        onSubmit: () async {
+          Navigator.of(dialogContext).pop();
+          await onClear();
+          if (context.mounted) showToast(context, '$done!');
+        },
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n!;
+    final colorScheme = Theme.of(context).colorScheme;
+    final margin = ongakuPageMargin(context);
+    Widget button(String label, VoidCallback onTap) => Align(
+      alignment: Alignment.centerLeft,
+      child: TextButton(
+        onPressed: onTap,
+        style: TextButton.styleFrom(foregroundColor: colorScheme.primary),
+        child: Text(label, style: const TextStyle(fontSize: 16)),
+      ),
+    );
+    return Padding(
+      padding: EdgeInsets.fromLTRB(margin - 12, 28, margin, 0),
+      child: Column(
+        children: [
+          button(
+            l10n.clearRecentlyPlayed,
+            () => _confirm(context, l10n.clearRecentlyPlayedQuestion, () async {
+              userRecentlyPlayed.value = [];
+              await deleteData('user', 'recentlyPlayedSongs');
+            }, l10n.recentlyPlayedMsg),
+          ),
+          button(
+            l10n.clearListeningStats,
+            () => _confirm(context, l10n.clearListeningStatsQuestion, () async {
+              audioHandler.resetListeningStatsSession(flushStats: false);
+              await listeningStatsService.clearStats();
+              audioHandler.startListeningStatsSessionIfNeeded();
+            }, l10n.listeningStatsCleared),
+          ),
         ],
       ),
     );

@@ -8,8 +8,10 @@
  *     (at your option) any later version. See <https://www.gnu.org/licenses/>.
  */
 
+import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:musify/ongaku/l10n/ongaku_strings.dart';
 import 'package:musify/ongaku/theme/artwork_palette.dart';
 import 'package:musify/ongaku/theme/ongaku_motion.dart';
 import 'package:musify/utilities/artwork_provider.dart';
@@ -122,26 +124,30 @@ class OngakuBackButton extends StatelessWidget {
   }
 }
 
-/// Round "You" button: a simple person, one tap opens the listening stats.
+/// Round button opening the listening statistics, with the clock that was
+/// on their settings row, in the theme colour.
 class OngakuYouButton extends StatelessWidget {
   const OngakuYouButton({super.key});
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    return OngakuPressable(
-      onTap: () => context.push('/home/you'),
-      child: Container(
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: colorScheme.onSurface.withValues(alpha: 0.12),
-        ),
-        child: Icon(
-          Icons.person_rounded,
-          size: 26,
-          color: colorScheme.onSurface.withValues(alpha: 0.8),
+    return Tooltip(
+      message: OngakuStrings.of(context).statsTitle,
+      child: OngakuPressable(
+        onTap: () => context.push('/home/you'),
+        child: Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: colorScheme.primary.withValues(alpha: 0.16),
+          ),
+          child: Icon(
+            FluentIcons.clock_24_regular,
+            size: 26,
+            color: colorScheme.primary,
+          ),
         ),
       ),
     );

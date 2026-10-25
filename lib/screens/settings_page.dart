@@ -175,70 +175,9 @@ class SettingsPage extends StatelessWidget {
             ),
         ]),
         _group(strings.catLibrary, const Color(0xFF007AFF), [
-          ValueListenableBuilder<bool>(
-            valueListenable: wrappedEnabled,
-            builder: (_, value, __) {
-              return CustomBar(
-                context.l10n!.listeningStats,
-                FluentIcons.clock_24_regular,
-                description: context.l10n!.listeningStatsDescription,
-                trailing: Switch(
-                  value: value,
-                  onChanged: (value) => _toggleWrapped(context, value),
-                ),
-              );
-            },
-          ),
-          if (online)
-            CustomBar(
-              context.l10n!.clearRecentlyPlayed,
-              FluentIcons.receipt_play_24_regular,
-              onTap: () => _showConfirmationDialog(
-                context: context,
-                confirmationMessage: context.l10n!.clearRecentlyPlayedQuestion,
-                onSubmit: () {
-                  userRecentlyPlayed.value = [];
-                  deleteData('user', 'recentlyPlayedSongs');
-                  showToast(context, '${context.l10n!.recentlyPlayedMsg}!');
-                },
-              ),
-            ),
-          if (online)
-            CustomBar(
-              context.l10n!.clearSearchHistory,
-              FluentIcons.history_24_regular,
-              onTap: () => _showConfirmationDialog(
-                context: context,
-                confirmationMessage: context.l10n!.clearSearchHistoryQuestion,
-                onSubmit: () {
-                  searchHistoryNotifier.value = [];
-                  deleteData('user', 'searchHistory');
-                  showToast(context, '${context.l10n!.searchHistoryMsg}!');
-                },
-              ),
-            ),
-          if (online)
-            CustomBar(
-              context.l10n!.clearListeningStats,
-              FluentIcons.clock_24_regular,
-              onTap: () => _showConfirmationDialog(
-                context: context,
-                confirmationMessage: context.l10n!.clearListeningStatsQuestion,
-                submitMessage: context.l10n!.delete,
-                isDangerous: true,
-                onSubmit: () async {
-                  audioHandler.resetListeningStatsSession(flushStats: false);
-                  await listeningStatsService.clearStats();
-                  audioHandler.startListeningStatsSessionIfNeeded();
-                  if (context.mounted) {
-                    showToast(
-                      context,
-                      '${context.l10n!.listeningStatsCleared}!',
-                    );
-                  }
-                },
-              ),
-            ),
+          // Ongaku: the listening statistics switch, "clear play history"
+          // and "clear statistics" live on the Statistiques d'écoute page,
+          // "clear search history" on the Search tab.
           if (online)
             CustomBar(
               context.l10n!.importSpotifyPlaylist,
@@ -836,26 +775,6 @@ class SettingsPage extends StatelessWidget {
     usePureBlackColor.value = value;
     Musify.updateAppState(context);
     showToast(context, context.l10n!.settingChangedMsg);
-  }
-
-  Future<void> _toggleWrapped(BuildContext context, bool value) async {
-    if (!value) {
-      audioHandler.resetListeningStatsSession(
-        countCurrentTick: true,
-        flushStats: false,
-      );
-      await listeningStatsService.flush();
-    }
-
-    await addOrUpdateData<bool>('settings', 'wrappedEnabled', value);
-    wrappedEnabled.value = value;
-    listeningStatsService.reload();
-    if (value) {
-      audioHandler.startListeningStatsSessionIfNeeded();
-    }
-    if (context.mounted) {
-      showToast(context, context.l10n!.settingChangedMsg);
-    }
   }
 
   void _toggleOfflineMode(BuildContext context, bool value) {

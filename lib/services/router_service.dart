@@ -26,6 +26,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:musify/ongaku/brand.dart';
 import 'package:musify/ongaku/ongaku_routes.dart';
 import 'package:musify/ongaku/screens/ongaku_home_page.dart';
+import 'package:musify/ongaku/screens/ongaku_library_page.dart';
 import 'package:musify/ongaku/screens/ongaku_shell.dart';
 import 'package:musify/screens/about_page.dart';
 import 'package:musify/screens/artist_page.dart';
@@ -236,7 +237,8 @@ class NavigationManager {
           GoRoute(
             path: libraryPath,
             pageBuilder: (context, GoRouterState state) {
-              return getPage(child: const LibraryPage(), state: state);
+              // Ongaku: Apple Music library (pins, categories, recents).
+              return getPage(child: const OngakuLibraryPage(), state: state);
             },
             routes: [
               GoRoute(
@@ -258,6 +260,8 @@ class NavigationManager {
               ongakuLocalFilesRoute(_pushPage),
               // Ongaku: every song of the library, A to Z.
               ongakuAllSongsRoute(_pushPage),
+              // Ongaku: Library > Playlists, Artists, Albums.
+              ...ongakuLibraryRoutes(_pushPage),
             ],
           ),
         ],

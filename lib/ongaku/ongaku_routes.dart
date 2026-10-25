@@ -16,8 +16,10 @@ import 'package:musify/ongaku/screens/ongaku_acoustic_test_page.dart';
 import 'package:musify/ongaku/screens/ongaku_all_songs_page.dart';
 import 'package:musify/ongaku/screens/ongaku_hearing_test_page.dart';
 import 'package:musify/ongaku/screens/ongaku_import_playlist_page.dart';
+import 'package:musify/ongaku/screens/ongaku_library_page.dart';
 import 'package:musify/ongaku/screens/ongaku_sound_page.dart';
 import 'package:musify/ongaku/screens/ongaku_you_page.dart';
+import 'package:musify/screens/library_page.dart';
 import 'package:musify/screens/user_songs_page.dart';
 
 /// Path of the local files screen, under the Library tab.
@@ -43,6 +45,31 @@ GoRoute ongakuAllSongsRoute(PushPageBuilder pushPage) => GoRoute(
   pageBuilder: (context, state) =>
       pushPage(child: const OngakuAllSongsPage(), state: state),
 );
+
+/// Library > Playlists, Artists and Albums.
+List<GoRoute> ongakuLibraryRoutes(PushPageBuilder pushPage) => [
+  GoRoute(
+    path: 'playlists',
+    pageBuilder: (context, state) => pushPage(
+      child: const LibraryPage(ongakuPlaylistsOnly: true),
+      state: state,
+    ),
+  ),
+  GoRoute(
+    path: 'artists',
+    pageBuilder: (context, state) => pushPage(
+      child: const OngakuCollectionPage(artists: true),
+      state: state,
+    ),
+  ),
+  GoRoute(
+    path: 'albums',
+    pageBuilder: (context, state) => pushPage(
+      child: const OngakuCollectionPage(artists: false),
+      state: state,
+    ),
+  ),
+];
 
 /// Library > Local Files.
 GoRoute ongakuLocalFilesRoute(PushPageBuilder pushPage) => GoRoute(

@@ -45,7 +45,10 @@ import 'package:musify/widgets/playlist_bar.dart';
 import 'package:musify/widgets/section_header.dart';
 
 class LibraryPage extends StatefulWidget {
-  const LibraryPage({super.key});
+  const LibraryPage({super.key, this.ongakuPlaylistsOnly = false});
+
+  // Ongaku: opened from Library > Playlists, so only the playlists show.
+  final bool ongakuPlaylistsOnly;
 
   @override
   _LibraryPageState createState() => _LibraryPageState();
@@ -136,14 +139,17 @@ class _LibraryPageState extends State<LibraryPage> {
                 // Ongaku: large title like the Home tab.
                 SliverToBoxAdapter(
                   child: OngakuLargeTitle(
-                    title: context.l10n!.library,
+                    title: widget.ongakuPlaylistsOnly
+                        ? context.l10n!.playlists
+                        : context.l10n!.library,
+                    showBack: widget.ongakuPlaylistsOnly,
                     parentInset: commonSingleChildScrollViewPadding.left,
                   ),
                 ),
-                ..._buildPinnedSlivers(),
+                if (!widget.ongakuPlaylistsOnly) ..._buildPinnedSlivers(),
                 ..._buildUserPlaylistsSlivers(),
                 if (!offlineMode.value) ..._buildLikedPlaylistsSlivers(),
-                ..._buildLikedArtistsSlivers(),
+                if (!widget.ongakuPlaylistsOnly) ..._buildLikedArtistsSlivers(),
                 const SliverMiniPlayerBottomSpace(),
               ],
             ),
@@ -216,7 +222,7 @@ class _LibraryPageState extends State<LibraryPage> {
     final slivers = <Widget>[];
 
     // Ongaku: local files stay reachable in offline mode.
-    if (isOffline) {
+    if (isOffline && !widget.ongakuPlaylistsOnly) {
       slivers.add(
         SliverToBoxAdapter(
           child: ongakuLocalFilesBar(
@@ -260,7 +266,7 @@ class _LibraryPageState extends State<LibraryPage> {
                         ],
                       ),
               ),
-              if (!isOffline) ...[
+              if (!isOffline && !widget.ongakuPlaylistsOnly) ...[
                 PlaylistBar(
                   context.l10n!.recentlyPlayed,
                   onPressed: () =>
