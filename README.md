@@ -67,8 +67,8 @@ Chaque thème a ses couleurs et son icône d'app assortie.
 
 | Version | Ce qu'elle a apporté |
 |---|---|
-| [1.3.0](https://github.com/orikami-dev/ongaku/releases/tag/v1.3.0) | Bibliothèque façon Apple Music, gestes dans le lecteur, statistiques refaites, mises à jour automatiques. |
-| [1.0](https://github.com/orikami-dev/ongaku/releases/tag/v1.0) | Première version publique : lecteur partagé sur les pliants, interface à la taille de l'écran, Android Auto, mises à jour intégrées. |
+| [1.3.0 ⭐](https://github.com/orikami-dev/ongaku/releases/tag/v1.3.0) | Bibliothèque façon Apple Music, gestes dans le lecteur, statistiques refaites, mises à jour automatiques. |
+| [1.0 ⭐](https://github.com/orikami-dev/ongaku/releases/tag/v1.0) | Première version publique : lecteur partagé sur les pliants, interface à la taille de l'écran, Android Auto, mises à jour intégrées. |
 
 ## 🛠️ Le dépôt
 

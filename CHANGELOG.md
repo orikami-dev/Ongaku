@@ -2,20 +2,30 @@
 
 Studio : ORIKAMI.
 
-## 1.3.0
+## 1.3.0 ⭐
 
-- Bibliothèque façon Apple Music : épingles, catégories réordonnables, Ajouts récents (arrivée avec la 1.1).
-- Lecteur : glisser pour changer de titre ou aimer, nouvelle rangée de boutons, titres déjà écoutés en gris, volume du téléphone (1.2 et 1.3).
-- Recherches récentes ; Statistiques d'écoute avec Résumé et Historique ; Accueil sans menu ⋮.
-- Son calibré plus stable, Mode doux plus doux, extrait de démonstration par thème.
-- Mises à jour automatiques vérifiées ; export des journaux depuis Aide et dépannage.
+- Bibliothèque façon Apple Music : épingles, catégories à afficher, masquer et réordonner, « Ajouts récents »
+- Recherches récentes dans l'onglet Rechercher, avec un bouton Effacer
+- Lecteur : glisser la pochette pour changer de titre, glisser un titre vers la droite pour l'aimer
+- Lecteur : nouvelle rangée de boutons ; ajout à une playlist et minuterie dans « À suivre »
+- Titres déjà écoutés affichés en gris au-dessus de « À suivre »
+- Accueil sans menu ⋮ : actualiser, mix aléatoire et statistiques à côté du titre
+- Statistiques d'écoute refaites, avec les onglets Résumé et Historique
+- Extrait de démonstration propre à chaque thème
+- Mises à jour automatiques, empreinte et signature vérifiées avant l'installation
+- Export des journaux depuis Réglages > Aide et dépannage, et après un plantage
+- Correctif : la barre de volume suit le volume média du téléphone
+- Correctif : Son calibré plus stable, Mode doux plus régulier
 
-## 1.0
+## 1.0 ⭐
 
-- Première version publique d'Ongaku.
-- Accueil : logo et nom de l'app en haut, barre du haut qui reste en place et s'efface.
-- Lecteur : fonds plus transparents, paroles plus rapides à ouvrir, lecteur partagé sur un pliant à moitié ouvert.
-- Playlists et albums : titre sous la pochette, pastilles autour des boutons ; « Tous les titres » avec index alphabétique.
-- Interface à la taille de chaque écran et de sa densité.
-- Android Auto : onglets comme dans l'app ; Mode doux plus régulier.
-- Démarrage sans logo qui traîne ; mises à jour proposées dans l'app.
+- Interface façon Apple Music : accueil « Pour vous », lecteur plein écran animé, paroles synchronisées
+- Lecture des fichiers locaux du téléphone
+- Interface à la taille de chaque écran : téléphones, pliants, tablettes
+- Pliant à moitié ouvert : pochette ou paroles en haut, commandes et file d'attente en bas
+- Son calibré par sortie (haut-parleur, écouteurs, voiture) et Mode doux (fondu enchaîné)
+- Quatre thèmes (Sumi, Washi, Sakura, Matcha) avec l'icône assortie
+- Import de playlists Spotify, Deezer et Apple Music
+- « Tous les titres » avec index alphabétique
+- Android Auto
+- Mises à jour proposées dans l'app
