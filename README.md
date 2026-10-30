@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/images/ongaku-icone.png" width="128" alt="Ongaku">
+  <img src="docs/images/ongaku-icon.png" width="128" alt="Ongaku">
 </p>
 
 <h1 align="center">Ongaku</h1>
@@ -20,7 +20,7 @@
 Ongaku is a free, ad-free Android music player in the style of Apple Music. It does everything [Musify](https://github.com/gokadzev/Musify) does (search, streaming, playlists, lyrics, radios, downloads) and gives it an interface made for phones and foldables.
 
 <p align="center">
-  <img src="docs/images/captures-1.0.png" width="92%" alt="Home, player, lyrics and All songs">
+  <img src="docs/images/screenshots-1.0.png" width="92%" alt="Home, player, lyrics and All songs">
 </p>
 
 | | |
@@ -60,7 +60,7 @@ Each theme has its own colors and a matching app icon.
 - 🚫 No ads, no subscription, SponsorBlock built in.
 
 <p align="center">
-  <img src="docs/images/pliants-1.0.png" width="92%" alt="Player on a half-open foldable and on a large screen">
+  <img src="docs/images/foldables-1.0.png" width="92%" alt="Player on a half-open foldable and on a large screen">
 </p>
 
 ## ⭐ Major updates
